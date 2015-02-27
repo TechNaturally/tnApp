@@ -4,10 +4,10 @@ Aims to provide a modular architecture for building cloud apps.
 
 ## Components
 The main components of the tnApp are:
-* **Server providing a REST API** *(currently implemented in PHP)*
-* **Client providing a user experience** *(currently implemented in angularjs)*
+* **Server providing REST API** *(currently implemented in PHP)*
+* **Client providing user experience** *(currently implemented in angularjs)*
 
-Modules may be added on both the server and client.
+Modules may be added on both the client and server, with the only dependency being that the client understands the REST API.
 
 ## Installation
 Run:
@@ -33,7 +33,7 @@ Server modules are comprised of two main pieces:
   * implements any support functions needed by the module (ie. functions not-exposed as API routes)
 
 ### Client Modules
-Client modules provide the user interface to the REST API.
+Client modules provide a user interface to the REST API.
 
 ## Technologies
 #### Current
