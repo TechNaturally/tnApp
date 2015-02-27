@@ -1,0 +1,34 @@
+{
+  "name": "tnApp",
+  "version": "0.0.1",
+  "authors": [
+    "plong0 <pat@technaturally.com>"
+  ],
+  "description": "TechNaturally App",
+  "main": "index.html",
+  "keywords": [
+    "angularjs",
+    "architecture",
+    "modular",
+    "php"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "~3.3.2",
+    "angular": "~1.3.13",
+    "angular-route": "~1.3.13",
+    "angular-sanitize": ">= 1.2",
+    "angular-hmac-sha512": "*",
+    "angular-md5": "~0.1.7",
+    "angular-schema-form": "~0.7.11",
+    "fontawesome": "~4.3.0"
+  }
+}

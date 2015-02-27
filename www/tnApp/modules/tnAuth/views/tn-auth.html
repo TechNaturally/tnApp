@@ -1,0 +1,19 @@
+<div class="auth panel panel-default" tn-state="login">
+	<div class="panel-body" ng-show="auth.user">
+		You are logged in as <strong>{{auth.user.username}}</strong> [<em>{{auth.user.email}}</em>]!
+		<div>
+			<button class="btn btn-primary" ng-click="logout()">Logout</button>
+		</div>
+	</div>
+
+	<ul class="nav nav-tabs" ng-hide="auth.user">
+		<li ng-class="{active: state=='login' || state=='recover' || !state}"><a ng-click="go('login')">Login</a></li>
+		<li ng-class="{active: state=='register'}"><a ng-click="go('register')">Register</a></li>
+	</ul>
+
+	<div class="panel-body" ng-hide="auth.user">
+		<tn-form action="/auth/login" name="auth-login" schema="schema" input="input" ng-show="state=='login' || !state"></tn-form>
+		<tn-form action="/auth/recover" name="auth-recover" schema="schema" input="input" ng-show="state=='recover'"></tn-form>
+		<tn-form action="/auth/register" name="auth-register" schema="schema" ng-show="state=='register'"></tn-form>
+	</div>
+</div>
