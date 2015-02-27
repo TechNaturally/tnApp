@@ -9,7 +9,7 @@ $app = new \Slim\Slim(array(
 	));
 $app->view(new \JsonApiView());
 
-$tna = new \TN\App($app, 'demo.json');
+$tna = new \TN\App($app, 'config.json');
 
 $app->add(new \JsonApiMiddleware());
 
