@@ -10,7 +10,7 @@ angular.module('tnApp.form', ['tnApp.api'])
 			input: '=?',
 			defaults: '=?'
 		},
-		templateUrl: '/modules/tnForm/views/tn-form.html',
+		templateUrl: '/tnApp/modules/tnForm/views/tn-form.html',
 		controller: function($scope){
 			// provide state-changing function 'go' (ex. using tn-state directive)
 			// some buttons in the form may call this directly

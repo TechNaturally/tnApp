@@ -33,6 +33,6 @@ angular.module('tnApp.status', [])
 	return {
 		restrict: 'E',
 		controller: 'StatusController',
-		templateUrl: '/modules/tnStatus/views/tn-status.html'
+		templateUrl: '/tnApp/modules/tnStatus/views/tn-status.html'
 	};
 });

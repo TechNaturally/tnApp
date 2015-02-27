@@ -153,7 +153,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.status', 'tnApp.state', 'tnApp
 		restrict: 'E',
 		scope: true,
 		controller: 'AuthController',
-		templateUrl: '/modules/tnAuth/views/tn-auth.html',
+		templateUrl: '/tnApp/modules/tnAuth/views/tn-auth.html',
 	};
 })
 .directive('tnNewUsername', ['$q', 'API', function($q, API){

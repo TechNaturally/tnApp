@@ -48,14 +48,14 @@ angular.module('tnApp.user', ['tnApp.api'])
 		restrict: 'E',
 		scope: true,
 		controller: 'UserController',
-		templateUrl: '/modules/tnUser/views/tn-user-profile.html'
+		templateUrl: '/tnApp/modules/tnUser/views/tn-user-profile.html'
 	};
 })
 .directive('tnUserList', function(){
 	return {
 		restrict: 'E',
 		controller: 'UserController',
-		templateUrl: '/modules/tnUser/views/tn-user-list.html'
+		templateUrl: '/tnApp/modules/tnUser/views/tn-user-list.html'
 	};
 })
 ;

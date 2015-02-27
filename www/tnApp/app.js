@@ -10,7 +10,7 @@ angular.module('tnApp', ['ngRoute', 'tnApp.status', 'tnApp.form', 'tnApp.user', 
   function ($routeProvider) {
   	$routeProvider.when('/', {
   		title: 'Test',
-  		templateUrl: '/app/views/test.html',
+  		templateUrl: '/tnApp/views/test.html',
   		controller: 'AppController'
   	})
   	.otherwise({
