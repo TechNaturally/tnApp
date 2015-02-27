@@ -1,0 +1,9 @@
+{
+	"minimum-stability": "dev",
+    "require": {
+        "slim/slim": "~2.5",
+		"vrana/notorm": "dev-master",
+		"geraintluff/jsv4": "dev-master",
+		"entomb/slim-json-api": "dev-master"
+    }
+}

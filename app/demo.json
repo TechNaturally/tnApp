@@ -1,0 +1,12 @@
+{
+	"name": "tnApp Demo",
+	"modules": ["auth", "user", "email"],
+	"data": {
+		"mysql": {
+			"host": "localhost",
+			"database": "demo",
+			"username": "demo",
+			"password": "demo123"
+		}
+	}
+}

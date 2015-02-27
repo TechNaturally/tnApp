@@ -1,0 +1,55 @@
+{
+	"database": "*",
+	"schema": {
+		"id": "/user",
+		"type": "object",
+		"properties": {
+			"auth_id": {
+				"title": "Account",
+				"$ref": "/auth/id"
+			},
+			"role": {
+				"title": "Roles",
+				"type": "array",
+				"items": {"type": "string"}
+			},
+			"name": {
+				"title": "Name",
+				"type": "string",
+				"minLength": 0,
+				"maxLength": 255
+			},
+			"email": {
+				"title": "Email Address",
+				"type": "string",
+				"minLength": 16,
+				"maxLength": 255
+			},
+			"phone": {
+				"title": "Phone Number",
+				"type": "string",
+				"minLength": 0,
+				"maxLength": 25
+			}
+		}
+	},
+	"routes": {
+		"/": {
+			"callback": "list",
+			"methods": { "GET": true, "POST": true }
+		},
+		"/:id": {
+			"callback": "profile",
+			"methods": { "GET": true, "PUT": true },
+			"form": [
+				{ "key": "name", "placeholder": "Full Name" },
+				{ "key": "email", "placeholder": "Email address" },
+				{ "key": "phone", "placeholder": "Phone number" },
+				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
+						{ "type": "submit", "style": "btn-primary", "title": "Save" },
+						{ "type": "button", "style": "btn-warning", "title": "Reset", "onClick": "reset()" }
+				]}
+			]
+		}
+	}
+}

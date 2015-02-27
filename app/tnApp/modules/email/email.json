@@ -1,0 +1,8 @@
+{
+	"routes": {
+		"/valid": {
+			"callback": "valid",
+			"methods": { "GET": true }
+		}
+	}
+}
