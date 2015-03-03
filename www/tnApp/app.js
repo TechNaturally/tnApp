@@ -1,4 +1,4 @@
-angular.module('tnApp', ['ngRoute', 'tnApp.status', 'tnApp.form', 'tnApp.auth', 'tnApp.theme'])
+angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
 .controller('AppController', ['$scope', '$routeParams', 'Auth', function ($scope, $routeParams, Auth){
   $scope.auth = Auth.data;
 
