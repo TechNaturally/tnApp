@@ -39,12 +39,12 @@ angular.module('tnApp.theme', [])
 				var template = ((typeSplit.length > 2)?typeSplit.slice(2).join('-'):module)+'.html';
 
 				if(registry && registry.indexOf(template) !== -1){
-					return '/theme/views/'+template;
+					return '/theme/widgets/'+template;
 				}
 
 				module = attr.$normalize(module);
 
-				return moduleBase+'/'+module+'/views/'+template;
+				return moduleBase+'/'+module+'/widgets/'+template;
 			}
 
 			return '';
