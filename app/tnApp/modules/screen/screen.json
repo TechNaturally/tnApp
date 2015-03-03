@@ -1,0 +1,8 @@
+{
+	"routes": {
+		"/": {
+			"callback": "load",
+			"methods": { "GET": true }
+		}
+	}
+}
