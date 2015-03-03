@@ -1,5 +1,5 @@
-angular.module('tnApp.form', ['tnApp.api'])
-.directive('tnForm', ['API', function(API){
+angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme'])
+.directive('tnForm', ['API', 'Theme', function(API, Theme){
 	return {
 		restrict: 'E',
 		scope: {
@@ -10,7 +10,7 @@ angular.module('tnApp.form', ['tnApp.api'])
 			input: '=?',
 			defaults: '=?'
 		},
-		templateUrl: '/tnApp/modules/tnForm/views/tn-form.html',
+		templateUrl: Theme.getTemplate,
 		controller: function($scope){
 			// provide state-changing function 'go' (ex. using tn-state directive)
 			// some buttons in the form may call this directly

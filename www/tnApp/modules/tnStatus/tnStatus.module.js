@@ -1,4 +1,4 @@
-angular.module('tnApp.status', [])
+angular.module('tnApp.status', ['tnApp.theme'])
 .factory('Status', ['$http', function($http){
 	var data = {
 		messages: [],
@@ -29,10 +29,10 @@ angular.module('tnApp.status', [])
 	$scope.status = Status.data;
 	$scope.dismiss = Status.pop;
 }])
-.directive('tnStatus', function(){
+.directive('tnStatus', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		controller: 'StatusController',
-		templateUrl: '/tnApp/modules/tnStatus/views/tn-status.html'
+		templateUrl: Theme.getTemplate
 	};
-});
+}]);
