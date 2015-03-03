@@ -1,5 +1,5 @@
 angular.module('tnApp.status', ['tnApp.theme'])
-.factory('Status', ['$http', function($http){
+.factory('Status', function(){
 	var data = {
 		messages: [],
 		classes: {
@@ -24,7 +24,7 @@ angular.module('tnApp.status', ['tnApp.theme'])
 			}
 		}
 	};
-}])
+})
 .controller('StatusController', ['$scope', 'Status', function($scope, Status){
 	$scope.status = Status.data;
 	$scope.dismiss = Status.pop;
