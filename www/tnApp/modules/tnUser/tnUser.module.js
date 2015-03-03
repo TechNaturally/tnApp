@@ -1,4 +1,4 @@
-angular.module('tnApp.user', ['tnApp.api'])
+angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 .factory('User', ['$q', 'API', function($q, API){
 	var data = {
 		profile: null,
@@ -43,22 +43,21 @@ angular.module('tnApp.user', ['tnApp.api'])
 	$scope.user_id = 123;
 
 }])
-.directive('tnUserProfile', function(){
+.directive('tnUser', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		scope: true,
 		controller: 'UserController',
-		templateUrl: '/tnApp/modules/tnUser/views/tn-user-profile.html'
+		templateUrl: Theme.getTemplate
 	};
-})
-.directive('tnUserList', function(){
+}])
+.directive('tnUserList', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		controller: 'UserController',
-		templateUrl: '/tnApp/modules/tnUser/views/tn-user-list.html'
+		templateUrl: Theme.getTemplate
 	};
-})
-;
+}]);
 
 /**
 Directives:

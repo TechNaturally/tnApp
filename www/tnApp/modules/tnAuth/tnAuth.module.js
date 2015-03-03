@@ -1,4 +1,4 @@
-angular.module('tnApp.auth', ['tnApp.api', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'schemaForm', 'angular-hmac-sha512'])
+angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'schemaForm', 'angular-hmac-sha512'])
 .factory('Auth', ['$q', 'API', '$crypthmac', 'User', function($q, API, $crypthmac, User){
 	var data = {
 		user: null,
@@ -148,14 +148,14 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.status', 'tnApp.state', 'tnApp
 		return Auth.api.recoverPassword(input.username);
 	};
 }])
-.directive('tnAuth', function(){
+.directive('tnAuth', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		scope: true,
 		controller: 'AuthController',
-		templateUrl: '/tnApp/modules/tnAuth/views/tn-auth.html',
+		templateUrl: Theme.getTemplate
 	};
-})
+}])
 .directive('tnNewUsername', ['$q', 'API', function($q, API){
 	return {
 		restrict: 'A',
