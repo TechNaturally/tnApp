@@ -16,7 +16,7 @@ angular.module('tnApp.theme', [])
 				$http.get(themeBase+(name?'/'+name:'')+'/registry.json').then(function(res){
 					registry = res.data;
 					// TODO: we could loop through the registry and cache all of them (and if they're missing, remove from registry)
-					console.log('registry:'+JSON.stringify(registry));
+					console.log('theme registry:'+JSON.stringify(registry));
 				})
 				.finally(function(){
 					defer.resolve(registry?true:false);
@@ -32,8 +32,6 @@ angular.module('tnApp.theme', [])
 			}
 
 			if(type){
-				//var moduleBase = ;
-
 				var typeSplit = type.split('-');
 				var module = typeSplit.slice(0, 2).join('-');
 				var template = ((typeSplit.length > 2)?typeSplit.slice(2).join('-'):module)+'.html';
