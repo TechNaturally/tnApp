@@ -15,6 +15,7 @@ angular.module('tnApp.theme', [])
 			else{
 				$http.get(themeBase+(name?'/'+name:'')+'/registry.json').then(function(res){
 					registry = res.data;
+					// TODO: we could loop through the registry and cache all of them (and if they're missing, remove from registry)
 					console.log('registry:'+JSON.stringify(registry));
 				})
 				.finally(function(){
