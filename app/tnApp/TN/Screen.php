@@ -14,6 +14,7 @@ class ScreenManager {
 		}
 
 		foreach($contents as $priority => $content){
+			if(empty($content)){ continue; }
 			if(!isset($this->screens[$path][$priority])){
 				$this->screens[$path][$priority] = $content;
 			}
@@ -26,7 +27,7 @@ class ScreenManager {
 	public function get_screen($path){
 		$screen = array();
 		print "\n";
-		foreach($this->screens as $screen_path => $content){
+		foreach($this->screens as $screen_path => $contents){
 			$path_rx = $screen_path;
 			
 			$path_rx = preg_replace('/\*/', '.*', $path_rx);
@@ -43,8 +44,6 @@ class ScreenManager {
 
 			if(preg_match("/^$path_rx$/", $path, $matches)){
 				array_shift($matches);
-
-				$screen[$screen_path] = array_merge($screen, $content);
 
 				$args = array();
 				$arg_matches = array();
@@ -67,6 +66,30 @@ class ScreenManager {
 						}
 					}
 				}
+
+				foreach($contents as $priority => $content){
+					if(empty($content)){ continue; }
+					foreach($content as $content_idx => $content_data){
+						if(!empty($content_data->args)){
+							$data_args = array();
+							foreach($content_data->args as $path_arg => $data_arg){
+								$data_args[$data_arg] = isset($args[$path_arg])?$args[$path_arg]:'';
+							}
+							$content[$content_idx]->args = $data_args;
+						}
+
+					}
+
+					if(!isset($screen[$priority])){
+						$screen[$priority] = $content;
+					}
+					else{
+						$screen[$priority] = array_merge($screen[$priority], $content);
+					}
+				}
+
+
+				//$screen[$screen_path] = array_merge($screen, $content);
 			}
 		}
 
