@@ -1,4 +1,4 @@
-angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme'])
+angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme', 'schemaForm'])
 .directive('tnForm', ['API', 'Theme', function(API, Theme){
 	return {
 		restrict: 'E',

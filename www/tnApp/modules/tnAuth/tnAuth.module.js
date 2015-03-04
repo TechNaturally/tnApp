@@ -1,4 +1,4 @@
-angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'schemaForm', 'angular-hmac-sha512'])
+angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'tnApp.form', 'angular-hmac-sha512'])
 .factory('Auth', ['$q', 'API', '$crypthmac', 'User', function($q, API, $crypthmac, User){
 	var data = {
 		user: null,
