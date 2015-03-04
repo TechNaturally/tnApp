@@ -24,23 +24,31 @@ class Security extends \Slim\Middleware {
 		return array_key_exists($route, $this->routes);
 	}
 
-	public function allow($route){
+	public function passes($rules, $params){
+		global $_SESSION;
+		if($rules===TRUE){
+			return TRUE;
+		}
+		foreach($rules as $credential){
+			// TODO: this is the fun part of checking credentials against $_SESSION
+			if($credential == 'user' && !empty($_SESSION['user'])){
+				return TRUE;
+			}
+			else{
+				// if the user has the role
+			}
+		}
+		return FALSE;
+	}
+
+	public function allowRoute($route, $params){
 		if(!$this->isProtected($route)){
 			return TRUE;
 		}
 		if(empty($this->routes[$route])){
 			return FALSE;
 		}
-
-		global $_SESSION;
-		foreach($this->routes[$route] as $credential){
-			// TODO: this is the fun part of checking credentials against $_SESSION
-			if($credential == 'user' && !empty($_SESSION['user'])){
-				return TRUE;
-			}
-		}
-
-		return FALSE;
+		return $this->passes($this->routes[$route], $params);
 	}
 
 	public function call() {
@@ -52,7 +60,8 @@ class Security extends \Slim\Middleware {
 		$route = $this->app->router()->getCurrentRoute();
 		if($route){
 			$route_pattern = $this->app->request->getMethod().$route->getPattern();
-			if(!$this->allow($route_pattern)){
+			$route_params = $route->getParams();
+			if(!$this->allowRoute($route_pattern, $route->getParams())){
 				$this->kickout();
 			}
 		}

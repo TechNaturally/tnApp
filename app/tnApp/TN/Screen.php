@@ -2,9 +2,11 @@
 namespace TN;
 
 class ScreenManager {
+	protected $app;
 	protected $screens;
 
-	public function __construct(){
+	public function __construct($app){
+		$this->app = $app;
 		$this->screens = array();
 	}
 
@@ -66,20 +68,27 @@ class ScreenManager {
 				foreach($contents as $priority => $content){
 					if(empty($content)){ continue; }
 					foreach($content as $content_idx => $content_data){
+						$data_args = array();
 						if(!empty($content_data->args)){
-							$data_args = array();
 							foreach($content_data->args as $path_arg => $data_arg){
 								$data_args[$data_arg] = (isset($args[$path_arg]) && !empty($args[$path_arg]))?$args[$path_arg]:'';
 							}
 							$content[$content_idx]->args = $data_args;
 						}
+						if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
+							$content[$content_idx] = NULL;
+							continue;
+						}
 					}
 
-					if(!isset($screen[$priority])){
-						$screen[$priority] = $content;
-					}
-					else{
-						$screen[$priority] = array_merge($screen[$priority], $content);
+					$content = array_filter($content);
+					if(!empty($content)){
+						if(!isset($screen[$priority])){
+							$screen[$priority] = $content;
+						}
+						else{
+							$screen[$priority] = array_merge($screen[$priority], $content);
+						}
 					}
 				}
 			}
