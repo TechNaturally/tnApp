@@ -1,4 +1,10 @@
 <div class="tn-screen">
 	<p>This is a screen for path: <em>{{path}}</em></p>
-	{{content}}
+	<tn-auth></tn-auth>
+	<div ng-repeat="(priority, widgets) in content">
+		<h3>Content priority #{{priority}}</h3>
+
+		<pre ng-repeat="widget in widgets">{{widget}}</pre>
+	</div>
+	
 </div>

@@ -18,7 +18,6 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 			else{
 				API.get('/schema/auth').then(function(res){
 					if(!res.error && angular.isDefined(res.schema)){
-						console.log('auth schema loaded');
 						data.schema = res.schema;
 						defer.resolve(data.schema);
 					}

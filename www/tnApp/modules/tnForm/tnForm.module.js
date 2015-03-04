@@ -110,7 +110,6 @@ angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme', 'schemaForm'])
 				scope.schema = {};
 				API.get('/schema/'+module).then(function(res){
 					if(!res.error && angular.isDefined(res.schema)){
-						console.log(module+' schema loaded by tnForm');
 						scope.schema = res.schema;
 					}
 				});
@@ -139,7 +138,6 @@ angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme', 'schemaForm'])
 			scope.form = [];
 			API.request(scope.method, scope.action+'/form').then(function(res){
 				if(!res.error && angular.isDefined(res.form)){
-					console.log('form loaded: '+scope.action);
 					scope.form = res.form;
 				}
 				if(!res.error && angular.isDefined(res.callback)){

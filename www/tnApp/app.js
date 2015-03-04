@@ -4,8 +4,6 @@ angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
 
   $scope.path = $routeParams.path;
 
-  $scope.what = 'ok';
-
 }])
 .config(['$routeProvider', 
   function ($routeProvider) {
