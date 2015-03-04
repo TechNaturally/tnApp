@@ -51,5 +51,57 @@
 				]}
 			]
 		}
+	},
+	"screens": {
+		"/user/:user_id?": {
+			"3": [
+				{ "type": "widget",
+					"content": "tn-user",
+					"args": {"user_id": "id"},
+					"access": ["user"]
+				}
+			]
+		},
+		"/admin": {
+			"5": [
+				{ "type": "widget",
+					"content": "tn-user-admin",
+					"access": ["admin"]
+				}
+			]
+		},
+		"/admin/user*": {
+			"9": [
+				{ "type": "widget",
+					"content": "tn-user-list",
+					"access": ["admin"]
+				}
+			]
+		},
+		"/admin/user/:user_id": {
+			"3": [
+				{ "type": "widget",
+					"content": "tn-user",
+					"args": {"user_id": "id"},
+					"access": ["admin"]
+				}
+			]
+		},
+		"/user/:user_id/check/:test_id?": {
+			"2": [
+				{ "type": "widget",
+					"content": "tn-user1",
+					"args": {"user_id": "id", "test_id": "test"},
+					"access": ["user"]
+				},
+				{ "type": "widget",
+					"content": "tn-user1",
+					"args": {"user_id": "gobo", "test_id": "chinko"},
+					"access": ["user"]
+				}
+			],
+			"3": [
+			]
+		}
 	}
 }
