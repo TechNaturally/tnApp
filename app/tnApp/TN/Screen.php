@@ -33,26 +33,32 @@ class ScreenManager {
 
 			$path_rx = preg_replace('/\*/', '.*', $path_rx);
 
-			$args_rx = preg_replace('/:([^\/]+)/', ':(\w[\w\d]*\??)', $path_rx);
-			$args_rx = preg_replace('/\//', '\\/', $args_rx);
+			$args_rx = preg_replace('/:([^\/]+)/', ':(\w[\w\d]*\??)', $path_rx); // match arg names
+			$args_rx = preg_replace('/\//', '\\/', $args_rx); // allow slashes
 
-			$path_rx = preg_replace('/\/:([^\/]+)\?/', '(/[\w\d]*)?', $path_rx);
-			$path_rx = preg_replace('/:([^\/]+)/', '(\w[\w\d]*)', $path_rx);
+			$path_rx = preg_replace('/\/:([^\/]+)\?/', '(/[\w\d]*)?', $path_rx); // match optional args
+			$path_rx = preg_replace('/:([^\/]+)/', '(\w[\w\d]*)', $path_rx); // match args
 
-			$path_rx = preg_replace('/\//', '\\/', $path_rx);
+			$path_rx = preg_replace('/\//', '\\/', $path_rx); // allow slashes
 			
+			// check if the path matches
 			if(preg_match("/^$path_rx$/", $path, $matches)){
-				array_shift($matches);
+				array_shift($matches); // matches will contain the arg values
 
 				$args = array();
+
+				// extract the arg names
 				$arg_matches = array();
 				preg_match("/^$args_rx$/", $screen_path, $arg_matches);
 				array_shift($arg_matches);
+
+				// if there are arg names found
 				if(!empty($arg_matches)){
 					foreach($arg_matches as $arg_idx => $arg_id){
 						if(substr($arg_id,-1)=='?'){
 							$arg_id = substr($arg_id, 0, -1);
 						}
+						// map the arg values to the arg names
 						if($arg_idx < count($matches)){
 							if(substr($matches[$arg_idx], 0, 1) == '/'){
 								$matches[$arg_idx] = substr($matches[$arg_idx], 1);
@@ -65,9 +71,12 @@ class ScreenManager {
 					}
 				}
 
+				// add the prioritized content
 				foreach($contents as $priority => $content){
 					if(empty($content)){ continue; }
+					// for each piece of content
 					foreach($content as $content_idx => $content_data){
+						// add the name-mapped args
 						$data_args = array();
 						if(!empty($content_data->args)){
 							foreach($content_data->args as $path_arg => $data_arg){
@@ -75,12 +84,14 @@ class ScreenManager {
 							}
 							$content[$content_idx]->args = $data_args;
 						}
+						// check security access for this content
 						if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
 							$content[$content_idx] = NULL;
 							continue;
 						}
 					}
 
+					// add the prioritized content to the screen
 					$content = array_filter($content);
 					if(!empty($content)){
 						if(!isset($screen[$priority])){
