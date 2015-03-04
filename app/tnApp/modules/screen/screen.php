@@ -6,11 +6,11 @@ function screen_load_get($tn){
 
 	$req = $tn->app->request;
 	$path = $req->get('path');
-	if(substr($path,0,1) != '/'){
-		$path = '/'.$path;
-	}
 
 	if($path){
+		if(substr($path,0,1) != '/'){
+			$path = '/'.$path;
+		}
 		$res['content'] = $tn->screens->get_screen($path);
 	}
 
