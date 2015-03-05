@@ -18,14 +18,41 @@ function user_profile_get($tn, $id){
 	$res = array();
 	$res_code = 200;
 
-	$res['msg'] = "Hello from user #$id :)";
+	try{
+		if($user = user_get_user($tn, $id)){
+			$res['user'] = $user;
+		}
+		else{
+			//$res['error'] = TRUE;
+			$res['msg'] = 'User not found.';
+		}
+
+	} catch (Exception $e) {}
 
 	$tn->app->render($res_code, $res);
 }
 
 function user_profile_put($tn, $id){
+	$res = array();
+	$res_code = 200;
 	// updating a user (or if !$id... add new?)
 	// /api/user/0/put {user info}
+
+	$req = json_decode($tn->app->request->getBody());
+	if($req->user){
+		try{
+			//$res['msg'] = print_r($req->user,true);
+			if($user = user_save_user($tn, (array)$req->user)){
+				$res['user'] = $user;
+				$res['msg'] = 'User saved!';
+			}
+
+		} catch(Exception $e){
+			$res['msg'] = $e->getMessage();
+		}
+	}
+	
+	$tn->app->render($res_code, $res);
 }
 
 function user_get_user($tn, $id, $field='id'){
@@ -43,7 +70,7 @@ function user_get_user($tn, $id, $field='id'){
 	return NULL;
 }
 
-function user_create_user($tn, $user){
+function user_save_user($tn, $user){
 	try{
 		$tn->data->assert('user');
 
@@ -53,7 +80,16 @@ function user_create_user($tn, $user){
 			unset($user['roles']);
 		}
 
-		if($user = $tn->data->user()->insert($user)){
+		if(isset($user['id'])){
+			$user_save = $tn->data->user()->where('id', $user['id']);
+			$user_save->update($user);
+			$user = $user_save->fetch();
+		}
+		else{
+ 			$user = $tn->data->user()->insert($user);
+		}
+
+		if($user){
 			$user = $tn->data->rowToArray($user);
 			if(!empty($roles)){
 				$tn->data->assert('user_role');
@@ -64,13 +100,14 @@ function user_create_user($tn, $user){
 						'role' => $role_id
 						);
 				}
+				// do that only if they aren't there
 				$tn->data->user_role()->insert_multi($user_roles);
 				$user['roles'] = $roles;
 			}
 			return $user;
 		}
-	} catch (Exception $e) {}
-
+	} catch (Exception $e) { throw $e; }
+	throw new Exception('Error saving user.');
 	return NULL;
 }
 
