@@ -11,6 +11,10 @@ angular.module('tnApp.api', ['tnApp.status', 'angular-md5'])
 			if(angular.isUndefined(config)){ config = null; }
 			return api.request('POST', path, config);
 		},
+		put: function(path, config){
+			if(angular.isUndefined(config)){ config = null; }
+			return api.request('PUT', path, config);
+		},
 		request: function(method, path, config){
 			if(!config){ config = {}; }
 
