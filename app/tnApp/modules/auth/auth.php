@@ -46,8 +46,8 @@ function auth_user_assert_profile($tn, $user){
 		if(function_exists('user_get_user')){
 			$profile = user_get_user($tn, $user['id'], 'auth_id');
 
-			if(!$profile && function_exists('user_create_user')){
-				$profile = user_create_user($tn, array(
+			if(!$profile && function_exists('user_save_user')){
+				$profile = user_save_user($tn, array(
 					'auth_id' => $user['id'],
 					'email' => $user['email'],
 					'name' => $user['username'],
