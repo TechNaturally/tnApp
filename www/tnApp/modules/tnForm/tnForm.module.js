@@ -21,7 +21,11 @@ angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme', 'schemaForm'])
 			// this is used as the ng-submit callback, where action is provided by the API form
 			$scope.do = function(action){
 				if(angular.isDefined(action) && angular.isFunction($scope.$parent[action])){
-					$scope.$parent[action]($scope.input).then(function(result){
+					var input = angular.copy($scope.input);
+					if(angular.isDefined(input['#forms'])){
+						delete input['#forms'];
+					}
+					$scope.$parent[action](input).then(function(result){
 						console.log('Success with '+action+'!');
 						$scope.cancel();
 					},
