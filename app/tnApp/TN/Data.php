@@ -72,8 +72,8 @@ class Data extends NotORM {
 				return TRUE;
 			}
 		}
-		catch (DataException $e) {}
-		catch (Exception $e) {}
+		catch (DataException $e) { throw $e; }
+		catch (Exception $e) { throw $e; }
 
 		throw new DataException("Missing table: $table");
 		return FALSE;
@@ -100,9 +100,16 @@ class Data extends NotORM {
 					// we can check against $this->connection_type (== 'mysql') for different db providers
 					$sql_cols = $this->schema_column_defs($fields, $flat_schema, $table);
 					if($sql_cols){
-						$sql = "CREATE TABLE $table($sql_cols)";
-						$this->connection->exec($sql);
-						return TRUE;
+						if(!empty($sql_cols['definition'])){
+							$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
+							$this->connection->exec($sql);
+							if(!empty($sql_cols['relations'])){
+								foreach($sql_cols['relations'] as $relTable_sql){
+									$this->connection->exec($relTable_sql);
+								}
+							}
+							return TRUE;
+						}
 					}
 				}
 			}
@@ -152,20 +159,20 @@ class Data extends NotORM {
 		*/
 
 		if(isset($field->{'$ref'})){
-			$col_def = $field_id." INT";
+			$col_def = "`$field_id` INT";
 		}
 		else if(isset($field->type)){
 			if($field->type == 'boolean'){
-				$col_def = $field_id." TINYINT(1)";
+				$col_def = "`$field_id` TINYINT(1)";
 			}
 			else if($field->type == 'integer'){
-				$col_def = $field_id." INT";
+				$col_def = "`$field_id` INT";
 			}
 			else if($field->type == 'number'){
-				$col_def = $field_id." FLOAT";						
+				$col_def = "`$field_id` FLOAT";						
 			}
 			else if($field->type == 'string'){
-				$col_def = $field_id;
+				$col_def = "`$field_id`";
 				if(isset($field->maxLength) && $field->maxLength <= 255){
 					if(isset($field->minLength) && $field->minLength == $field->maxLength){
 						// fixed-length strings
@@ -194,6 +201,7 @@ class Data extends NotORM {
 
 	private function schema_column_defs($fields, $schema, $basename=''){
 		$sql_cols = "";
+		$rel_tables = array();
 		if($fields === '*'){
 			$fields = new stdClass;
 			foreach($schema as $field_id => $field_def){
@@ -242,12 +250,13 @@ class Data extends NotORM {
 
 				// TODO: $this->connection_type for other db providers
 				$relTable_cols = $this->schema_column_defs('*', $relTable_schema, ($basename?$basename.'_':'').$field_id);
-				$relTable_sql = "CREATE TABLE $relTable($relTable_cols)";
-				$this->connection->exec($relTable_sql);
-
+				if(!empty($relTable_cols['definition'])){
+					$relTable_sql = "CREATE TABLE `$relTable`(".$relTable_cols['definition'].", FOREIGN KEY (`".$basename."_id`) REFERENCES `$basename`(`id`) ON DELETE CASCADE)";
+				}
+				$rel_tables[] = $relTable_sql;
 			}
 		}
-		return $sql_cols;
+		return array('definition' => $sql_cols, 'relations' => $rel_tables);
 	}
 }
 ?>
