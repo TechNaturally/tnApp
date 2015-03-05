@@ -32,13 +32,15 @@ angular.module('tnApp.theme', [])
 			}
 
 			if(type){
-				var typeSplit = type.split('-');
-				var module = typeSplit.slice(0, 2).join('-');
-				var template = ((typeSplit.length > 2)?typeSplit.slice(2).join('-'):module)+'.html';
+				
+				//var template = ((typeSplit.length > 2)?typeSplit.slice(2).join('-'):module)+'.html';
+				var template = type+'.html';
 
 				if(registry && registry.indexOf(template) !== -1){
 					return '/theme/widgets/'+template;
 				}
+				var typeSplit = type.split('-');
+				var module = typeSplit.slice(0, 2).join('-');
 
 				module = attr.$normalize(module);
 
