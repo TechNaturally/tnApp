@@ -2,7 +2,7 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 .factory('User', ['$q', 'API', function($q, API){
 	var data = {
 		profile: null,
-		list: null,
+		list: {},
 		schema: null
 	};
 
@@ -15,7 +15,6 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 			else{
 				API.get('/schema/user').then(function(res){
 					if(!res.error && angular.isDefined(res.schema)){
-						console.log('user schema loaded');
 						data.schema = res.schema;
 						defer.resolve(data.schema);
 					}
@@ -24,6 +23,44 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 					}
 				}, function(reason){ defer.reject(reason); });
 			}
+			return defer.promise;
+		},
+		loadUser: function(id){
+			var defer = $q.defer();
+			if(data.list && data.list[id]){
+				defer.resolve(data.list[id]);
+			}
+			else{
+				API.get('/user/'+id).then(function(res){
+					if(!res.error && angular.isDefined(res.user)){
+						data.list[id] = res.user;
+						defer.resolve(data.list[id]);
+					}
+					else{
+						defer.reject(res.msg);
+					}
+				}, function(reason){ defer.reject(reason); });
+			}
+
+			return defer.promise;
+		},
+		saveUser: function(user){
+			var defer = $q.defer();
+
+			if(user.id){
+				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
+					angular.forEach(user, function(value, key){
+						data.list[user.id][key] = value;
+					});
+					defer.resolve('User saved.');
+
+				}, function(reason){ defer.reject(reason); });				
+			}
+			else{
+				// TODO: PUSH to /user
+				defer.reject('No user id.');
+			}
+
 			return defer.promise;
 		}
 	};
@@ -35,18 +72,29 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 }])
 .controller('UserController', ['$scope', 'User', function($scope, User){
 	$scope.user = User.data;
+	//$scope.active = $scope.user.list[$scope.user_id];
+
+	if($scope.user_id){
+		console.log('user id... #'+$scope.user_id);
+		User.api.loadUser($scope.user_id).then(function(user){});
+		/**$scope.$watch('user.list['+$scope.user_id+']', function(user){
+			console.log('got the user :D'+JSON.stringify(user));
+			$scope.active = user;
+		});*/
+	}
+
+	$scope.profile = function(input){
+		return User.api.saveUser(input);
+	};
 
 	User.api.loadSchema().then(function(schema){
 		$scope.schema = schema;
 	});
-
-	$scope.user_id = 123;
-
 }])
 .directive('tnUser', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		scope: true,
+		scope: {'user_id': '@id'},
 		controller: 'UserController',
 		templateUrl: Theme.getTemplate
 	};
