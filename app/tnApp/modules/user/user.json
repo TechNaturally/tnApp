@@ -65,7 +65,7 @@
 			"3": [
 				{ "type": "widget",
 					"content": "tn-user",
-					"args": {"user_id": "id"},
+					"args": {"id": ":user_id"},
 					"access": ["user"]
 				}
 			]
@@ -90,25 +90,9 @@
 			"3": [
 				{ "type": "widget",
 					"content": "tn-user",
-					"args": {"user_id": "id"},
+					"args": {"id": ":user_id"},
 					"access": ["admin"]
 				}
-			]
-		},
-		"/user/:user_id/check/:test_id?": {
-			"2": [
-				{ "type": "widget",
-					"content": "tn-user1",
-					"args": {"user_id": "id", "test_id": "test"},
-					"access": ["user"]
-				},
-				{ "type": "widget",
-					"content": "tn-user1",
-					"args": {"user_id": "gobo", "test_id": "chinko"},
-					"access": ["user"]
-				}
-			],
-			"3": [
 			]
 		}
 	}
