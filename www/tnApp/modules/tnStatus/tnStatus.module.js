@@ -1,5 +1,5 @@
-angular.module('tnApp.status', [])
-.factory('Status', ['$http', function($http){
+angular.module('tnApp.status', ['tnApp.theme'])
+.factory('Status', function(){
 	var data = {
 		messages: [],
 		classes: {
@@ -24,15 +24,15 @@ angular.module('tnApp.status', [])
 			}
 		}
 	};
-}])
+})
 .controller('StatusController', ['$scope', 'Status', function($scope, Status){
 	$scope.status = Status.data;
 	$scope.dismiss = Status.pop;
 }])
-.directive('tnStatus', function(){
+.directive('tnStatus', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		controller: 'StatusController',
-		templateUrl: '/tnApp/modules/tnStatus/views/tn-status.html'
+		templateUrl: Theme.getTemplate
 	};
-});
+}]);

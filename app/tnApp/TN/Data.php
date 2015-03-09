@@ -72,8 +72,8 @@ class Data extends NotORM {
 				return TRUE;
 			}
 		}
-		catch (DataException $e) {}
-		catch (Exception $e) {}
+		catch (DataException $e) { throw $e; }
+		catch (Exception $e) { throw $e; }
 
 		throw new DataException("Missing table: $table");
 		return FALSE;
@@ -100,9 +100,16 @@ class Data extends NotORM {
 					// we can check against $this->connection_type (== 'mysql') for different db providers
 					$sql_cols = $this->schema_column_defs($fields, $flat_schema, $table);
 					if($sql_cols){
-						$sql = "CREATE TABLE $table($sql_cols)";
-						$this->connection->exec($sql);
-						return TRUE;
+						if(!empty($sql_cols['definition'])){
+							$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
+							$this->connection->exec($sql);
+							if(!empty($sql_cols['relations'])){
+								foreach($sql_cols['relations'] as $relTable_sql){
+									$this->connection->exec($relTable_sql);
+								}
+							}
+							return TRUE;
+						}
 					}
 				}
 			}
@@ -140,6 +147,7 @@ class Data extends NotORM {
 
 	private function schema_column_def($field_id, $field){
 		$col_def = '';
+		$key_def = NULL;
 
 		/** JSON types:
 				array - A JSON array.
@@ -151,21 +159,37 @@ class Data extends NotORM {
 				string - A JSON string.
 		*/
 
+		if($field_id == 'id' && !isset($field->minValue)){
+			$field->minValue = 0;
+		}
+
 		if(isset($field->{'$ref'})){
-			$col_def = $field_id." INT";
+			$col_def = "`$field_id` INT UNSIGNED";
+			$ref_path = $field->{'$ref'};
+			if($ref_path[0] == '/'){
+				$ref_path = substr($ref_path, 1);
+			}
+			$ref_split = explode('/', $ref_path);
+			if(count($ref_split)){
+				$ref_table = $ref_split[0];
+				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE SET NULL";
+			}
 		}
 		else if(isset($field->type)){
 			if($field->type == 'boolean'){
-				$col_def = $field_id." TINYINT(1)";
+				$col_def = "`$field_id` TINYINT(1)";
 			}
 			else if($field->type == 'integer'){
-				$col_def = $field_id." INT";
+				$col_def = "`$field_id` INT";
+				if(isset($field->minValue) && $field->minValue >= 0){
+					$col_def .= " UNSIGNED";
+				}
 			}
 			else if($field->type == 'number'){
-				$col_def = $field_id." FLOAT";						
+				$col_def = "`$field_id` FLOAT";
 			}
 			else if($field->type == 'string'){
-				$col_def = $field_id;
+				$col_def = "`$field_id`";
 				if(isset($field->maxLength) && $field->maxLength <= 255){
 					if(isset($field->minLength) && $field->minLength == $field->maxLength){
 						// fixed-length strings
@@ -189,11 +213,13 @@ class Data extends NotORM {
 			$col_def .= " NOT NULL";
 		}
 
-		return $col_def;
+		return (($col_def || $key_def)?array('column' => $col_def, 'keys' => $key_def):NULL);
 	}
 
 	private function schema_column_defs($fields, $schema, $basename=''){
 		$sql_cols = "";
+		$sql_keys = "";
+		$rel_tables = array();
 		if($fields === '*'){
 			$fields = new stdClass;
 			foreach($schema as $field_id => $field_def){
@@ -212,12 +238,14 @@ class Data extends NotORM {
 		// make the id column first
 		if(!empty($fields->id) && isset($schema->id)){
 			$col_def = $this->schema_column_def('id', $schema->id);
-			if($col_def){
-				$sql_cols .= ($sql_cols?", ":"").$col_def;
+			if(isset($col_def['column']) && !empty($col_def['column'])){
+				$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+			}
+			if(isset($col_def['keys']) && !empty($col_def['keys'])){
+				$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
 			}
 		}
 
-		//foreach($schema as $field_id => $field){
 		foreach($fields as $field_id => $use_field){
 			if($field_id == 'id' || empty($use_field) || !isset($schema->{$field_id})){
 				continue;
@@ -227,7 +255,12 @@ class Data extends NotORM {
 
 			$col_def = $this->schema_column_def($field_id, $field);
 			if($col_def){
-				$sql_cols .= ($sql_cols?", ":"").$col_def;
+				if(isset($col_def['column']) && !empty($col_def['column'])){
+					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+				}
+				if(isset($col_def['keys']) && !empty($col_def['keys'])){
+					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
+				}
 			}
 			else if(isset($field->type) && $field->type == 'array' && isset($field->items)){
 				// create a one-to-many table
@@ -236,18 +269,22 @@ class Data extends NotORM {
 
 				$rel_props = new stdClass();
 				$rel_props->id = (object)array( 'type' => 'integer' );
-				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer' );
+				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer', 'minValue' => 0 );
 
 				$relTable_schema = (object)array_merge((array)$rel_props, (array)$relTable_flat_schema);
 
 				// TODO: $this->connection_type for other db providers
 				$relTable_cols = $this->schema_column_defs('*', $relTable_schema, ($basename?$basename.'_':'').$field_id);
-				$relTable_sql = "CREATE TABLE $relTable($relTable_cols)";
-				$this->connection->exec($relTable_sql);
-
+				if(!empty($relTable_cols['definition'])){
+					$relTable_sql = "CREATE TABLE `$relTable`(".$relTable_cols['definition'].", FOREIGN KEY (`".$basename."_id`) REFERENCES `$basename`(`id`) ON DELETE CASCADE)";
+				}
+				$rel_tables[] = $relTable_sql;
 			}
 		}
-		return $sql_cols;
+		if($sql_keys){
+			$sql_cols .= ($sql_cols?", ":"").$sql_keys;
+		}
+		return array('definition' => $sql_cols, 'relations' => $rel_tables);
 	}
 }
 ?>

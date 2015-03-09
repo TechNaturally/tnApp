@@ -51,5 +51,49 @@
 				]}
 			]
 		}
+	},
+	"screens": {
+		"/user": {
+			"3": [
+				{ "type": "widget",
+					"content": "tn-user",
+					"access": ["user"]
+				}
+			]
+		},
+		"/user/:user_id?": {
+			"3": [
+				{ "type": "widget",
+					"content": "tn-user",
+					"args": {"id": ":user_id"},
+					"access": ["user"]
+				}
+			]
+		},
+		"/admin": {
+			"5": [
+				{ "type": "widget",
+					"content": "tn-user-admin",
+					"access": ["admin"]
+				}
+			]
+		},
+		"/admin/user*": {
+			"9": [
+				{ "type": "widget",
+					"content": "tn-user-list",
+					"access": ["admin"]
+				}
+			]
+		},
+		"/admin/user/:user_id": {
+			"3": [
+				{ "type": "widget",
+					"content": "tn-user",
+					"args": {"id": ":user_id"},
+					"access": ["admin"]
+				}
+			]
+		}
 	}
 }

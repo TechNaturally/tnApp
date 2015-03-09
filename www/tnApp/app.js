@@ -1,18 +1,23 @@
-angular.module('tnApp', ['ngRoute', 'tnApp.status', 'tnApp.form', 'tnApp.user', 'tnApp.auth'])
-.controller('AppController', ['$scope', '$log', 'Status', 'Auth', 'User', function ($scope, $log, Status, Auth, User){
+angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
+.controller('AppController', ['$scope', '$routeParams', 'Auth', function ($scope, $routeParams, Auth){
   $scope.auth = Auth.data;
-  $scope.user = User.data;
 
-  // TEST
-  $scope.what = 'what';
+  $scope.path = $routeParams.path;
+
 }])
-.config(['$routeProvider',
+.config(['$routeProvider', 
   function ($routeProvider) {
-  	$routeProvider.when('/', {
-  		title: 'Test',
-  		templateUrl: '/tnApp/views/test.html',
-  		controller: 'AppController'
-  	})
+  	$routeProvider
+    .when('/:path*?', {
+      title: 'App Screen Handler',
+      templateUrl: '/tnApp/app.html',
+      controller: 'AppController',
+      resolve: {
+        hasTheme: function(Theme){
+          return Theme.register();
+        }
+      }
+    })
   	.otherwise({
   		redirectTo: '/'
   	});

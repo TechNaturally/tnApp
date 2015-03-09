@@ -3,6 +3,8 @@
 		<h3 class="panel-title">User List</h3>
 	</div>
 	<div class="panel-body">
-		List of users eh...
+		<ul>
+			<li ng-repeat="(user_id, user) in user.list">#{{user_id}}: {{user.name}} ({{user.email}}) [{{user.roles}}]</li>
+		</ul>
 	</div>
 </div>

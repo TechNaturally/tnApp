@@ -3,12 +3,14 @@ namespace TN;
 use Exception;
 
 require_once "Data.php";
+require_once "Screen.php";
 require_once "Security.php";
 
 class App {
 	public $app;
 	public $data;
-	protected $security;
+	public $screens;
+	public $security;
 
 	protected $module_path;
 
@@ -36,6 +38,8 @@ class App {
 
 		$this->init_security();
 
+		$this->init_screens();
+
 		if(!empty($config['data'])){
 			$this->init_data($config['data']);
 		}
@@ -58,7 +62,12 @@ class App {
 		});
 	}
 
+	protected function init_screens(){
+		$this->screens = new \TN\ScreenManager($this);
+	}
+
 	protected function init_security(){
+		// create and add our custom Security middleware to Slim, we also use the encrypted SessionCookie middleware
 		$this->security = new \TN\Security();
 		$this->app->add($this->security);
 		$this->app->add(new \Slim\Middleware\SessionCookie(array('name' => $this->app->getName().'_session')));
@@ -109,13 +118,24 @@ class App {
 
 			// load the routes
 			if(!empty($module->routes)){
-				$this->load_module_routes($module_id, $module);
+				$this->load_module_routes($module_id, $module->routes);
+			}
+
+			// load the screens
+			if(!empty($module->screens)){
+				$this->load_module_screens($module_id, $module->screens);
 			}
 		}
 	}
 
-	private function load_module_routes($module_id, $module){
-		foreach($module->routes as $local_path => $route){
+	private function load_module_screens($module_id, $screens){
+		foreach($screens as $path => $content){
+			$this->screens->add_screen($path, $content);
+		}
+	}
+
+	private function load_module_routes($module_id, $routes){
+		foreach($routes as $local_path => $route){
 			$path = '/'.$module_id.(($local_path[0] != '/')?'/':'').$local_path;
 			if(!empty($route->callback) && !empty($route->methods)){
 				// read default access and form settings for this route

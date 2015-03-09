@@ -4,10 +4,13 @@ angular.module('tnApp.state', [])
 		restrict: 'A',
 		scope: true,
 		controller: ['$scope', '$element', '$attrs', function($scope, $element, $attrs){
-			$scope.state = $scope.default_state = $attrs['tnState'];
+			if(angular.isDefined($attrs['tnState']) && $attrs['tnState']){
+				$scope.state = $attrs['tnState'];
+			}
+			$scope.default_state = $scope.state;
 			$scope.go = function(state){
 				if(angular.isUndefined(state)){
-					state = this.default_state;
+					state = $scope.default_state;
 				}
 				$scope.state = state;
 			};

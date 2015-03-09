@@ -1,5 +1,5 @@
-angular.module('tnApp.form', ['tnApp.api'])
-.directive('tnForm', ['API', function(API){
+angular.module('tnApp.form', ['tnApp.api', 'tnApp.theme', 'schemaForm'])
+.directive('tnForm', ['API', 'Theme', function(API, Theme){
 	return {
 		restrict: 'E',
 		scope: {
@@ -10,7 +10,7 @@ angular.module('tnApp.form', ['tnApp.api'])
 			input: '=?',
 			defaults: '=?'
 		},
-		templateUrl: '/tnApp/modules/tnForm/views/tn-form.html',
+		templateUrl: Theme.getTemplate,
 		controller: function($scope){
 			// provide state-changing function 'go' (ex. using tn-state directive)
 			// some buttons in the form may call this directly
@@ -21,7 +21,11 @@ angular.module('tnApp.form', ['tnApp.api'])
 			// this is used as the ng-submit callback, where action is provided by the API form
 			$scope.do = function(action){
 				if(angular.isDefined(action) && angular.isFunction($scope.$parent[action])){
-					$scope.$parent[action]($scope.input).then(function(result){
+					var input = angular.copy($scope.input);
+					if(angular.isDefined(input['#forms'])){
+						delete input['#forms'];
+					}
+					$scope.$parent[action](input).then(function(result){
 						console.log('Success with '+action+'!');
 						$scope.cancel();
 					},
@@ -110,7 +114,6 @@ angular.module('tnApp.form', ['tnApp.api'])
 				scope.schema = {};
 				API.get('/schema/'+module).then(function(res){
 					if(!res.error && angular.isDefined(res.schema)){
-						console.log(module+' schema loaded by tnForm');
 						scope.schema = res.schema;
 					}
 				});
@@ -139,7 +142,6 @@ angular.module('tnApp.form', ['tnApp.api'])
 			scope.form = [];
 			API.request(scope.method, scope.action+'/form').then(function(res){
 				if(!res.error && angular.isDefined(res.form)){
-					console.log('form loaded: '+scope.action);
 					scope.form = res.form;
 				}
 				if(!res.error && angular.isDefined(res.callback)){
