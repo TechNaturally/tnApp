@@ -102,14 +102,12 @@ class Data extends NotORM {
 					if($sql_cols){
 						if(!empty($sql_cols['definition'])){
 							$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-							print "\nSQL:$sql\n";
-							//$this->connection->exec($sql);
+							$this->connection->exec($sql);
 							if(!empty($sql_cols['relations'])){
 								foreach($sql_cols['relations'] as $relTable_sql){
-							//		$this->connection->exec($relTable_sql);
+									$this->connection->exec($relTable_sql);
 								}
 							}
-							return FALSE;
 							return TRUE;
 						}
 					}
@@ -161,8 +159,12 @@ class Data extends NotORM {
 				string - A JSON string.
 		*/
 
+		if($field_id == 'id' && !isset($field->minValue)){
+			$field->minValue = 0;
+		}
+
 		if(isset($field->{'$ref'})){
-			$col_def = "`$field_id` INT";
+			$col_def = "`$field_id` INT UNSIGNED";
 			$ref_path = $field->{'$ref'};
 			if($ref_path[0] == '/'){
 				$ref_path = substr($ref_path, 1);
@@ -179,9 +181,12 @@ class Data extends NotORM {
 			}
 			else if($field->type == 'integer'){
 				$col_def = "`$field_id` INT";
+				if(isset($field->minValue) && $field->minValue >= 0){
+					$col_def .= " UNSIGNED";
+				}
 			}
 			else if($field->type == 'number'){
-				$col_def = "`$field_id` FLOAT";						
+				$col_def = "`$field_id` FLOAT";
 			}
 			else if($field->type == 'string'){
 				$col_def = "`$field_id`";
@@ -266,7 +271,7 @@ class Data extends NotORM {
 
 				$rel_props = new stdClass();
 				$rel_props->id = (object)array( 'type' => 'integer' );
-				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer' );
+				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer', 'minValue' => 0 );
 
 				$relTable_schema = (object)array_merge((array)$rel_props, (array)$relTable_flat_schema);
 
