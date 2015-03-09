@@ -106,7 +106,6 @@ class ScreenManager {
 							}
 							$content[$content_idx]->args = $data_args;
 						}
-						print "$content_idx:<pre>".print_r($content[$content_idx],true)."</pre>\n";
 						// check security access for this content
 						if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
 							$content[$content_idx] = NULL;
