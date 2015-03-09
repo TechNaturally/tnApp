@@ -33,7 +33,7 @@ class ScreenManager {
 
 			$path_rx = preg_replace('/\*/', '.*', $path_rx);
 
-			$args_rx = preg_replace('/:([^\/]+)/', ':(\w[\w\d]*\??)', $path_rx); // match arg names
+			$args_rx = preg_replace('/:([^\/]+)/', '(:\w[\w\d]*\??)', $path_rx); // match arg names
 			$args_rx = preg_replace('/\//', '\\/', $args_rx); // allow slashes
 
 			$path_rx = preg_replace('/\/:([^\/]+)\?/', '(/[\w\d]*)?', $path_rx); // match optional args
@@ -60,7 +60,7 @@ class ScreenManager {
 						}
 						// map the arg values to the arg names
 						if($arg_idx < count($matches)){
-							if(substr($matches[$arg_idx], 0, 1) == '/'){
+							if($matches[$arg_idx][0] == '/'){
 								$matches[$arg_idx] = substr($matches[$arg_idx], 1);
 							}
 							$args[$arg_id] = $matches[$arg_idx];
@@ -79,11 +79,34 @@ class ScreenManager {
 						// add the name-mapped args
 						$data_args = array();
 						if(!empty($content_data->args)){
-							foreach($content_data->args as $path_arg => $data_arg){
-								$data_args[$data_arg] = (isset($args[$path_arg]) && !empty($args[$path_arg]))?$args[$path_arg]:'';
+							foreach($content_data->args as $data_arg => $arg_data){
+								if($arg_data && $arg_data[0] == ':'){
+									// handle arguments from the path
+									$arg_data_split = explode('?', $arg_data, 2);
+									if(count($arg_data_split) > 1){
+										// if it is an optional argument
+										$path_arg = $arg_data_split[0];
+										$arg_value = $arg_data_split[1]; // take its default
+									}
+									else{
+										$path_arg = $arg_data;
+										$arg_value = ''; // empty default
+									}
+									// copy the value
+									if($path_arg && isset($args[$path_arg]) && !empty($args[$path_arg])){
+										$arg_value = $args[$path_arg];
+									}
+								}
+								else{
+									// static argument value
+									$arg_value = $arg_data;
+								}
+								// store it for the content
+								$data_args[$data_arg] = $arg_value;
 							}
 							$content[$content_idx]->args = $data_args;
 						}
+						print "$content_idx:<pre>".print_r($content[$content_idx],true)."</pre>\n";
 						// check security access for this content
 						if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
 							$content[$content_idx] = NULL;
