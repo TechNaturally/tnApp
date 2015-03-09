@@ -150,7 +150,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 .directive('tnAuth', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		scope: true,
+		scope: { state: '@' },
 		controller: 'AuthController',
 		templateUrl: Theme.getTemplate
 	};
