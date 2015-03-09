@@ -48,10 +48,7 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme'])
 						}
 					});
 				});
-				
 			});
-			
-
 		}
 	};
 }]);

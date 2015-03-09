@@ -126,13 +126,8 @@ class ScreenManager {
 				}
 			}
 		}
-
 		return $screen;
 	}
-}
-
-class Screen {
-	
 }
 
 ?>

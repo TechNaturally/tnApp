@@ -32,8 +32,6 @@ angular.module('tnApp.theme', [])
 			}
 
 			if(type){
-				
-				//var template = ((typeSplit.length > 2)?typeSplit.slice(2).join('-'):module)+'.html';
 				var template = type+'.html';
 
 				if(registry && registry.indexOf(template) !== -1){

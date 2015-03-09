@@ -246,7 +246,6 @@ class Data extends NotORM {
 			}
 		}
 
-		//foreach($schema as $field_id => $field){
 		foreach($fields as $field_id => $use_field){
 			if($field_id == 'id' || empty($use_field) || !isset($schema->{$field_id})){
 				continue;
@@ -262,7 +261,6 @@ class Data extends NotORM {
 				if(isset($col_def['keys']) && !empty($col_def['keys'])){
 					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
 				}
-				//$sql_cols .= ($sql_cols?", ":"").$col_def;
 			}
 			else if(isset($field->type) && $field->type == 'array' && isset($field->items)){
 				// create a one-to-many table
