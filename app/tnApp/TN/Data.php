@@ -102,12 +102,14 @@ class Data extends NotORM {
 					if($sql_cols){
 						if(!empty($sql_cols['definition'])){
 							$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-							$this->connection->exec($sql);
+							print "\nSQL:$sql\n";
+							//$this->connection->exec($sql);
 							if(!empty($sql_cols['relations'])){
 								foreach($sql_cols['relations'] as $relTable_sql){
-									$this->connection->exec($relTable_sql);
+							//		$this->connection->exec($relTable_sql);
 								}
 							}
+							return FALSE;
 							return TRUE;
 						}
 					}
@@ -147,6 +149,7 @@ class Data extends NotORM {
 
 	private function schema_column_def($field_id, $field){
 		$col_def = '';
+		$key_def = NULL;
 
 		/** JSON types:
 				array - A JSON array.
@@ -160,6 +163,15 @@ class Data extends NotORM {
 
 		if(isset($field->{'$ref'})){
 			$col_def = "`$field_id` INT";
+			$ref_path = $field->{'$ref'};
+			if($ref_path[0] == '/'){
+				$ref_path = substr($ref_path, 1);
+			}
+			$ref_split = explode('/', $ref_path);
+			if(count($ref_split)){
+				$ref_table = $ref_split[0];
+				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE SET NULL";
+			}
 		}
 		else if(isset($field->type)){
 			if($field->type == 'boolean'){
@@ -196,11 +208,12 @@ class Data extends NotORM {
 			$col_def .= " NOT NULL";
 		}
 
-		return $col_def;
+		return (($col_def || $key_def)?array('column' => $col_def, 'keys' => $key_def):NULL);
 	}
 
 	private function schema_column_defs($fields, $schema, $basename=''){
 		$sql_cols = "";
+		$sql_keys = "";
 		$rel_tables = array();
 		if($fields === '*'){
 			$fields = new stdClass;
@@ -220,8 +233,11 @@ class Data extends NotORM {
 		// make the id column first
 		if(!empty($fields->id) && isset($schema->id)){
 			$col_def = $this->schema_column_def('id', $schema->id);
-			if($col_def){
-				$sql_cols .= ($sql_cols?", ":"").$col_def;
+			if(isset($col_def['column']) && !empty($col_def['column'])){
+				$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+			}
+			if(isset($col_def['keys']) && !empty($col_def['keys'])){
+				$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
 			}
 		}
 
@@ -235,7 +251,13 @@ class Data extends NotORM {
 
 			$col_def = $this->schema_column_def($field_id, $field);
 			if($col_def){
-				$sql_cols .= ($sql_cols?", ":"").$col_def;
+				if(isset($col_def['column']) && !empty($col_def['column'])){
+					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+				}
+				if(isset($col_def['keys']) && !empty($col_def['keys'])){
+					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
+				}
+				//$sql_cols .= ($sql_cols?", ":"").$col_def;
 			}
 			else if(isset($field->type) && $field->type == 'array' && isset($field->items)){
 				// create a one-to-many table
@@ -255,6 +277,9 @@ class Data extends NotORM {
 				}
 				$rel_tables[] = $relTable_sql;
 			}
+		}
+		if($sql_keys){
+			$sql_cols .= ($sql_cols?", ":"").$sql_keys;
 		}
 		return array('definition' => $sql_cols, 'relations' => $rel_tables);
 	}
