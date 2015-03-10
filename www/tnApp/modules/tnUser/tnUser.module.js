@@ -1,4 +1,4 @@
-angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
+angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 .factory('User', ['$q', 'API', function($q, API){
 	var data = {
 		profile: null,
@@ -25,12 +25,33 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 			}
 			return defer.promise;
 		},
+		listUsers: function(){
+			var defer = $q.defer();
+			if(data.list && Object.count(data.list) > 1){
+				defer.resolve(data.list);
+			}
+			else{
+				console.log('listing users...');
+				API.get('/user').then(function(res){
+					if(!res.error && angular.isDefined(res.users)){
+						data.list = res.users;
+						defer.resolve(data.list);
+					}
+					else{
+						defer.reject(res.msg);
+					}
+				}, function(reason){ defer.reject(reason); });
+			}
+
+			return defer.promise;
+		},
 		loadUser: function(id){
 			var defer = $q.defer();
 			if(data.list && data.list[id]){
 				defer.resolve(data.list[id]);
 			}
 			else{
+				console.log('getting user #'+id+'...');
 				API.get('/user/'+id).then(function(res){
 					if(!res.error && angular.isDefined(res.user)){
 						data.list[id] = res.user;
@@ -74,22 +95,24 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 	$scope.user = User.data;
 	//$scope.active = $scope.user.list[$scope.user_id];
 
-	if($scope.user_id){
-		console.log('user id... #'+$scope.user_id);
-		User.api.loadUser($scope.user_id).then(function(user){});
-		/**$scope.$watch('user.list['+$scope.user_id+']', function(user){
-			console.log('got the user :D'+JSON.stringify(user));
-			$scope.active = user;
-		});*/
-	}
-
-	$scope.profile = function(input){
-		return User.api.saveUser(input);
-	};
-
 	User.api.loadSchema().then(function(schema){
 		$scope.schema = schema;
 	});
+
+	if($scope.user_id){
+		User.api.loadUser($scope.user_id);
+	}
+
+
+	// profile saving
+	$scope.profile = function(input){
+		return User.api.saveUser(input);
+	};
+}])
+.controller('UserListController', ['$scope', 'User', function($scope, User){
+	$scope.user = User.data;
+	User.api.listUsers();
+
 }])
 .directive('tnUser', ['Theme', function(Theme){
 	return {
@@ -102,7 +125,14 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 .directive('tnUserList', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		controller: 'UserController',
+		controller: 'UserListController',
+		templateUrl: Theme.getTemplate
+	};
+}])
+.directive('tnUserAdmin', ['Theme', function(Theme){
+	return {
+		restrict: 'E',
+		controller: 'UserListController',
 		templateUrl: Theme.getTemplate
 	};
 }]);
