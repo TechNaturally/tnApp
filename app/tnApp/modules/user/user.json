@@ -79,6 +79,13 @@
 			]
 		},
 		"/admin/user*": {
+			"1": [
+				{ "type": "widget",
+					"content": "tn-tabs",
+					"args": {"actions": {"/admin/user": "Manage's Users", "/admin/user/add": "Add User"}},
+					"access": ["admin"]
+				}
+			],
 			"9": [
 				{ "type": "widget",
 					"content": "tn-user-list",
