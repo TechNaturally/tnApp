@@ -53,19 +53,11 @@
 		}
 	},
 	"screens": {
-		"/user": {
-			"3": [
-				{ "type": "widget",
-					"content": "tn-user",
-					"access": ["user"]
-				}
-			]
-		},
 		"/user/:user_id?": {
 			"3": [
 				{ "type": "widget",
 					"content": "tn-user",
-					"args": {"id": ":user_id"},
+					"args": {"id": ":user_id?!auth_id"},
 					"access": ["user"]
 				}
 			]

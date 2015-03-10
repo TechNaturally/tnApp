@@ -101,13 +101,13 @@ class ScreenManager {
 									if(count($arg_data_split) > 1){
 										// if it is an optional argument
 										$path_arg = $arg_data_split[0];
-										$arg_value = $arg_data_split[1]; // take its default
+										$arg_value = $arg_data_split[1]; // static default
 									}
 									else{
 										$path_arg = $arg_data;
 										$arg_value = ''; // empty default
 									}
-									// copy the value
+									// if arg is in the path, copy the value
 									if($path_arg && isset($args[$path_arg]) && !empty($args[$path_arg])){
 										$arg_value = $args[$path_arg];
 									}
@@ -116,6 +116,13 @@ class ScreenManager {
 									// static argument value
 									$arg_value = $arg_data;
 								}
+
+								// special arg values
+								if($arg_value == '!auth_id' && function_exists('auth_session_check')){
+									$auth_user = auth_session_check();
+									$arg_value = ($auth_user && isset($auth_user['id']))?$auth_user['id']:'';
+								}
+								
 								// store it for the content
 								$data_args[$data_arg] = $arg_value;
 							}
