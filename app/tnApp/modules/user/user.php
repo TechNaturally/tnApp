@@ -13,8 +13,6 @@ function user_list_get($tn){
 
 	}catch(Exception $e){ $res['msg'] = $e->getMessage(); }
 
-	//$res['msg'] = "Hello from user module :)";
-
 	$tn->app->render($res_code, $res);
 }
 
