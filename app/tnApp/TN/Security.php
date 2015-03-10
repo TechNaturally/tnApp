@@ -29,15 +29,17 @@ class Security extends \Slim\Middleware {
 		if($rules===TRUE){
 			return TRUE;
 		}
-		foreach($rules as $credential){
-			// TODO: this is the fun part of checking credentials against $_SESSION
-			if($credential == 'user' && !empty($_SESSION['user'])){
-				return TRUE;
-			}
-			else{
-				// if the user has the role
+		if(!empty($_SESSION['user'])){
+			foreach($rules as $credential){
+				if($credential == 'user'){
+					return TRUE;
+				}
+				else if(is_array($_SESSION['user']['roles'])){
+					return in_array($credential, $_SESSION['user']['roles']);
+				}
 			}
 		}
+		
 		return FALSE;
 	}
 
