@@ -1,4 +1,4 @@
-angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme'])
+angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5'])
 .factory('Screen', ['$q', 'API', function($q, API){
 	
 	var api = {
@@ -20,7 +20,7 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme'])
 		$scope.content = content;
 	});
 }])
-.directive('tnScreen', ['Theme', '$compile', '$injector', function(Theme, $compile, $injector){
+.directive('tnScreen', ['Theme', '$compile', '$injector', 'md5', function(Theme, $compile, $injector, md5){
 	return {
 		restrict: 'E',
 		scope: {'path': '@'},
@@ -38,10 +38,16 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme'])
 							var args = '';
 							angular.forEach(data.args, function(value, key){
 								if(value){
-									args += ' '+key+'="'+value+'"';
+									if(angular.isObject(value)){
+										var valueKey = data.content.replace(/-/g, '_')+'_'+priority+'_'+key+'_'+md5.createHash(angular.toJson(value, false));
+										scope[valueKey] = value;
+										args += ' '+key+'="'+valueKey+'"';
+									}
+									else{
+										args += ' '+key+'="'+value+'"';
+									}
 								}
 							});
-							console.log('ok...'+'<'+data.content+args+'>');
 							var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
 							$compile(cont_elem)(scope);
 							elem.append(cont_elem);
