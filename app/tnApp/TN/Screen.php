@@ -95,7 +95,7 @@ class ScreenManager {
 						$data_args = array();
 						if(!empty($content_data->args)){
 							foreach($content_data->args as $data_arg => $arg_data){
-								if($arg_data && $arg_data[0] == ':'){
+								if($arg_data && is_string($arg_data) && $arg_data[0] == ':'){
 									// handle arguments from the path
 									$arg_data_split = explode('?', $arg_data, 2);
 									if(count($arg_data_split) > 1){
