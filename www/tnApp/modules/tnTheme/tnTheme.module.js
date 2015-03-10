@@ -25,8 +25,9 @@ angular.module('tnApp.theme', [])
 			return defer.promise;
 		},
 
-		getTemplate: function(elem, attr){
+		getTemplate: function(elem, attr, module){
 			var type = null;
+
 			if(elem.length){
 				type = elem[0].tagName.toLowerCase();
 			}
@@ -37,10 +38,11 @@ angular.module('tnApp.theme', [])
 				if(registry && registry.indexOf(template) !== -1){
 					return '/theme/widgets/'+template;
 				}
-				var typeSplit = type.split('-');
-				var module = typeSplit.slice(0, 2).join('-');
-
-				module = attr.$normalize(module);
+				if(angular.isUndefined(module)){
+					var typeSplit = type.split('-');
+					var module = typeSplit.slice(0, 2).join('-');
+					module = attr.$normalize(module);
+				}
 
 				return moduleBase+'/'+module+'/widgets/'+template;
 			}
