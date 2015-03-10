@@ -133,6 +133,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 	});
 	$scope.input = {};
 
+	$scope.auth = Auth.data;
+
 	// actions
 	$scope.login = function(input){
 		return Auth.api.login(input.username, input.password);
