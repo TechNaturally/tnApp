@@ -10,7 +10,7 @@
 		<p>Please <a ng-href="/user/login">Login</a> or <a ng-href="/user/register">Sign Up</a>.</p>
 	</div>
 
-	<ul class="nav nav-tabs" ng-show="state">
+	<ul class="nav nav-tabs" ng-hide="auth.user || !state">
 		<li ng-class="{active: state=='login' || state=='recover' || !state}"><a ng-click="go('login')">Login</a></li>
 		<li ng-class="{active: state=='register'}"><a ng-click="go('register')">Register</a></li>
 	</ul>
