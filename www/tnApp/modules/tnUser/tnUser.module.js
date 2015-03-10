@@ -31,10 +31,14 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 				defer.resolve(data.list);
 			}
 			else{
-				console.log('listing users...');
 				API.get('/user').then(function(res){
 					if(!res.error && angular.isDefined(res.users)){
-						data.list = res.users;
+						angular.forEach(res.users, function(user, id){
+							if(!data.list[id]){
+								data.list[id] = user;
+								data.list[id].loaded = false;
+							}
+						});
 						defer.resolve(data.list);
 					}
 					else{
@@ -47,14 +51,14 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 		},
 		loadUser: function(id){
 			var defer = $q.defer();
-			if(data.list && data.list[id]){
+			if(data.list && data.list[id] && data.list[id].loaded){
 				defer.resolve(data.list[id]);
 			}
 			else{
-				console.log('getting user #'+id+'...');
 				API.get('/user/'+id).then(function(res){
 					if(!res.error && angular.isDefined(res.user)){
 						data.list[id] = res.user;
+						data.list[id].loaded = true;
 						defer.resolve(data.list[id]);
 					}
 					else{
