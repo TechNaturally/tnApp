@@ -76,6 +76,21 @@ class ScreenManager {
 					if(empty($content)){ continue; }
 					// for each piece of content
 					foreach($content as $content_idx => $content_data){
+
+						// skip if it is hidden on this path
+						if(!empty($content_data->hide)){
+							$hidden_paths = array_filter($content_data->hide, function($hide_path) use ($path){
+								$hide_path = preg_replace('/\*/', '.*', $hide_path);
+								$hide_path = preg_replace('/\//', '\\/', $hide_path);
+								return preg_match("/^$hide_path$/", $path);
+							});
+							if(!empty($hidden_paths)){
+								$content[$content_idx] = NULL;
+								continue;
+							}
+						}
+
+
 						// add the name-mapped args
 						$data_args = array();
 						if(!empty($content_data->args)){
