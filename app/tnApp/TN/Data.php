@@ -50,56 +50,7 @@ class Data extends NotORM {
 	public function getTableSchema($table){
 		$fields = $this->getTableFields($table);
 		$schema = $this->getSchema($table);
-		if($fields && $schema){
-			// we can only work with tables for objects with properties
-			if($schema->type == 'object' && !empty($schema->properties)){
-				$flat_schema = $this->flatten_schema($schema);
-
-				$table_schema = array();
-
-				// handle the wildcard * for all fields
-				if($fields === '*'){
-					$fields = array();
-					foreach($flat_schema as $field_id => $field_def){
-						$fields[$field_id] = TRUE;
-					}
-				}
-				else if(is_object($fields)){
-					$fields = (array)$fields;
-				}
-				else if(is_array($fields)){
-					$fields_map = array();
-					foreach($fields as $field_id){
-						$fields_map[$field_id] = TRUE;
-					}
-					$fields = $fields_map;
-				}
-
-				// force an id field and force it to be first
-				if(empty($fields['id']) || array_keys($fields)[0] != 'id'){
-					if(isset($fields['id'])){
-						unset($fields['id']);
-					}
-					$fields = array_reverse($fields, true);
-					$fields['id'] = TRUE;
-					$fields = array_reverse($fields, true);
-				}
-				if(!isset($flat_schema->id)){
-					$flat_schema->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
-				}
-				
-				foreach($fields as $field_id => $use_field){
-					if(empty($use_field) || !isset($flat_schema->{$field_id})){
-						continue;
-					}
-					$table_schema[$field_id] = $flat_schema->{$field_id};
-				}
-
-				return $table_schema;
-			}
-		}
-
-		return NULL;
+		return $this->buildTableSchema($schema, $fields);
 	}
 
 	public function rowToArray($row){
@@ -145,36 +96,22 @@ class Data extends NotORM {
 
 	public function create($table){
 		try {
-
-			$tableSchema = $this->getTableSchema($table);
-			print "ok:<pre>".print_r($tableSchema,true)."</pre>";
-
-
-			return FALSE;
-/**			$fields = $this->getTableFields($table);
-			$schema = $this->getSchema($table);
-			if($fields && $schema){
-				// we could only create tables for objects
-				if($schema->type == 'object' && !empty($schema->properties)){
-					$flat_schema = $this->flatten_schema($schema);
-
-					// we can check against $this->connection_type (== 'mysql') for different db providers
-					$sql_cols = $this->schema_column_defs($fields, $flat_schema, $table);
-					if($sql_cols){
-						if(!empty($sql_cols['definition'])){
-							$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-							$this->connection->exec($sql);
-							if(!empty($sql_cols['relations'])){
-								foreach($sql_cols['relations'] as $relTable_sql){
-									$this->connection->exec($relTable_sql);
-								}
+			if($tableSchema = $this->getTableSchema($table)){
+				// we can check against $this->connection_type (== 'mysql') for different db providers
+				if($sql_cols = $this->sql_column_defs($tableSchema, $table)){
+					if(!empty($sql_cols['definition'])){
+						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
+						$this->connection->exec($sql);
+						if(!empty($sql_cols['relations'])){
+							foreach($sql_cols['relations'] as $relTable => $relTable_def){
+								$sql = "CREATE TABLE `$relTable`(".$relTable_def.")";
+								$this->connection->exec($sql);
 							}
-							return TRUE;
 						}
+						return TRUE;
 					}
 				}
 			}
-			*/
 		} catch (Exception $e) {
 			throw $e;
 		}
@@ -207,7 +144,60 @@ class Data extends NotORM {
 		return $result;
 	}
 
-	private function schema_column_def($field_id, $field){
+	private function buildTableSchema($schema, $fields="*"){
+		if($fields && $schema){
+			// we can only work with tables for objects with properties
+			if($schema->type == 'object' && !empty($schema->properties)){
+				$flat_schema = $this->flatten_schema($schema);
+
+				$table_schema = array();
+
+				// handle the wildcard * for all fields
+				if($fields === '*'){
+					$fields = array();
+					foreach($flat_schema as $field_id => $field_def){
+						$fields[$field_id] = TRUE;
+					}
+				}
+				else if(is_object($fields)){
+					$fields = (array)$fields;
+				}
+				else if(is_array($fields)){
+					$fields_map = array();
+					foreach($fields as $field_id){
+						$fields_map[$field_id] = TRUE;
+					}
+					$fields = $fields_map;
+				}
+
+				// force an id field and force it to be first
+				if(empty($fields['id']) || array_keys($fields)[0] != 'id'){
+					if(isset($fields['id'])){
+						unset($fields['id']);
+					}
+					$fields = array_reverse($fields, true);
+					$fields['id'] = TRUE;
+					$fields = array_reverse($fields, true);
+				}
+				if(!isset($flat_schema->id)){
+					$flat_schema->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
+				}
+
+				foreach($fields as $field_id => $use_field){
+					if(empty($use_field) || !isset($flat_schema->{$field_id})){
+						continue;
+					}
+					$table_schema[$field_id] = $flat_schema->{$field_id};
+				}
+
+				return $table_schema;
+			}
+		}
+
+		return NULL;
+	}
+
+	private function sql_column_def($field_id, $field){
 		$col_def = '';
 		$key_def = NULL;
 
@@ -278,49 +268,17 @@ class Data extends NotORM {
 		return (($col_def || $key_def)?array('column' => $col_def, 'keys' => $key_def):NULL);
 	}
 
-	private function schema_column_defs($fields, $schema, $basename=''){
+	private function sql_column_defs($fields, $basename=''){
 		$sql_cols = "";
 		$sql_keys = "";
 		$rel_tables = array();
-		if($fields === '*'){
-			$fields = new stdClass;
-			foreach($schema as $field_id => $field_def){
-				$fields->{$field_id} = TRUE;
-			}
-		}
 
-		// force an id field
-		if(empty($fields->id)){
-			$fields->id = TRUE;
-		}
-		if(!isset($schema->id)){
-			$schema->id = (object)array( 'type' => 'integer' );
-		}
-
-		// make the id column first
-		if(!empty($fields->id) && isset($schema->id)){
-			$col_def = $this->schema_column_def('id', $schema->id);
-			if(isset($col_def['column']) && !empty($col_def['column'])){
-				$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
-			}
-			if(isset($col_def['keys']) && !empty($col_def['keys'])){
-				$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
-			}
-		}
-
-		foreach($fields as $field_id => $use_field){
-			if($field_id == 'id' || empty($use_field) || !isset($schema->{$field_id})){
-				continue;
-			}
-			$field = $schema->{$field_id};
-
-
-			$col_def = $this->schema_column_def($field_id, $field);
-			if($col_def){
-				if(isset($col_def['column']) && !empty($col_def['column'])){
+		foreach($fields as $field_id => $field){
+			if($col_def = $this->sql_column_def($field_id, $field)){
+				if(!empty($col_def['column'])){
 					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
 				}
-				if(isset($col_def['keys']) && !empty($col_def['keys'])){
+				if(!empty($col_def['keys'])){
 					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
 				}
 			}
@@ -329,20 +287,29 @@ class Data extends NotORM {
 				$relTable = ($basename?$basename.'_':'').$field_id;
 				$relTable_flat_schema = $this->flatten_schema($field->items, $field_id);
 
+				
 				$rel_props = new stdClass();
-				$rel_props->id = (object)array( 'type' => 'integer' );
+				$rel_props->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
 				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer', 'minValue' => 0 );
+				$rel_props = (object)array_merge((array)$rel_props, (array)$relTable_flat_schema);
 
-				$relTable_schema = (object)array_merge((array)$rel_props, (array)$relTable_flat_schema);
+				$rel_schema = new stdClass();
+				$rel_schema->id = "/$relTable";
+				$rel_schema->type = 'object';
+				$rel_schema->properties = $rel_props;
 
-				// TODO: $this->connection_type for other db providers
-				$relTable_cols = $this->schema_column_defs('*', $relTable_schema, ($basename?$basename.'_':'').$field_id);
+				$relTable_schema = $this->buildTableSchema($rel_schema);
+
+				$relTable_cols = $this->sql_column_defs($relTable_schema, $relTable);
+
 				if(!empty($relTable_cols['definition'])){
-					$relTable_sql = "CREATE TABLE `$relTable`(".$relTable_cols['definition'].", FOREIGN KEY (`".$basename."_id`) REFERENCES `$basename`(`id`) ON DELETE CASCADE)";
+					// we add our own FK instead of settings $basename_id as a $ref because we want the ON DELETE CASCADE
+					$rel_tables[$relTable] = $relTable_cols['definition'].", FOREIGN KEY (`".$basename."_id`) REFERENCES `$basename`(`id`) ON DELETE CASCADE";
 				}
-				$rel_tables[] = $relTable_sql;
 			}
 		}
+
+		// add any key constraints to the end of the column definition list
 		if($sql_keys){
 			$sql_cols .= ($sql_cols?", ":"").$sql_keys;
 		}
