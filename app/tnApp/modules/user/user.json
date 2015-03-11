@@ -53,6 +53,16 @@
 		}
 	},
 	"screens": {
+		"*": {
+			"nav": [
+				{ "type": "link",
+					"path": "/admin/user",
+					"title": "User Admin",
+					"access": ["admin"]
+				}
+			]
+
+		},
 		"/user/:user_id?": {
 			"3": [
 				{ "type": "widget",
