@@ -9,12 +9,11 @@
 		<li ng-class="{active: state=='edit'}"><a ng-click="go('edit')">Edit Profile</a></li>
 	</ul>
 
-	<div class="panel-body" ng-show="user.list[user_id]">
-		{{user.list[user_id]}}
-	</div>
-
-	<div class="panel-body" ng-show="state=='view' || !state">
-		<p>Check out #{{user.list[user_id]}}</p>
+	<div class="panel-body" ng-if="user.list[user_id]" ng-show="state=='view' || !state">
+		<strong>Name:</strong> {{user.list[user_id].name}}<br/>
+		<strong>Email:</strong> {{user.list[user_id].email}}<br/>
+		<strong>Phone:</strong> {{user.list[user_id].phone}}<br/>
+		<strong>Account:</strong> #{{user.list[user_id].auth_id}}<br/>
 	</div>
 
 	<div class="panel-body" ng-show="state=='edit'">
