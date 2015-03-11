@@ -9,6 +9,17 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 		return $crypthmac.encrypt(password, username);
 	}
 
+	function setActiveUser(user){
+		if(!user){
+			data.user = null;
+		}
+		else if (user && user.id){
+			User.api.loadUser(user.id).then(function(user){
+				data.user = user;
+			});
+		}
+	}
+
 	var api = {
 		loadSchema: function(){
 			var defer = $q.defer();
@@ -31,12 +42,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 		ping: function(){
 			var defer = $q.defer();
 			API.post('/auth/ping').then(function(res){
-				if(res.profile){
-					User.data.profile = res.profile;
-				}
 				if(!res.error && res.user){
-					data.user = res.user;
-					
+					setActiveUser(res.user);
 					defer.resolve(true);
 				}
 				else{
@@ -53,11 +60,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 					password: hash_password(password, username)
 				};
 				API.post('/auth/login', {data: req}).then(function(res){
-					if(res.profile){
-						User.data.profile = res.profile;
-					}
 					if(!res.error && res.user){
-						data.user = res.user;
+						setActiveUser(res.user);
 						defer.resolve(true);
 					}
 					else{
@@ -75,8 +79,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 			var defer = $q.defer();
 			API.post('/auth/logout').then(function(res){
 				if(!res.error){
-					data.user = null;
-					User.data.profile = null;
+					setActiveUser(null);
 					defer.resolve(true);
 				}
 				else{
@@ -102,11 +105,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 					start_session: true
 				};
 				API.post('/auth/register', {data: req}).then(function(res){
-					if(res.profile){
-						User.data.profile = res.profile;
-					}
 					if(!res.error && res.user){
-						data.user = res.user;
+						setActiveUser(res.user);
 						defer.resolve(true);
 					}
 					else{

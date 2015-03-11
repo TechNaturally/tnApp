@@ -1,7 +1,6 @@
 angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 .factory('User', ['$q', 'API', function($q, API){
 	var data = {
-		profile: null,
 		list: {},
 		schema: null
 	};

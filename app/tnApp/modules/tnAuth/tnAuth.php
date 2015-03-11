@@ -23,24 +23,6 @@ function auth_session_finish(){
 	return FALSE;
 }
 
-function auth_session_profile_set($profile){
-	global $_SESSION;
-	$_SESSION['profile'] = $profile;
-	return auth_session_profile_check();
-}
-function auth_session_profile_check(){
-	global $_SESSION;
-	return (!empty($_SESSION['profile'])?$_SESSION['profile']:NULL);
-}
-function auth_session_profile_clear(){
-	global $_SESSION;
-	if(!empty($_SESSION['profile'])){
-		unset($_SESSION['profile']);
-		return TRUE;
-	}
-	return FALSE;
-}
-
 function auth_user_assert_profile($tn, $user){
 	try {
 		if(function_exists('user_get_user')){
@@ -50,10 +32,10 @@ function auth_user_assert_profile($tn, $user){
 				$profile = user_save_user($tn, array(
 					'auth_id' => $user['id'],
 					'email' => $user['email'],
-					'name' => $user['username'],
-					'roles' => array('test1', 'test2')
+					'name' => $user['username']
 					));
 			}
+			// TODO: what about default roles? - should be in app's config.json - do we check in user_save_user for new users?
 
 			return $profile;
 		}
@@ -69,9 +51,6 @@ function auth_ping_post($tn){
 	if($user = auth_session_check()){
 		$res['user'] = $user;
 		$res['msg'] = 'Session active!';
-	}
-	if($profile = auth_session_profile_check()){
-		$res['profile'] = $profile;
 	}
 
 	$tn->app->render($res_code, $res);
@@ -90,21 +69,19 @@ function auth_login_post($tn){
 			if($user && !empty($user['hash'])){
 				if(auth_password_check($req->password, $user['hash'])){
 					$roles = array('user');
-					$profile = auth_user_assert_profile($tn, $user);
-					if($profile && !empty($profile['roles'])){
-						$roles = array_merge($roles, $profile['roles']);
+					if($profile = auth_user_assert_profile($tn, $user)){
+						if(!empty($profile['roles'])){
+							$roles = array_merge($roles, $profile['roles']);
+						}
+						$res['user'] = auth_session_start(array(
+							'id' => $profile['id'],
+							'roles' => $roles
+							));
+						$res['msg'] = 'Login successful!';
 					}
-					
-					$res['user'] = auth_session_start(array(
-						'id' => $user['id'],
-						'username' => $user['username'],
-						'email' => $user['email'],
-						'roles' => $roles
-						));
-					if($profile){
-						$res['profile'] = auth_session_profile_set($profile);
+					else{
+						$res['error'] = TRUE; // no profile
 					}
-					$res['msg'] = 'Login successful!';
 				}
 				else {
 					$res['error'] = TRUE; // bad password
@@ -134,7 +111,6 @@ function auth_logout_post($tn){
 	$res_code = 200;
 	if(auth_session_check()){
 		auth_session_finish();
-		auth_session_profile_clear();
 		$res['msg'] = 'Logout successful!';
 	}
 	else{
@@ -171,20 +147,19 @@ function auth_register_post($tn){
 
 		if(!empty($req->start_session)){
 			$roles = array('user');
-			$profile = auth_user_assert_profile($tn, $user);
-			if($profile && !empty($profile['roles'])){
-				$roles = array_merge($roles, $profile['roles']);
+			if($profile = auth_user_assert_profile($tn, $user)){
+				if(!empty($profile['roles'])){
+					$roles = array_merge($roles, $profile['roles']);
+				}
+
+				$res['user'] = auth_session_start(array(
+					'id' => $profile['id'],
+					'roles' => $roles
+					));
 			}
-
-			$res['user'] = auth_session_start(array(
-				'id' => $user['id'],
-				'username' => $user['username'],
-				'email' => $user['email'],
-				'roles' => $roles
-				));
-
-			if($profile){
-				$res['profile'] = auth_session_profile_set($profile);
+			else{
+				$res['error'] = TRUE;
+				$res['msg'] = 'Could not load user profile.';
 			}
 		}
 	} catch (Exception $e) {
