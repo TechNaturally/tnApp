@@ -1,4 +1,4 @@
-angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5'])
+angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnApp.tree'])
 .factory('Screen', ['$q', 'API', function($q, API){
 	
 	var api = {
@@ -20,7 +20,7 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5'])
 		$scope.content = content;
 	});
 }])
-.directive('tnScreen', ['Theme', '$compile', '$injector', 'md5', function(Theme, $compile, $injector, md5){
+.directive('tnScreen', ['Theme', '$compile', '$injector', 'md5', 'Tree', function(Theme, $compile, $injector, md5, Tree){
 	return {
 		restrict: 'E',
 		scope: {'path': '@'},
@@ -33,26 +33,32 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5'])
 					return;
 				}
 				angular.forEach(content, function(contents, priority){
-					angular.forEach(contents, function(data, index){
-						if(data.type == 'widget'){ //} && data.content && $injector.has(data.content)){
-							var args = '';
-							angular.forEach(data.args, function(value, key){
-								if(value){
-									if(angular.isObject(value)){
-										var valueKey = data.content.replace(/-/g, '_')+'_'+priority+'_'+key+'_'+md5.createHash(angular.toJson(value, false));
-										scope[valueKey] = value;
-										args += ' '+key+'="'+valueKey+'"';
+					if(priority == 'nav'){
+						var navTree = Tree.arrayToTree(contents);
+						console.log('Tree:'+JSON.stringify(navTree));
+					}
+					else{
+						angular.forEach(contents, function(data, index){
+							if(data.type == 'widget'){ //} && data.content && $injector.has(data.content)){
+								var args = '';
+								angular.forEach(data.args, function(value, key){
+									if(value){
+										if(angular.isObject(value)){
+											var valueKey = data.content.replace(/-/g, '_')+'_'+priority+'_'+key+'_'+md5.createHash(angular.toJson(value, false));
+											scope[valueKey] = value;
+											args += ' '+key+'="'+valueKey+'"';
+										}
+										else{
+											args += ' '+key+'="'+value+'"';
+										}
 									}
-									else{
-										args += ' '+key+'="'+value+'"';
-									}
-								}
-							});
-							var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
-							$compile(cont_elem)(scope);
-							elem.append(cont_elem);
-						}
-					});
+								});
+								var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
+								$compile(cont_elem)(scope);
+								elem.append(cont_elem);
+							}
+						});
+					}
 				});
 			});
 		}
