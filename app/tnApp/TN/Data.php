@@ -47,6 +47,61 @@ class Data extends NotORM {
 		return $this->schemas->get($schema_id);
 	}
 
+	public function getTableSchema($table){
+		$fields = $this->getTableFields($table);
+		$schema = $this->getSchema($table);
+		if($fields && $schema){
+			// we can only work with tables for objects with properties
+			if($schema->type == 'object' && !empty($schema->properties)){
+				$flat_schema = $this->flatten_schema($schema);
+
+				$table_schema = array();
+
+				// handle the wildcard * for all fields
+				if($fields === '*'){
+					$fields = array();
+					foreach($flat_schema as $field_id => $field_def){
+						$fields[$field_id] = TRUE;
+					}
+				}
+				else if(is_object($fields)){
+					$fields = (array)$fields;
+				}
+				else if(is_array($fields)){
+					$fields_map = array();
+					foreach($fields as $field_id){
+						$fields_map[$field_id] = TRUE;
+					}
+					$fields = $fields_map;
+				}
+
+				// force an id field and force it to be first
+				if(empty($fields['id']) || array_keys($fields)[0] != 'id'){
+					if(isset($fields['id'])){
+						unset($fields['id']);
+					}
+					$fields = array_reverse($fields, true);
+					$fields['id'] = TRUE;
+					$fields = array_reverse($fields, true);
+				}
+				if(!isset($flat_schema->id)){
+					$flat_schema->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
+				}
+				
+				foreach($fields as $field_id => $use_field){
+					if(empty($use_field) || !isset($flat_schema->{$field_id})){
+						continue;
+					}
+					$table_schema[$field_id] = $flat_schema->{$field_id};
+				}
+
+				return $table_schema;
+			}
+		}
+
+		return NULL;
+	}
+
 	public function rowToArray($row){
 		$array = array();
 		foreach ($row as $column => $data){
@@ -90,7 +145,13 @@ class Data extends NotORM {
 
 	public function create($table){
 		try {
-			$fields = $this->getTableFields($table);
+
+			$tableSchema = $this->getTableSchema($table);
+			print "ok:<pre>".print_r($tableSchema,true)."</pre>";
+
+
+			return FALSE;
+/**			$fields = $this->getTableFields($table);
 			$schema = $this->getSchema($table);
 			if($fields && $schema){
 				// we could only create tables for objects
@@ -113,6 +174,7 @@ class Data extends NotORM {
 					}
 				}
 			}
+			*/
 		} catch (Exception $e) {
 			throw $e;
 		}
