@@ -106,6 +106,10 @@ class App {
 
 		// if module config loaded
 		if($module){
+			if($module->id){
+				$module_id = $module->id;
+			}
+
 			// set the database fields
 			if(!empty($module->database)){
 				$this->data->addTableFields($module_id, $module->database);

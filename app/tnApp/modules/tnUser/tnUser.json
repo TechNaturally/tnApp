@@ -1,4 +1,5 @@
 {
+	"id": "user",
 	"database": "*",
 	"schema": {
 		"id": "/user",

@@ -1,4 +1,5 @@
 {
+	"id": "auth",
 	"database": { "email": true , "username": true, "hash": true },
 	"schema": {
 		"id": "/auth",
