@@ -14,6 +14,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 			data.user = null;
 		}
 		else if (user && user.id){
+			// TOOD: what if user already is loaded... (best way)
+			// TODO: we also need to track in Auth.data the auth_id, username, etc
 			User.api.loadUser(user.id).then(function(user){
 				data.user = user;
 			});
