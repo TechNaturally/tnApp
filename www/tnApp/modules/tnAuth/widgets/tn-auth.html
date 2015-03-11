@@ -1,6 +1,8 @@
 <div class="auth panel panel-default" tn-state>
 	<div class="panel-body" ng-show="auth.user">
-		You are logged in as <strong>{{auth.user.name}}</strong> (<em>{{auth.user.email}}</em>) [{{auth.user.roles}}]!
+		You are logged in as <strong>{{auth.user.name}}</strong>!<br/>
+		Email: <em>{{auth.user.email}}</em><br/>
+		Roles: {{auth.user.roles}}
 		<div>
 			<a class="btn btn-primary" ng-href="/user">My Profile</a>
 			<button class="btn btn-primary" ng-click="logout()">Logout</button>

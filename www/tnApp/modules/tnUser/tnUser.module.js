@@ -72,6 +72,10 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 			var defer = $q.defer();
 
 			if(user.id){
+				user = angular.copy(user);
+				if(angular.isDefined(user.loaded)){
+					delete user.loaded;
+				}
 				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
 					angular.forEach(user, function(value, key){
 						data.list[user.id][key] = value;
