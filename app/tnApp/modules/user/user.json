@@ -64,6 +64,18 @@
 
 		},
 		"/user/:user_id?": {
+			"nav": [
+				{ "type": "link",
+					"path": "/user",
+					"title": "View Profile",
+					"access": ["user"]
+				},
+				{ "type": "link",
+					"path": "/user/edit",
+					"title": "Edit Profile",
+					"access": ["user"]
+				}
+			],
 			"3": [
 				{ "type": "widget",
 					"content": "tn-user",
@@ -81,6 +93,18 @@
 			]
 		},
 		"/admin/user*": {
+			"nav": [
+				{ "type": "link",
+					"path": "/admin/user",
+					"title": "Manage Users",
+					"access": ["admin"]
+				},
+				{ "type": "link",
+					"path": "/admin/user/add",
+					"title": "Add User",
+					"access": ["admin"]
+				}
+			],
 			"1": [
 				{ "type": "widget",
 					"content": "tn-tabs",
