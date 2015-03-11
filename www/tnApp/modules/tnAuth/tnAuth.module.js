@@ -1,5 +1,5 @@
 angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'tnApp.form', 'angular-hmac-sha512'])
-.factory('Auth', ['$q', 'API', '$crypthmac', 'User', function($q, API, $crypthmac, User){
+.factory('Auth', ['$q', 'API', '$crypthmac', '$window', '$location', 'User', function($q, API, $crypthmac, $window, $location, User){
 	var data = {
 		user: null,
 		schema: null
@@ -64,6 +64,10 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 				API.post('/auth/login', {data: req}).then(function(res){
 					if(!res.error && res.user){
 						setActiveUser(res.user);
+						var search = $location.search();
+						var from = search.from?search.from:'';
+						$location.path(from);
+						$location.search('from', null);
 						defer.resolve(true);
 					}
 					else{
@@ -81,7 +85,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 			var defer = $q.defer();
 			API.post('/auth/logout').then(function(res){
 				if(!res.error){
-					setActiveUser(null);
+					$window.location.href = '';
 					defer.resolve(true);
 				}
 				else{
@@ -136,6 +140,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 	$scope.input = {};
 
 	$scope.auth = Auth.data;
+	$scope.path = $scope.$parent.path;
 
 	// actions
 	$scope.login = function(input){
