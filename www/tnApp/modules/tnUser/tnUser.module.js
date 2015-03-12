@@ -124,7 +124,7 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 .directive('tnUser', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		scope: {'user_id': '@id'},
+		scope: {'user_id': '@id', 'state': '@'},
 		controller: 'UserController',
 		templateUrl: Theme.getTemplate
 	};
