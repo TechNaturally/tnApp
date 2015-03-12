@@ -15,13 +15,13 @@ class ScreenManager {
 			$this->screens[$path] = array();
 		}
 
-		foreach($contents as $priority => $content){
+		foreach($contents as $area => $content){
 			if(empty($content)){ continue; }
-			if(!isset($this->screens[$path][$priority])){
-				$this->screens[$path][$priority] = $content;
+			if(!isset($this->screens[$path][$area])){
+				$this->screens[$path][$area] = $content;
 			}
 			else{
-				$this->screens[$path][$priority] = array_merge($this->screens[$path][$priority], $content);
+				$this->screens[$path][$area] = array_merge($this->screens[$path][$area], $content);
 			}
 		}
 	}
@@ -71,8 +71,8 @@ class ScreenManager {
 					}
 				}
 
-				// add the prioritized content
-				foreach($contents as $priority => $content){
+				// add the content sorted by area
+				foreach($contents as $area => $content){
 					if(empty($content)){ continue; }
 					// for each piece of content
 					foreach($content as $content_idx => $content_data){
@@ -138,11 +138,11 @@ class ScreenManager {
 					// add the prioritized content to the screen
 					$content = array_filter($content);
 					if(!empty($content)){
-						if(!isset($screen[$priority])){
-							$screen[$priority] = $content;
+						if(!isset($screen[$area])){
+							$screen[$area] = $content;
 						}
 						else{
-							$screen[$priority] = array_merge($screen[$priority], $content);
+							$screen[$area] = array_merge($screen[$area], $content);
 						}
 					}
 				}

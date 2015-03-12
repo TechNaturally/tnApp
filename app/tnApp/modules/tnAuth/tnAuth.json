@@ -92,7 +92,7 @@
 					"access": ["admin"]
 				}
 			],
-			"1": [
+			"auth": [
 				{ "type": "widget",
 					"content": "tn-auth",
 					"hide": ["/user/(login|register|recover)"]
@@ -100,7 +100,7 @@
 			]
 		},
 		"/user/login": {
-			"3": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-auth",
 					"args": {"state": "login"}
@@ -108,7 +108,7 @@
 			]
 		},
 		"/user/register": {
-			"3": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-auth",
 					"args": {"state": "register"}
@@ -116,7 +116,7 @@
 			]
 		},
 		"/user/recover": {
-			"3": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-auth",
 					"args": {"state": "recover"}

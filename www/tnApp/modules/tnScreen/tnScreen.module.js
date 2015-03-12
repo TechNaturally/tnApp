@@ -32,8 +32,9 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 				if(!content){
 					return;
 				}
-				angular.forEach(content, function(contents, priority){
-					if(priority == 'nav'){
+				angular.forEach(content, function(contents, area){
+					var area_container = angular.element('<div class="area '+area+'-area"></div>');
+					if(area == 'nav'){
 						var navTree = Tree.arrayToTree(contents);
 						console.log('Tree:'+JSON.stringify(navTree));
 					}
@@ -44,7 +45,8 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 								angular.forEach(data.args, function(value, key){
 									if(value){
 										if(angular.isObject(value)){
-											var valueKey = data.content.replace(/-/g, '_')+'_'+priority+'_'+key+'_'+md5.createHash(angular.toJson(value, false));
+											var valueKey = data.content+'_'+area+'_'+key+'_'+md5.createHash(angular.toJson(value, false));
+											valueKey = valueKey.replace(/-/g, '_');
 											scope[valueKey] = value;
 											args += ' '+key+'="'+valueKey+'"';
 										}
@@ -55,10 +57,11 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 								});
 								var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
 								$compile(cont_elem)(scope);
-								elem.append(cont_elem);
+								area_container.append(cont_elem);
 							}
 						});
 					}
+					elem.append(area_container);
 				});
 			});
 		}

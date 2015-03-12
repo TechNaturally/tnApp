@@ -77,7 +77,7 @@
 					"access": ["user"]
 				}
 			],
-			"3": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user",
 					"args": {"id": ":user_id?!auth_id"},
@@ -86,7 +86,7 @@
 			]
 		},
 		"/admin": {
-			"5": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user-admin",
 					"access": ["admin"]
@@ -94,26 +94,14 @@
 			]
 		},
 		"/admin/user*": {
-			"nav": [
-				{ "type": "link",
-					"path": "/admin/user",
-					"title": "Manage Users",
-					"access": ["admin"]
-				},
-				{ "type": "link",
-					"path": "/admin/user/add",
-					"title": "Add User",
-					"access": ["admin"]
-				}
-			],
-			"1": [
+			"tabs": [
 				{ "type": "widget",
 					"content": "tn-tabs",
 					"args": {"actions": {"/admin/user": "Manage's Users", "/admin/user/add": "Add User"}},
 					"access": ["admin"]
 				}
 			],
-			"9": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user-list",
 					"access": ["admin"]
@@ -121,7 +109,7 @@
 			]
 		},
 		"/admin/user/:user_id": {
-			"3": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user",
 					"args": {"id": ":user_id"},
