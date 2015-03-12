@@ -36,6 +36,8 @@ class ScreenManager {
 			$args_rx = str_replace('/', '\/', $args_rx); // allow slashes
 			$path_rx = str_replace('/', '\/', $path_rx); // allow slashes
 
+
+			// replace :args<rx_pattern>? with regular expression, extracting the arg name into arg_map
 			$arg_map = array();
 			$arg_match = array();
 			if($is_match = preg_match("/^$args_rx$/", $screen_path, $arg_match)){
@@ -54,9 +56,11 @@ class ScreenManager {
 				}
 			}
 
+			// now see if the path matches
 			if(preg_match("/^$path_rx$/", $path, $matches)){
 				array_shift($matches); // matches will contain the arg values
 
+				// map any matched arg values with their name
 				$args = array();
 				foreach($arg_map as $arg_index => $arg_name){
 					$args[$arg_name] = ($arg_index < count($matches))?$matches[$arg_index]:'';
@@ -66,82 +70,18 @@ class ScreenManager {
 					}
 				}
 
-				print "\n\nMATCH:'$screen_path'\n".(!empty($args)?print_r($args,true):'')."\n";
-			}
-			
-
-			
-
-			//print "\n\nrx1:".$screen_path.":----:".$args_rx.":----:".$path;
-
-			continue;
-
-/**			$path_rx = preg_replace('/\/:([^\/]+)\?/', '(/[\w\d]*)?', $path_rx); // match optional args
-
-			if($debug){
-				print "\n\nrx2:".$screen_path.":----:".$path_rx.":----:".$path;
-			}
-
-			$path_rx = preg_replace('/:([^\/\[]]+)/', '(\w[\w\d]*)', $path_rx); // match args
-
-			if($debug){
-				print "\n\nrx3:".$screen_path.":----:".$path_rx.":----:".$path;
-			}
-
-			$path_rx = preg_replace('/\//', '\\/', $path_rx); // allow slashes
-
-			if($debug){
-				print "\n\nrx4:".$screen_path.":----:".$path_rx.":----:".$path;
-			}
-*/
-			
-			
-			
-			// check if the path matches
-			if(preg_match("/^$path_rx$/", $path, $matches)){
-				array_shift($matches); // matches will contain the arg values
-
-				if($debug){
-					print "\nargs:".print_r($matches,true)."</pre>";
-				}
-
-				$args = array();
-
-				// extract the arg names
-				$arg_matches = array();
-				preg_match("/^$args_rx$/", $screen_path, $arg_matches);
-				array_shift($arg_matches);
-
-				// if there are arg names found
-				if(!empty($arg_matches)){
-					foreach($arg_matches as $arg_idx => $arg_id){
-						if(substr($arg_id,-1)=='?'){
-							$arg_id = substr($arg_id, 0, -1);
-						}
-						// map the arg values to the arg names
-						if($arg_idx < count($matches)){
-							if($matches[$arg_idx][0] == '/'){
-								$matches[$arg_idx] = substr($matches[$arg_idx], 1);
-							}
-							$args[$arg_id] = $matches[$arg_idx];
-						}
-						else{
-							$args[$arg_id] = '';
-						}
-					}
-				}
-
 				// add the content sorted by area
 				foreach($contents as $area => $content){
 					if(empty($content)){ continue; }
+
 					// for each piece of content
 					foreach($content as $content_idx => $content_data){
 
 						// skip if it is hidden on this path
 						if(!empty($content_data->hide)){
 							$hidden_paths = array_filter($content_data->hide, function($hide_path) use ($path){
-								$hide_path = preg_replace('/\*/', '.*', $hide_path);
-								$hide_path = preg_replace('/\//', '\\/', $hide_path);
+								$hide_path = str_replace('\*', '.*', $hide_path);
+								$hide_path = str_replace('/', '\\/', $hide_path);
 								return preg_match("/^$hide_path$/", $path);
 							});
 							if(!empty($hidden_paths)){
@@ -197,7 +137,6 @@ class ScreenManager {
 
 					// add the prioritized content to the screen
 					$content = array_filter($content);
-					$content = array();
 					if(!empty($content)){
 						if(!isset($screen[$area])){
 							$screen[$area] = $content;
