@@ -28,61 +28,51 @@ class ScreenManager {
 
 	public function get_screen($path){
 		$screen = array();
-		$debug_paths = array(
-			'/admin/user/:user_id[\d]',
-			'/user/:user_id<\d+>?',
-			'/test/:arg1<\d+>/check/:arg2?/what/:arg3<\d+>?',
-			'/test/:arg1<\w[\w\d]*>/check/:arg2?/what/:arg3<\d+>?',
-			'/test/:arg1<\d+>/check/:arg2<\d+>?/what/:arg3?'
-			);
 		foreach($this->screens as $screen_path => $contents){
-			$debug = in_array($screen_path, $debug_paths);
-
 			$path_rx = $screen_path;
 
 			$path_rx = str_replace('*', '.*', $path_rx);
 			$args_rx = preg_replace('/:([^\/]+)/', '((:\w[\w\d]*)(<(.+)>)?(\?)?)', $path_rx); // match arg names
 			$args_rx = str_replace('/', '\/', $args_rx); // allow slashes
+			$path_rx = str_replace('/', '\/', $path_rx); // allow slashes
 
 			$arg_map = array();
+			$arg_match = array();
+			if($is_match = preg_match("/^$args_rx$/", $screen_path, $arg_match)){
+				$arg_count = 0;
+				for($i=1; $i < count($arg_match); $i+=5){
+					$arg_name = ($i+1 < count($arg_match))?$arg_match[$i+1]:'';
+					$arg_condition = ($i+2 < count($arg_match) && !empty($arg_match[$i+2]))?$arg_match[$i+2]:'';
+					$arg_pattern = ($i+3 < count($arg_match) && !empty($arg_match[$i+3]))?$arg_match[$i+3]:'[\w\d]+';
+					$arg_optional = ($i+4 < count($arg_match) && !empty($arg_match[$i+4]));
 
-			if($debug){
-				$arg_match = array();
-				if($is_match = preg_match("/^$args_rx$/", $screen_path, $arg_match)){
-					print "\n\n";
-					//print "rx3:".$screen_path.":--:".$args_rx.":--:".($is_match?'match':'nomatch').":----:".print_r($arg_match,true);
-					print "check:$screen_path\n";
-					//print "<pre>".print_r($arg_match,true)."</pre>";
+					$arg_condition = str_replace('*', '.*', $arg_condition);
 
-					$arg_count = 0;
-					for($i=1; $i < count($arg_match); $i+=5){
-						$arg_name = ($i+1 < count($arg_match))?$arg_match[$i+1]:'';
-						$arg_condition = ($i+2 < count($arg_match) && !empty($arg_match[$i+2]))?$arg_match[$i+2]:'';
-						$arg_pattern = ($i+3 < count($arg_match) && !empty($arg_match[$i+3]))?$arg_match[$i+3]:'[\w\d]+';
-						$arg_optional = ($i+4 < count($arg_match) && !empty($arg_match[$i+4]));
-						print "\narg[$arg_count]='".$arg_match[$i]."'\nname:'$arg_name'\npattern:'$arg_pattern'\noptional:".($arg_optional?"TRUE":"FALSE")."\n";
+					$arg_map[$arg_count++] = $arg_name;
 
-//						$arg_condition = preg_replace("/\\\/", "\\\\\\", $arg_condition);
-						$arg_condition = str_replace('*', '.*', $arg_condition);
+					$path_rx = str_replace(($arg_optional?'\/':'').$arg_name.$arg_condition, '('.($arg_optional?'\/':'').$arg_pattern.')', $path_rx);
+				}
+			}
 
+			if(preg_match("/^$path_rx$/", $path, $matches)){
+				array_shift($matches); // matches will contain the arg values
 
-						$arg_map[$arg_count] = $arg_name;
-						print "replace '".$arg_name.$arg_condition."' with ".'('.($arg_optional?'\/':'').$arg_pattern.')'."\n\n";
-						//$path_rx = preg_replace("/$arg_name.$arg_condition/", '('.($arg_optional?'\/':'').$arg_pattern.')', $path_rx);
-						$path_rx = str_replace(($arg_optional?'/':'').$arg_name.$arg_condition, '('.($arg_optional?'\/':'').$arg_pattern.')', $path_rx);
+				$args = array();
+				foreach($arg_map as $arg_index => $arg_name){
+					$args[$arg_name] = ($arg_index < count($matches))?$matches[$arg_index]:'';
 
-						$arg_count++;
+					if(!empty($args[$arg_name]) && $args[$arg_name][0] == '/'){
+						$args[$arg_name] = substr($args[$arg_name], 1);
 					}
 				}
 
-
-				print "\nARG_MAP:<pre>".print_r($arg_map,true)."</pre>\n";
-				print "PATH_RX:'".$path_rx."\n\n";
-
-				
-
-				//print "\n\nrx1:".$screen_path.":----:".$args_rx.":----:".$path;
+				print "\n\nMATCH:'$screen_path'\n".(!empty($args)?print_r($args,true):'')."\n";
 			}
+			
+
+			
+
+			//print "\n\nrx1:".$screen_path.":----:".$args_rx.":----:".$path;
 
 			continue;
 
