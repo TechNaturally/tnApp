@@ -52,7 +52,7 @@ class ScreenManager {
 
 					$arg_map[$arg_count++] = $arg_name;
 
-					$path_rx = str_replace(($arg_optional?'\/':'').$arg_name.$arg_condition, '('.($arg_optional?'\/':'').$arg_pattern.')', $path_rx);
+					$path_rx = str_replace(($arg_optional?'\/':'').$arg_name.$arg_condition, '('.($arg_optional?'\/':'').'('.$arg_pattern.'))', $path_rx);
 				}
 			}
 
@@ -63,12 +63,10 @@ class ScreenManager {
 				// map any matched arg values with their name
 				$args = array();
 				foreach($arg_map as $arg_index => $arg_name){
-					$args[$arg_name] = ($arg_index < count($matches))?$matches[$arg_index]:'';
-
-					if(!empty($args[$arg_name]) && $args[$arg_name][0] == '/'){
-						$args[$arg_name] = substr($args[$arg_name], 1);
-					}
+					$args[$arg_name] = ($arg_index*2+1 < count($matches))?$matches[$arg_index*2+1]:'';
 				}
+
+				//print "\n\n'$path' matches '$screen_path' with:".print_r($args,true)."\n\n";
 
 				// add the content sorted by area
 				foreach($contents as $area => $content){
