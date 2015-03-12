@@ -99,6 +99,14 @@
 				}
 			]
 		},
+		"/admin*": {
+			"page": [
+				{	"type": "error",
+					"content": "Access denied.",
+					"access": ["^admin"]
+				}
+			]
+		},
 		"/user/login": {
 			"page": [
 				{ "type": "widget",
