@@ -64,7 +64,7 @@
 			]
 
 		},
-		"/user/:user_id?": {
+		"/user/:user_id<\\d+>?": {
 			"nav": [
 				{ "type": "link",
 					"path": "/user",
@@ -108,7 +108,7 @@
 				}
 			]
 		},
-		"/admin/user/:user_id": {
+		"/admin/user/:user_id<\\d+>": {
 			"page": [
 				{ "type": "widget",
 					"content": "tn-user",

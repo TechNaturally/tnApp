@@ -107,27 +107,11 @@
 				}
 			]
 		},
-		"/user/login": {
+		"/user/:action<login|register|recover>": {
 			"page": [
 				{ "type": "widget",
 					"content": "tn-auth",
-					"args": {"state": "login"}
-				}
-			]
-		},
-		"/user/register": {
-			"page": [
-				{ "type": "widget",
-					"content": "tn-auth",
-					"args": {"state": "register"}
-				}
-			]
-		},
-		"/user/recover": {
-			"page": [
-				{ "type": "widget",
-					"content": "tn-auth",
-					"args": {"state": "recover"}
+					"args": {"state": ":action"}
 				}
 			]
 		}
