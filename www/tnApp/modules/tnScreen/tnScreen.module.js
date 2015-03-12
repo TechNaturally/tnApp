@@ -33,14 +33,15 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 					return;
 				}
 				angular.forEach(content, function(contents, area){
-					var area_container = angular.element('<div class="area '+area+'-area"></div>');
+					var area_container = angular.element('<div class="area '+area+'"></div>');
+					var area_errors;
 					if(area == 'nav'){
 						var navTree = Tree.arrayToTree(contents);
 						console.log('Tree:'+JSON.stringify(navTree));
 					}
 					else{
 						angular.forEach(contents, function(data, index){
-							if(data.type == 'widget'){ //} && data.content && $injector.has(data.content)){
+							if(data.type == 'widget'){
 								var args = '';
 								angular.forEach(data.args, function(value, key){
 									if(value){
@@ -58,6 +59,13 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 								var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
 								$compile(cont_elem)(scope);
 								area_container.append(cont_elem);
+							}
+							else if(data.type == 'error'){
+								if(!area_errors){
+									area_errors = angular.element('<ul class="errors"></ul>');
+									area_container.prepend(area_errors);
+								}
+								area_errors.append('<li>'+data.content+'</li>');
 							}
 						});
 					}
