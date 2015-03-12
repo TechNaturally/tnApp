@@ -1,5 +1,5 @@
 angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'tnApp.form', 'angular-hmac-sha512'])
-.factory('Auth', ['$q', 'API', '$crypthmac', 'User', function($q, API, $crypthmac, User){
+.factory('Auth', ['$q', 'API', '$crypthmac', '$window', '$location', 'User', function($q, API, $crypthmac, $window, $location, User){
 	var data = {
 		user: null,
 		schema: null
@@ -7,6 +7,19 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 
 	function hash_password(password, username){
 		return $crypthmac.encrypt(password, username);
+	}
+
+	function setActiveUser(user){
+		if(!user){
+			data.user = null;
+		}
+		else if (user && user.id){
+			// TOOD: what if user already is loaded... (best way)
+			// TODO: we also need to track in Auth.data the auth_id, username, etc
+			User.api.loadUser(user.id).then(function(user){
+				data.user = user;
+			});
+		}
 	}
 
 	var api = {
@@ -31,12 +44,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 		ping: function(){
 			var defer = $q.defer();
 			API.post('/auth/ping').then(function(res){
-				if(res.profile){
-					User.data.profile = res.profile;
-				}
 				if(!res.error && res.user){
-					data.user = res.user;
-					
+					setActiveUser(res.user);
 					defer.resolve(true);
 				}
 				else{
@@ -53,11 +62,12 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 					password: hash_password(password, username)
 				};
 				API.post('/auth/login', {data: req}).then(function(res){
-					if(res.profile){
-						User.data.profile = res.profile;
-					}
 					if(!res.error && res.user){
-						data.user = res.user;
+						setActiveUser(res.user);
+						var search = $location.search();
+						var from = search.from?search.from:'';
+						$location.path(from);
+						$location.search('from', null);
 						defer.resolve(true);
 					}
 					else{
@@ -75,8 +85,7 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 			var defer = $q.defer();
 			API.post('/auth/logout').then(function(res){
 				if(!res.error){
-					data.user = null;
-					User.data.profile = null;
+					$window.location.href = '';
 					defer.resolve(true);
 				}
 				else{
@@ -102,11 +111,8 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 					start_session: true
 				};
 				API.post('/auth/register', {data: req}).then(function(res){
-					if(res.profile){
-						User.data.profile = res.profile;
-					}
 					if(!res.error && res.user){
-						data.user = res.user;
+						setActiveUser(res.user);
 						defer.resolve(true);
 					}
 					else{
@@ -132,6 +138,9 @@ angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp
 		$scope.schema = schema;
 	});
 	$scope.input = {};
+
+	$scope.auth = Auth.data;
+	$scope.path = $scope.$parent.path;
 
 	// actions
 	$scope.login = function(input){

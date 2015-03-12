@@ -1,4 +1,5 @@
 {
+	"id": "auth",
 	"database": { "email": true , "username": true, "hash": true },
 	"schema": {
 		"id": "/auth",
@@ -83,27 +84,34 @@
 		}
 	},
 	"screens": {
-		"/user/login": {
-			"3": [
+		"*": {
+			"nav": [
+				{ "type": "link",
+					"path": "/admin",
+					"title": "Admin",
+					"access": ["admin"]
+				}
+			],
+			"auth": [
 				{ "type": "widget",
 					"content": "tn-auth",
-					"args": {"state": "login"}
+					"hide": ["/user/(login|register|recover)"]
 				}
 			]
 		},
-		"/user/register": {
-			"3": [
-				{ "type": "widget",
-					"content": "tn-auth",
-					"args": {"state": "register"}
+		"/admin*": {
+			"page": [
+				{	"type": "error",
+					"content": "Access denied.",
+					"access": ["^admin"]
 				}
 			]
 		},
-		"/user/recover": {
-			"3": [
+		"/user/:action<login|register|recover>": {
+			"page": [
 				{ "type": "widget",
 					"content": "tn-auth",
-					"args": {"state": "recover"}
+					"args": {"state": ":action"}
 				}
 			]
 		}

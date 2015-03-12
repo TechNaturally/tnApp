@@ -1,7 +1,6 @@
-angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
+angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 .factory('User', ['$q', 'API', function($q, API){
 	var data = {
-		profile: null,
 		list: {},
 		schema: null
 	};
@@ -25,15 +24,40 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 			}
 			return defer.promise;
 		},
+		listUsers: function(){
+			var defer = $q.defer();
+			if(data.list && Object.count(data.list) > 1){
+				defer.resolve(data.list);
+			}
+			else{
+				API.get('/user', {silent: true}).then(function(res){
+					if(!res.error && angular.isDefined(res.users)){
+						angular.forEach(res.users, function(user, id){
+							if(!data.list[id]){
+								data.list[id] = user;
+								data.list[id].loaded = false;
+							}
+						});
+						defer.resolve(data.list);
+					}
+					else{
+						defer.reject(res.msg);
+					}
+				}, function(reason){ defer.reject(reason); });
+			}
+
+			return defer.promise;
+		},
 		loadUser: function(id){
 			var defer = $q.defer();
-			if(data.list && data.list[id]){
+			if(data.list && data.list[id] && data.list[id].loaded){
 				defer.resolve(data.list[id]);
 			}
 			else{
 				API.get('/user/'+id).then(function(res){
 					if(!res.error && angular.isDefined(res.user)){
 						data.list[id] = res.user;
+						data.list[id].loaded = true;
 						defer.resolve(data.list[id]);
 					}
 					else{
@@ -48,6 +72,10 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 			var defer = $q.defer();
 
 			if(user.id){
+				user = angular.copy(user);
+				if(angular.isDefined(user.loaded)){
+					delete user.loaded;
+				}
 				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
 					angular.forEach(user, function(value, key){
 						data.list[user.id][key] = value;
@@ -74,27 +102,29 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 	$scope.user = User.data;
 	//$scope.active = $scope.user.list[$scope.user_id];
 
-	if($scope.user_id){
-		console.log('user id... #'+$scope.user_id);
-		User.api.loadUser($scope.user_id).then(function(user){});
-		/**$scope.$watch('user.list['+$scope.user_id+']', function(user){
-			console.log('got the user :D'+JSON.stringify(user));
-			$scope.active = user;
-		});*/
-	}
-
-	$scope.profile = function(input){
-		return User.api.saveUser(input);
-	};
-
 	User.api.loadSchema().then(function(schema){
 		$scope.schema = schema;
 	});
+
+	if($scope.user_id){
+		User.api.loadUser($scope.user_id);
+	}
+
+
+	// profile saving
+	$scope.profile = function(input){
+		return User.api.saveUser(input);
+	};
+}])
+.controller('UserListController', ['$scope', 'User', function($scope, User){
+	$scope.user = User.data;
+	User.api.listUsers();
+
 }])
 .directive('tnUser', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		scope: {'user_id': '@id'},
+		scope: {'user_id': '@id', 'state': '@'},
 		controller: 'UserController',
 		templateUrl: Theme.getTemplate
 	};
@@ -102,7 +132,14 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme'])
 .directive('tnUserList', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
-		controller: 'UserController',
+		controller: 'UserListController',
+		templateUrl: Theme.getTemplate
+	};
+}])
+.directive('tnUserAdmin', ['Theme', function(Theme){
+	return {
+		restrict: 'E',
+		controller: 'UserListController',
 		templateUrl: Theme.getTemplate
 	};
 }]);

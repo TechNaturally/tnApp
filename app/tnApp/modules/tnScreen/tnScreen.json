@@ -1,4 +1,5 @@
 {
+	"id": "screen",
 	"routes": {
 		"/": {
 			"callback": "load",

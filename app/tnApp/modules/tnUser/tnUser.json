@@ -1,4 +1,5 @@
 {
+	"id": "user",
 	"database": "*",
 	"schema": {
 		"id": "/user",
@@ -53,25 +54,41 @@
 		}
 	},
 	"screens": {
-		"/user": {
-			"3": [
-				{ "type": "widget",
-					"content": "tn-user",
+		"*": {
+			"nav": [
+				{ "type": "link",
+					"path": "/admin/user",
+					"title": "User Admin",
+					"access": ["admin"]
+				}
+			]
+
+		},
+		"/user*": {
+			"nav": [
+				{ "type": "link",
+					"path": "/user",
+					"title": "View Profile",
+					"access": ["user"]
+				},
+				{ "type": "link",
+					"path": "/user/edit",
+					"title": "Edit Profile",
 					"access": ["user"]
 				}
 			]
 		},
-		"/user/:user_id?": {
-			"3": [
+		"/user/:user_id<\\d+>?/:action<view|edit>?": {
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user",
-					"args": {"id": ":user_id"},
+					"args": {"id": ":user_id?!auth_id", "state": ":action?view"},
 					"access": ["user"]
 				}
 			]
 		},
 		"/admin": {
-			"5": [
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user-admin",
 					"access": ["admin"]
@@ -79,15 +96,22 @@
 			]
 		},
 		"/admin/user*": {
-			"9": [
+			"tabs": [
+				{ "type": "widget",
+					"content": "tn-tabs",
+					"args": {"actions": {"/admin/user": "Manage's Users", "/admin/user/add": "Add User"}},
+					"access": ["admin"]
+				}
+			],
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user-list",
 					"access": ["admin"]
 				}
 			]
 		},
-		"/admin/user/:user_id": {
-			"3": [
+		"/admin/user/:user_id<\\d+>": {
+			"page": [
 				{ "type": "widget",
 					"content": "tn-user",
 					"args": {"id": ":user_id"},

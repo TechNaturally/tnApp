@@ -52,7 +52,7 @@ angular.module('tnApp.api', ['tnApp.status', 'angular-md5'])
 					defer.resolve(res);
 				}).
 				error(function(res, status, headers, config) {
-					Status.push('API Error #'+status+' on ['+method+'] \''+path+'\''+(res.msg?': '+res.msg:''), 'error');
+					Status.push('API Error #'+status+' on ['+method+'] \''+path+'\''+((res && res.msg)?': '+res.msg:''), 'error');
 					defer.reject(res.msg?res.msg:'');
 				}).
 				finally(function(){

@@ -1,4 +1,5 @@
 {
+	"id": "email",
 	"routes": {
 		"/valid": {
 			"callback": "valid",

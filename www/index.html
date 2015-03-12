@@ -3,6 +3,8 @@
 	<head>
 		<title>Welcome Home</title>
 
+		<base href="/">
+
 		<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css" type="text/css" />
 		<link rel="stylesheet" href="bower_components/fontawesome/css/font-awesome.min.css" type="text/css" />
 
@@ -11,7 +13,7 @@
 	</head>
 	<body>
 		<div class="container">
-			<h1>Hello World</h1>
+			<a ng-href="/"><h1>Hello World</h1></a>
 
 			<div ng-view></div>
 		</div>
@@ -28,11 +30,18 @@
 		<script type="text/javascript" src="bower_components/angular-md5/angular-md5.min.js"></script>
 		
 		<script type="text/javascript" src="tnApp/modules/tnAPI/tnAPI.module.js"></script>
+
 		<script type="text/javascript" src="tnApp/modules/tnScreen/tnScreen.module.js"></script>
 		<script type="text/javascript" src="tnApp/modules/tnTheme/tnTheme.module.js"></script>
+		<script type="text/javascript" src="tnApp/modules/tnNav/tnNav.module.js"></script>
+
 		<script type="text/javascript" src="tnApp/modules/tnStatus/tnStatus.module.js"></script>
+		<script type="text/javascript" src="tnApp/modules/tnUtility/tnUtility.module.js"></script>
+
 		<script type="text/javascript" src="tnApp/modules/tnState/tnState.module.js"></script>
 		<script type="text/javascript" src="tnApp/modules/tnForm/tnForm.module.js"></script>
+		<script type="text/javascript" src="tnApp/modules/tnTree/tnTree.module.js"></script>
+		
 		<script type="text/javascript" src="tnApp/modules/tnAuth/tnAuth.module.js"></script>
 		<script type="text/javascript" src="tnApp/modules/tnUser/tnUser.module.js"></script>
 

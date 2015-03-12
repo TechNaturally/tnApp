@@ -5,8 +5,8 @@ angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
   $scope.path = $routeParams.path;
 
 }])
-.config(['$routeProvider', 
-  function ($routeProvider) {
+.config(['$routeProvider', '$locationProvider',
+  function ($routeProvider, $locationProvider) {
   	$routeProvider
     .when('/:path*?', {
       title: 'App Screen Handler',
@@ -21,6 +21,8 @@ angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
   	.otherwise({
   		redirectTo: '/'
   	});
+
+    $locationProvider.html5Mode(true);
   }])
 .run(['$rootScope', 'Auth', function($rootScope, Auth) {
   Auth.api.ping();

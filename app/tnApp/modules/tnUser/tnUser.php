@@ -4,7 +4,14 @@ function user_list_get($tn){
 	$res = array();
 	$res_code = 200;
 
-	$res['msg'] = "Hello from user module :)";
+	try{
+		$tn->data->assert('user');
+
+		$users = $tn->data->user()->select('id', 'name', 'email')->fetchPairs('id');
+		$res['users'] = $users;
+		$res['msg'] = count($users).' users found.';
+
+	}catch(Exception $e){ $res['msg'] = $e->getMessage(); }
 
 	$tn->app->render($res_code, $res);
 }
@@ -27,7 +34,7 @@ function user_profile_get($tn, $id){
 			$res['msg'] = 'User not found.';
 		}
 
-	} catch (Exception $e) {}
+	}catch(Exception $e){}
 
 	$tn->app->render($res_code, $res);
 }
@@ -47,7 +54,7 @@ function user_profile_put($tn, $id){
 				$res['msg'] = 'User saved!';
 			}
 
-		} catch(Exception $e){
+		}catch(Exception $e){
 			$res['msg'] = $e->getMessage();
 		}
 	}
