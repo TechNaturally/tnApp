@@ -29,8 +29,21 @@ class Security extends \Slim\Middleware {
 		if($rules===TRUE){
 			return TRUE;
 		}
-		if(!empty($_SESSION['user'])){
-			foreach($rules as $credential){
+
+		foreach($rules as $credential){
+			if($credential[0] == '^'){
+				// anti-access
+				$credential = substr($credential, 1);
+				if(empty($_SESSION['user'])){
+					return TRUE;
+				}
+				else if(is_array($_SESSION['user']['roles'])){
+					// true if the anti-role is not found in the role
+					return !in_array($credential, $_SESSION['user']['roles']);
+				}
+			}
+			else if(!empty($_SESSION['user'])){
+				// access check against logged in user
 				if($credential == 'user'){
 					return TRUE;
 				}
