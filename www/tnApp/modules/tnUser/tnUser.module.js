@@ -30,7 +30,7 @@ angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility'])
 				defer.resolve(data.list);
 			}
 			else{
-				API.get('/user').then(function(res){
+				API.get('/user', {silent: true}).then(function(res){
 					if(!res.error && angular.isDefined(res.users)){
 						angular.forEach(res.users, function(user, id){
 							if(!data.list[id]){
