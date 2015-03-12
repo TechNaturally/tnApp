@@ -1,4 +1,4 @@
-angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnApp.tree'])
+angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnApp.tree', 'tnApp.nav'])
 .factory('Screen', ['$q', 'API', function($q, API){
 	
 	var api = {
@@ -37,7 +37,14 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 					var area_errors;
 					if(area == 'nav'){
 						var navTree = Tree.arrayToTree(contents);
-						console.log('Tree:'+JSON.stringify(navTree));
+						var valueKey = area+'_'+md5.createHash(angular.toJson(navTree, false));
+						valueKey = valueKey.replace(/-/g, '_');
+						scope[valueKey] = navTree;
+						if(scope.path.charAt(0) != '/'){
+							scope.path = '/'+scope.path;
+						}
+						var cont_elem = angular.element('<tn-nav tree="'+valueKey+'" active="{{path}}"></tn-nav>');
+						area_container.append(cont_elem);
 					}
 					else{
 						angular.forEach(contents, function(data, index){
@@ -57,7 +64,6 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 									}
 								});
 								var cont_elem = angular.element('<'+data.content+args+'></'+data.content+'>');
-								$compile(cont_elem)(scope);
 								area_container.append(cont_elem);
 							}
 							else if(data.type == 'error'){
@@ -69,6 +75,7 @@ angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnAp
 							}
 						});
 					}
+					$compile(area_container)(scope);
 					elem.append(area_container);
 				});
 			});

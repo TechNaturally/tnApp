@@ -6,3 +6,7 @@
 	display: inline-block;
 	margin-right: 10px;
 }
+
+.nav .active > a {
+	font-weight: bold;
+}

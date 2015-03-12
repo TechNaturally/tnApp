@@ -1,0 +1,12 @@
+<div class="nav">
+	<script type="text/ng-template" id="tn-nav-item.html">
+	<a ng-href="{{path}}">{{item.title}}</a>
+	<ul ng-if="item.child">
+        <li ng-repeat="(path, item) in item.child" ng-include="'tn-nav-item.html'" ng-class="{active: path==active}"></li>
+    </ul>
+	</script>
+
+	<ul>
+		<li ng-repeat="(path, item) in tree.child" ng-include="'tn-nav-item.html'" ng-class="{active: path==active}"></li>
+	</ul>
+</div>
