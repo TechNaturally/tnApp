@@ -5,8 +5,8 @@
 
 		<base href="/">
 
-		<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css" type="text/css" />
-		<link rel="stylesheet" href="bower_components/fontawesome/css/font-awesome.min.css" type="text/css" />
+		<!-- bower:css -->
+		<!-- endbower -->
 
 		<link rel="stylesheet" href="theme/demo.css" type="text/css" />
 
@@ -18,13 +18,12 @@
 			<div ng-view></div>
 		</div>
 
-
+		<!-- build:js scripts/vendor.js -->
 		<!-- bower:js -->
 		<!-- endbower -->
-
+		<!-- endbuild -->
+		<!-- build:js scripts/app.js -->
 		<!-- include: "type":"js", "files":["tnApp/**/*.mdl.js", "tnApp/**/*.js", "!tnApp/app.js", "tnApp/app.js"] -->
-
-		<script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
-		<script type="text/javascript" src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+		<!-- endbuild -->
 	</body>
 </html>
