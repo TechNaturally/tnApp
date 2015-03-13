@@ -1,0 +1,12 @@
+{
+  "name": "tnApp",
+  "version": "0.0.2",
+  "description": "TechNaturally App",
+  "author": "plong0 <pat@technaturally.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-include-source": "^0.5.0",
+    "grunt-wiredep": "^2.0.0"
+  }
+}

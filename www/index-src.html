@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html ng-app="tnApp">
+	<head>
+		<title>Welcome Home</title>
+
+		<base href="/">
+
+		<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css" type="text/css" />
+		<link rel="stylesheet" href="bower_components/fontawesome/css/font-awesome.min.css" type="text/css" />
+
+		<link rel="stylesheet" href="theme/demo.css" type="text/css" />
+
+	</head>
+	<body>
+		<div class="container">
+			<a ng-href="/"><h1>Hello World</h1></a>
+
+			<div ng-view></div>
+		</div>
+
+
+		<!-- bower:js -->
+		<!-- endbower -->
+
+		<!-- include: "type":"js", "files":["tnApp/**/*.mdl.js", "tnApp/**/*.js", "!tnApp/app.js", "tnApp/app.js"] -->
+
+		<script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
+		<script type="text/javascript" src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+	</body>
+</html>
