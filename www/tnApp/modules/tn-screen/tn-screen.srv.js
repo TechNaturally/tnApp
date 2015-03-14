@@ -9,18 +9,31 @@ angular.module('tnApp.screen')
 
 	return {
 		addScreenContent: function(screens){
-			// TODO: implement this to merge them
-			data.screens = screens;
+			angular.forEach(screens, function(screen, path){
+				if(angular.isUndefined(data.screens[path])){
+					data.screens[path] = {};
+				}
+				angular.forEach(screen, function(content, area){
+					if(angular.isUndefined(data.screens[path][area])){
+						data.screens[path][area] = content;
+					}
+					else{
+						data.screens[path][area] = data.screens[path][area].concat(content);
+					}
+				});
+			});
 		},
 		$get: ['$q', 'API', function($q, API){
 
 			var api = {
 				load: function(path){
 					var defer = $q.defer();
-					/**API.get('/screen', {data: {path: path}}).then(function(res){
+					/** original concept which loads screen contents from server, we do what api/screen does right down here
+					API.get('/screen', {data: {path: path}}).then(function(res){
 						defer.resolve(res.content);
 					});
-		*/
+					*/
+
 					if(!path){
 						path = '/';
 					}
@@ -31,7 +44,7 @@ angular.module('tnApp.screen')
 
 					//console.log('we have:'+JSON.stringify(data.screens));
 
-					var screens = {};
+					var screen = {};
 
 					angular.forEach(data.screens, function(contents, screen_path){
 						var path_rxp = screen_path;
@@ -41,7 +54,7 @@ angular.module('tnApp.screen')
 						args_rxp = args_rxp.replace(/\//g, '\\/'); // allow slashes
 						path_rxp = path_rxp.replace(/\//g, '\\/'); // allow slashes
 
-						// replace :args<rx_pattern>? with regular expression, extracting the arg name into arg_map
+						// replace :args<rx_pattern>? patterns with regular expression, extracting the arg name into arg_map
 						var arg_map = [];
 						var args_rx = new RegExp('^'+args_rxp+'$');
 						var arg_match = args_rx.exec(screen_path);
@@ -84,7 +97,7 @@ angular.module('tnApp.screen')
 									angular.forEach(content, function(content_data, content_idx){
 										// skip if it is hidden on this path
 										if(angular.isDefined(content_data.hide) && content_data.hide){
-											/** TODO: implement as JS
+											/** TODO: implement as JS (hidden content)
 
 											$hidden_paths = array_filter($content_data->hide, function($hide_path) use ($path){
 												$hide_path = str_replace('\*', '.*', $hide_path);
@@ -128,7 +141,7 @@ angular.module('tnApp.screen')
 												}
 
 												// special arg values
-												/** TODO: implement as JS
+												/** TODO: implement as JS (auth_id)
 												if($arg_value == '!auth_id' && function_exists('auth_session_check')){
 													$auth_user = auth_session_check();
 													$arg_value = ($auth_user && isset($auth_user['id']))?$auth_user['id']:'';
@@ -145,7 +158,7 @@ angular.module('tnApp.screen')
 										if(angular.isDefined(content_data.access) && content_data.access){
 											// need to check the security
 										}
-										/** TODO: implement as JS
+										/** TODO: implement as JS (content security)
 										if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
 											$content[$content_idx] = NULL;
 											continue;
@@ -154,18 +167,12 @@ angular.module('tnApp.screen')
 									});
 
 									// add the content to the screen sorted into areas
-									console.log('*'+area+'*: '+JSON.stringify(content));
-									/** TODO: implement as JS
-									$content = array_filter($content);
-									if(!empty($content)){
-										if(!isset($screen[$area])){
-											$screen[$area] = $content;
-										}
-										else{
-											$screen[$area] = array_merge($screen[$area], $content);
-										}
+									if(!angular.isDefined(screen[area])){
+										screen[area] = content;
 									}
-									*/
+									else{
+										screen[area] = screen[area].concat(content);
+									}
 								}
 							});
 
@@ -175,9 +182,10 @@ angular.module('tnApp.screen')
 
 					});
 
+					console.log(' ');
+					console.log('SCREEN:'+JSON.stringify(screen));
 
-
-					defer.resolve(screens);
+					defer.resolve(screen);
 					return defer.promise;
 				}
 			};
