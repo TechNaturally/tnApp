@@ -1,4 +1,4 @@
-angular.module('tnApp.api', ['tnApp.status', 'angular-md5'])
+angular.module('tnApp.api')
 .factory('API', ['$http', '$q', 'md5', 'Status', function($http, $q, md5, Status){
 	var requests = {};
 
