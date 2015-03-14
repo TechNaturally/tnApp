@@ -40,7 +40,7 @@ angular.module('tnApp.theme')
 				}
 				if(angular.isUndefined(module)){
 					var typeSplit = type.split('-');
-					var module = typeSplit.slice(0, 2).join('-');
+					module = typeSplit.slice(0, 2).join('-');
 					module = attr.$normalize(module);
 				}
 

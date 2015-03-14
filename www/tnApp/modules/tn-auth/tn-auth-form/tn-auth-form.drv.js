@@ -15,7 +15,7 @@ angular.module('tnApp.auth')
 
 				API.get('/auth/available', {data: {username: value}, silent: true}).then(function(res){
 					if(res.available){
-						delete error;
+						error = null;
 						defer.resolve(true);
 					}
 					else{
@@ -58,7 +58,7 @@ angular.module('tnApp.auth')
 					error = { code: 'match', message: 'Passwords do not match.' };
 					return false;
 				}
-				delete error;
+				error = null;
 				return true;
 			};
 		}

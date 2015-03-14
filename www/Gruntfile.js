@@ -41,7 +41,7 @@ module.exports = function(grunt) {
 		},
 
 		jshint: {
-			all: ['Gruntfile.js', '**/*.js'],
+			all: ['Gruntfile.js', '**/*.js', '!bower_components/**/*.js', '!node_modules/**/*.js'],
 			deploy: ['dist/scripts/app.js']
 		},
 
@@ -77,7 +77,7 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-wiredep');
 
 	grunt.registerTask('dev', ['clean:dev', 'includeSource:dev', 'wiredep:dev']);
-	grunt.registerTask('deploy', ['clean:dist', 'jshint:all', 'includeSource:deploy', 'wiredep:deploy', 'useminPrepare:deploy', 'concat', 'uglify', 'usemin:deploy', 'clean:tmp', 'copy:deploy', 'jshint:deploy']);
+	grunt.registerTask('deploy', ['clean:dist', 'jshint:all', 'includeSource:deploy', 'wiredep:deploy', 'useminPrepare:deploy', 'concat', 'uglify', 'usemin:deploy', 'clean:tmp', 'copy:deploy']);
 
-	grunt.registerTask('default', ['dev'])
+	grunt.registerTask('default', ['dev']);
 };
