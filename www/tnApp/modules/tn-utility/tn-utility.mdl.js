@@ -1,0 +1,1 @@
+angular.module('tnApp.utility', ['tnApp.theme']);
