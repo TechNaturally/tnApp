@@ -1,4 +1,4 @@
-angular.module('tnApp.state', [])
+angular.module('tnApp.state')
 .directive('tnState', function(){
 	return {
 		restrict: 'A',
