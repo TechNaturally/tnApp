@@ -1,31 +1,10 @@
-angular.module('tnApp.screen', ['tnApp.api', 'tnApp.theme', 'angular-md5', 'tnApp.tree', 'tnApp.nav'])
-.factory('Screen', ['$q', 'API', function($q, API){
-	
-	var api = {
-		load: function(path){
-			var defer = $q.defer();
-			API.get('/screen', {data: {path: path}}).then(function(res){
-				defer.resolve(res.content);
-			});
-			return defer.promise;
-		}
-	}
-
-	return {
-		api: api
-	};
-}])
-.controller('ScreenController', ['$scope', 'Screen', function($scope, Screen){
-	Screen.api.load($scope.path).then(function(content){
-		$scope.content = content;
-	});
-}])
+angular.module('tnApp.screen')
 .directive('tnScreen', ['Theme', '$compile', '$injector', 'md5', 'Tree', function(Theme, $compile, $injector, md5, Tree){
 	return {
 		restrict: 'E',
 		scope: {'path': '@'},
 		controller: 'ScreenController',
-		templateUrl: Theme.getTemplate,
+		templateUrl: 'tnApp/modules/tn-screen/tn-screen.tpl.html',
 		link: function(scope, elem, attr){
 			scope.$watch('content', function(content){
 				elem.empty();
