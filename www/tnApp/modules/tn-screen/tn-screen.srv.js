@@ -9,6 +9,7 @@ angular.module('tnApp.screen')
 
 	return {
 		addScreenContent: function(screens){
+			// TODO: implement this to merge them
 			data.screens = screens;
 		},
 		$get: ['$q', 'API', function($q, API){
@@ -152,7 +153,7 @@ angular.module('tnApp.screen')
 										*/
 									});
 
-									// add the prioritized content to the screen
+									// add the content to the screen sorted into areas
 									console.log('*'+area+'*: '+JSON.stringify(content));
 									/** TODO: implement as JS
 									$content = array_filter($content);
