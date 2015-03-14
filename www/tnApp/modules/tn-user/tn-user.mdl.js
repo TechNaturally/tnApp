@@ -1,0 +1,1 @@
+angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility']);
