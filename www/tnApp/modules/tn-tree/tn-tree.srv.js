@@ -1,4 +1,4 @@
-angular.module('tnApp.tree', [])
+angular.module('tnApp.tree')
 .factory('Tree', function(){
 	return {
 		arrayToTree: function(input){
