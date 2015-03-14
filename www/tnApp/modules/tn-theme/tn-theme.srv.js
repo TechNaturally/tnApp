@@ -1,4 +1,4 @@
-angular.module('tnApp.theme', [])
+angular.module('tnApp.theme')
 .factory('Theme', ['$q', '$http', function($q, $http){
 	// config with theme paths
 	var themeBase = '/theme';
