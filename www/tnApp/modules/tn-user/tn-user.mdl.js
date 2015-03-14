@@ -1,1 +1,1 @@
-angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.utility']);
+angular.module('tnApp.user', ['tnApp.api', 'tnApp.theme', 'tnApp.screen', 'tnApp.utility']);

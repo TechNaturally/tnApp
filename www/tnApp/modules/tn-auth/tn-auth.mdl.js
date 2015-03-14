@@ -1,1 +1,1 @@
-angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'tnApp.form', 'angular-hmac-sha512']);
+angular.module('tnApp.auth', ['tnApp.api', 'tnApp.theme', 'tnApp.screen', 'tnApp.status', 'tnApp.state', 'tnApp.user', 'tnApp.form', 'angular-hmac-sha512']);
