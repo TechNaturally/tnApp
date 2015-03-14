@@ -1,8 +1,8 @@
-angular.module('tnApp.nav', [])
+angular.module('tnApp.nav')
 .directive('tnNav', ['Theme', function(Theme){
 	return {
 		restrict: 'E',
 		scope: {'tree': '=', 'active': '@'},
-		templateUrl: Theme.getTemplate
+		templateUrl: 'tnApp/modules/tn-nav/tn-nav.tpl.html'
 	};
 }]);
