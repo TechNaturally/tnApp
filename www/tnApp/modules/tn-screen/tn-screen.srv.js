@@ -76,11 +76,7 @@ angular.module('tnApp.screen')
 						var path_rx = new RegExp('^'+path_rxp+'$');
 						var path_match = path_rx.exec(path);
 						if(path_match && path_match.length){
-							path_match.shift();
-
-							console.log(' ');
-							console.log('matched:'+screen_path);
-							//console.log('with:'+JSON.stringify(path_match));
+							path_match.shift(); // remove the overall pattern match
 
 							// map any matched arg values with their name
 							var args = {};
@@ -88,32 +84,38 @@ angular.module('tnApp.screen')
 								args[arg_name] = (arg_index*2+1 < path_match.length)?path_match[arg_index*2+1]:'';
 							});
 
-							console.log('args:'+JSON.stringify(args));
+							//console.log(' ');
+							//console.log('matched:'+screen_path);
+							//console.log('with:'+JSON.stringify(path_match));
+							//console.log('args:'+JSON.stringify(args));
 
 							// add the content sorted by area
 							angular.forEach(contents, function(content, area){
 								if(content){
 									// for each piece of content
+									var screen_content = [];
 									angular.forEach(content, function(content_data, content_idx){
 										// skip if it is hidden on this path
 										if(angular.isDefined(content_data.hide) && content_data.hide){
-											/** TODO: implement as JS (hidden content)
-
-											$hidden_paths = array_filter($content_data->hide, function($hide_path) use ($path){
-												$hide_path = str_replace('\*', '.*', $hide_path);
-												$hide_path = str_replace('/', '\\/', $hide_path);
-												return preg_match("/^$hide_path$/", $path);
+											var hide = false;
+											angular.forEach(content_data.hide, function(hide_path){
+												if(!hide){
+													hide_path = hide_path.replace(/\*/g, '.*');
+													hide_path = hide_path.replace(/\//g, '\\/');
+													var hide_path_rx = new RegExp('^'+hide_path+'$');
+													if(hide_path_rx.test(path)){
+														hide = true;
+													}
+												}
 											});
-											if(!empty($hidden_paths)){
-												$content[$content_idx] = NULL;
-												continue;
+											if(hide){
+												content_data = null;
 											}
-											*/
 										}
 
 										// add the name-mapped args
 										var data_args = {};
-										if(angular.isDefined(content_data.args) && content_data.args){
+										if(content_data && angular.isDefined(content_data.args) && content_data.args){
 											angular.forEach(content_data.args, function(arg_data, data_arg){
 												var arg_value = null;
 
@@ -155,7 +157,7 @@ angular.module('tnApp.screen')
 										}
 
 										// check security access for this content
-										if(angular.isDefined(content_data.access) && content_data.access){
+										if(content_data && angular.isDefined(content_data.access) && content_data.access){
 											// need to check the security
 										}
 										/** TODO: implement as JS (content security)
@@ -164,26 +166,23 @@ angular.module('tnApp.screen')
 											continue;
 										}
 										*/
+
+										if(content_data){
+											screen_content.push(content_data);
+										}
 									});
 
 									// add the content to the screen sorted into areas
 									if(!angular.isDefined(screen[area])){
-										screen[area] = content;
+										screen[area] = screen_content;
 									}
 									else{
-										screen[area] = screen[area].concat(content);
+										screen[area] = screen[area].concat(screen_content);
 									}
 								}
 							});
-
-
 						}
-
-
 					});
-
-					console.log(' ');
-					console.log('SCREEN:'+JSON.stringify(screen));
 
 					defer.resolve(screen);
 					return defer.promise;
