@@ -42,8 +42,6 @@ angular.module('tnApp.screen')
 					}
 					console.log('hello screen load:'+path);
 
-					//console.log('we have:'+JSON.stringify(data.screens));
-
 					var screen = {};
 
 					angular.forEach(data.screens, function(contents, screen_path){
@@ -196,31 +194,3 @@ angular.module('tnApp.screen')
 		}]
 	};
 });
-
-/**.provider('Screen', ['$q', 'API', function($q, API){
-//.factory('Screen', ['$q', 'API', function($q, API){
-
-	// TOOD: implement screenProvider - inject into module configs and add screens from module's screens.json
-	// TODO: imlement Screen service which does the loading part here...
-	// TODO: - port PHP Screen into Screen service
-
-	//return {
-		this.$get: function(){
-			var api = {
-				load: function(path){
-					var defer = $q.defer();
-					API.get('/screen', {data: {path: path}}).then(function(res){
-						defer.resolve(res.content);
-					});
-					return defer.promise;
-				}
-			}
-
-			return {
-				api: api
-			};
-		};
-	//}
-	
-	
-}]);*/
