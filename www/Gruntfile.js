@@ -40,6 +40,11 @@ module.exports = function(grunt) {
 			}
 		},
 
+		jshint: {
+			all: ['Gruntfile.js', '**/*.js'],
+			deploy: ['dist/scripts/app.js']
+		},
+
 		useminPrepare: {
 			deploy: {
 				src: 'dist/index.html'
@@ -65,13 +70,14 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-clean');
 	grunt.loadNpmTasks('grunt-contrib-concat');
 	grunt.loadNpmTasks('grunt-contrib-copy');
+	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-uglify');
 	grunt.loadNpmTasks('grunt-include-source');
 	grunt.loadNpmTasks('grunt-usemin');
 	grunt.loadNpmTasks('grunt-wiredep');
 
 	grunt.registerTask('dev', ['clean:dev', 'includeSource:dev', 'wiredep:dev']);
-	grunt.registerTask('deploy', ['clean:dist', 'includeSource:deploy', 'wiredep:deploy', 'useminPrepare:deploy', 'concat', 'uglify', 'usemin:deploy', 'clean:tmp', 'copy:deploy']);
+	grunt.registerTask('deploy', ['clean:dist', 'jshint:all', 'includeSource:deploy', 'wiredep:deploy', 'useminPrepare:deploy', 'concat', 'uglify', 'usemin:deploy', 'clean:tmp', 'copy:deploy', 'jshint:deploy']);
 
 	grunt.registerTask('default', ['dev'])
 };
