@@ -4,6 +4,6 @@ angular.module('tnApp.auth')
 		restrict: 'E',
 		scope: { state: '@' },
 		controller: 'AuthController',
-		templateUrl: templateUrl: 'tnApp/modules/tn-auth/tn-auth.tpl.html'
+		templateUrl: 'tnApp/modules/tn-auth/tn-auth.tpl.html'
 	};
 }]);
