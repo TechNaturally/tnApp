@@ -54,7 +54,7 @@ class Data extends NotORM {
 			'save' => (!empty($config->save))?(array)$config->save:"*"
 		);
 
-/**
+
 		$listFields = $this->getFields($type, 'list');
 		$loadFields = $this->getFields($type, 'load');
 		$saveFields = $this->getFields($type, 'save');
@@ -62,7 +62,6 @@ class Data extends NotORM {
 		print "$type:list=><pre>".print_r($listFields,true)."</pre>\n\n";
 		print "$type:load=><pre>".print_r($loadFields,true)."</pre>\n\n";
 		print "$type:save=><pre>".print_r($saveFields,true)."</pre>\n\n";
-		*/
 	}
 
 	public function getFields($type, $mode){
@@ -70,7 +69,7 @@ class Data extends NotORM {
 			$structure = ($mode=='save');
 
 			// handle wildcarding
-			if($this->fields[$type][$mode][0] == "*"){
+			if(isset($this->fields[$type][$mode][0]) && $this->fields[$type][$mode][0] == "*"){
 				if($schema = $this->getSchema($type)){
 					if(!empty($schema->properties)){
 						$keys = array_keys((array)$schema->properties);
@@ -83,8 +82,23 @@ class Data extends NotORM {
 				}
 			}
 
-			// if we want the field structure
-			if($structure && is_array($this->fields[$type][$mode])){
+			// if we want the field structures
+			if($structure){
+				// force id field to be first
+				if(array_keys($this->fields[$type][$mode])[0] != 'id'){
+					if(array_key_exists('id', $this->fields[$type][$mode])){
+						$id = $this->fields[$type][$mode]['id'];
+						unset($this->fields[$type][$mode]['id']);
+					}
+					else{
+						$id = TRUE;
+					}
+					$fields = array_reverse($this->fields[$type][$mode]);
+					$fields['id'] = $id;
+					$this->fields[$type][$mode] = array_reverse($fields);
+				}
+
+				// load in structures for any fields that are flagged "TRUE"
 				$unstructured = array_filter($this->fields[$type][$mode], function($value){ return ($value===TRUE); });
 				if(count($unstructured)){
 					if($schema = $this->getSchema($type)){
@@ -96,7 +110,17 @@ class Data extends NotORM {
 					}
 				}
 			}
+			else{
+				// force id to be first in non-structured field lists
+				if($this->fields[$type][$mode][0] != 'id'){
+					$id_idx = array_search('id', $this->fields[$type][$mode]);
+					if($id_idx !== FALSE){
+						unset($this->fields[$type][$mode][$id_idx]);
+					}
+					array_unshift($this->fields[$type][$mode], 'id');
+				}
 
+			}
 			return $this->fields[$type][$mode];
 		}
 		return NULL;
@@ -149,9 +173,12 @@ class Data extends NotORM {
 
 	public function create($table){
 		try {
-			if($tableSchema = $this->getTableSchema($table)){
+			if($fields = $this->getFields($table, 'save')){
+//				print "create $table with fields:<pre>".print_r($fields,TRUE)."</pre>";
+
+
 				// we can check against $this->connection_type (== 'mysql') for different db providers
-				if($sql_cols = $this->sql_column_defs($tableSchema, $table)){
+/**				if($sql_cols = $this->sql_column_defs($tableSchema, $table)){
 					if(!empty($sql_cols['definition'])){
 						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
 						$this->connection->exec($sql);
@@ -164,6 +191,7 @@ class Data extends NotORM {
 						return TRUE;
 					}
 				}
+				*/
 			}
 		} catch (Exception $e) {
 			throw $e;
