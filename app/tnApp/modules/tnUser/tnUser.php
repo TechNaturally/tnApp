@@ -34,7 +34,12 @@ function user_profile_get($tn, $id){
 			$res['msg'] = 'User not found.';
 		}
 
-	}catch(Exception $e){}
+	}catch(Exception $e){
+		// EXAMPLE OF ERROR BUBBLING
+		$res_code = 500;
+		$res['msg'] = $e->getMessage();
+		$res['error'] = TRUE;	
+	}
 
 	$tn->app->render($res_code, $res);
 }
@@ -73,7 +78,7 @@ function user_get_user($tn, $id, $field='id'){
 			}
 			return $user;
 		}
-	} catch (Exception $e) {}
+	} catch (Exception $e) { throw $e; }
 	return NULL;
 }
 
