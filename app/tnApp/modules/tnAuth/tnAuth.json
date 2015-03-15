@@ -1,5 +1,41 @@
 {
 	"id": "auth",
+	"data": {
+		"list": ["username", "email"],
+		"load": ["email", "username"],
+		"save": ["username", "email", "hash"],
+		"schema": {
+			"id": "/auth",
+			"type": "object",
+			"properties": {
+				"email": {
+					"title": "Email",
+					"type": "string",
+					"minLength": 16,
+					"maxLength": 255
+				},
+				"username": {
+					"title": "Username",
+					"type": "string",
+					"minLength": 5,
+					"maxLength": 128
+				},
+				"password": {
+					"title": "Password",
+					"type": "string",
+					"minLength": 6,
+					"maxLength": 32,
+					"required": true
+				},
+				"hash": {
+					"type": "string",
+					"minLength": 101,
+					"maxLength": 101,
+					"required": true
+				}
+			}
+		}
+	},
 	"database": { "email": true , "username": true, "hash": true },
 	"schema": {
 		"id": "/auth",

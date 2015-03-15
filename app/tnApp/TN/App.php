@@ -50,9 +50,12 @@ class App {
 	}
 
 	protected function init_data($config){
+		// initialize data manager
 		$this->data = new \TN\Data($config);
+
+		// add a route for requesting the schema
 		$this->app->get('/schema/:id', function($id){
-			$schema = $this->data->getSchema('/'.$id);
+			$schema = $this->data->getSchema($id);
 			if($schema){
 				$this->deliver_schema($schema);
 			}
@@ -110,6 +113,7 @@ class App {
 				$module_id = $module->id;
 			}
 
+/**
 			// set the database fields
 			if(!empty($module->database)){
 				$this->data->addTableFields($module_id, $module->database);
@@ -119,6 +123,13 @@ class App {
 			if(!empty($module->schema)){
 				$this->data->addSchema('/'.$module_id, $module->schema);
 			}
+
+			*/
+			if(!empty($module->data)){
+				$this->data->addType($module_id, $module->data);
+			}
+
+
 
 			// load the routes
 			if(!empty($module->routes)){
