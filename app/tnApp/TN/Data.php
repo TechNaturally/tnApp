@@ -51,10 +51,12 @@ class Data extends NotORM {
 		$this->fields[$type] = array(
 			'list' => (!empty($config->list))?(array)$config->list:"*",
 			'load' => (!empty($config->load))?(array)$config->load:"*",
-			'save' => (!empty($config->save))?(array)$config->save:"*"
+			'save' => (!empty($config->save))?(array)$config->save:"*",
+			'refs' => NULL
 		);
 
 
+/**
 		$listFields = $this->getFields($type, 'list');
 		$loadFields = $this->getFields($type, 'load');
 		$saveFields = $this->getFields($type, 'save');
@@ -62,6 +64,7 @@ class Data extends NotORM {
 		print "$type:list=><pre>".print_r($listFields,true)."</pre>\n\n";
 		print "$type:load=><pre>".print_r($loadFields,true)."</pre>\n\n";
 		print "$type:save=><pre>".print_r($saveFields,true)."</pre>\n\n";
+		*/
 	}
 
 	public function getFields($type, $mode){
@@ -126,6 +129,18 @@ class Data extends NotORM {
 		return NULL;
 	}
 
+	public function getRefFields($type){
+		$mode = 'refs';
+		if($this->fields[$type][$mode] === NULL){
+			$this->fields[$type][$mode] = array();
+			if($fields = $this->getFields($type, 'save')){
+				$refFields = array_filter($fields, function($field){ return isset($field->{'$ref'}); });
+				$this->fields[$type][$mode] = array_keys($refFields);
+			}
+		}
+		return $this->fields[$type][$mode];
+	}
+
 	public function getSchema($type){
 		if(empty($type)){ return NULL; }
 		if($type[0] != '/'){ $type = '/'.$type; }
@@ -174,24 +189,25 @@ class Data extends NotORM {
 	public function create($table){
 		try {
 			if($fields = $this->getFields($table, 'save')){
-//				print "create $table with fields:<pre>".print_r($fields,TRUE)."</pre>";
-
-
+				//print "create $table with fields:<pre>".print_r($fields,TRUE)."</pre>";
+				print "\n";
+				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
-/**				if($sql_cols = $this->sql_column_defs($tableSchema, $table)){
+				if($sql_cols = $this->sql_column_defs($fields, $table)){
 					if(!empty($sql_cols['definition'])){
-						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-						$this->connection->exec($sql);
+						$sql = "CREATE TABLE `$table`(".str_replace(", ", ", \n", $sql_cols['definition']).")";
+						//$this->connection->exec($sql);
+						print "SQL:$sql\n\n";
 						if(!empty($sql_cols['relations'])){
 							foreach($sql_cols['relations'] as $relTable => $relTable_def){
-								$sql = "CREATE TABLE `$relTable`(".$relTable_def.")";
-								$this->connection->exec($sql);
+								$sql = "CREATE TABLE `$relTable`(".str_replace(", ", ", \n", $relTable_def).")";
+								//$this->connection->exec($sql);
+								print "REL_SQL:$sql\n\n";
 							}
 						}
 						return TRUE;
 					}
 				}
-				*/
 			}
 		} catch (Exception $e) {
 			throw $e;
@@ -199,6 +215,158 @@ class Data extends NotORM {
 		
 		throw new DataException("Could not create table: $table");
 		return FALSE;
+	}
+
+	protected function sql_column_def($field_id, $field){
+		$col_def = '';
+		$key_def = NULL;
+
+		/** JSON types:
+				array - A JSON array.
+				boolean - A JSON boolean.
+				integer - A JSON number without a fraction or exponent part.
+				number - Any JSON number. Number includes integer.
+				null - The JSON null value.
+				object - A JSON object.
+				string - A JSON string.
+		*/
+
+		if($field_id == 'id' && !isset($field->minValue)){
+			$field->minValue = 0;
+		}
+
+		
+		if(isset($field->{'$ref'})){
+			// reference fields create a Foreign Key
+			// TODO: to handle FK refs on fields besides id, we could retrieve the type from the $ref'ed schema
+			$col_def = "`$field_id` INT UNSIGNED";
+			$ref_path = $field->{'$ref'};
+			if($ref_path[0] == '/'){
+				$ref_path = substr($ref_path, 1);
+			}
+			$ref_split = explode('/', $ref_path);
+			if(count($ref_split)){
+				$ref_table = $ref_split[0];
+				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE ".(!empty($field->required)?"CASCASE":"SET NULL");
+			}
+		}
+		else if(isset($field->type)){
+			if($field->type == 'boolean'){
+				$col_def = "`$field_id` TINYINT(1)";
+			}
+			else if($field->type == 'integer'){
+				$col_def = "`$field_id` INT";
+				if(isset($field->minValue) && $field->minValue >= 0){
+					$col_def .= " UNSIGNED";
+				}
+			}
+			else if($field->type == 'number'){
+				$col_def = "`$field_id` FLOAT";
+			}
+			else if($field->type == 'string'){
+				$col_def = "`$field_id`";
+				if(isset($field->maxLength) && $field->maxLength <= 255){
+					if(isset($field->minLength) && $field->minLength == $field->maxLength){
+						// fixed-length strings
+						$col_def .= " CHAR(".$field->maxLength.")";
+					}
+					else{
+						$col_def .= " VARCHAR(".$field->maxLength.")";
+					}
+				}
+				else{
+					$col_def .= " TEXT";
+				}
+			}
+		}
+
+		if($field_id == 'id' && isset($field->type) && $field->type == 'integer'){
+			$col_def .= " AUTO_INCREMENT PRIMARY KEY";
+		}
+
+		if(isset($field->required) && $field->required){
+			$col_def .= " NOT NULL";
+		}
+
+		return (($col_def || $key_def)?array('column' => $col_def, 'keys' => $key_def):NULL);
+	}
+
+	protected function sql_column_defs($fields, $basename='', $parent=''){
+		$sql_cols = "";
+		$sql_keys = "";
+		$rel_tables = array();
+		$prepend_basename = ($basename && substr($basename, -1) == '.'); //strpos('.', $basename) == strlen($basename)-1); //
+
+		foreach($fields as $field_id => $field){
+			//print "check $field_id for $basename OF '$parent'\n";
+			if($prepend_basename && $field_id != 'id' && !(isset($field->type) && $field->type == 'array')){ $field_id = $basename.$field_id; }
+
+			/**
+			"type": "object",
+									"properties": {
+										"front": { "type": "number" },
+										"center": { "type": "array", "items": { "type": "number" } },
+										"rear": { "type": "number" }
+									}
+			*/
+
+			if(isset($field->type) && $field->type == 'array' && isset($field->items)){
+				// array fields turn into a one-to-many table
+				
+				if($parent){
+					$basename_save = $basename;
+					if($prepend_basename){
+						$basename = "$parent.".substr($basename, 0, -1);
+					}
+
+				}
+				$relTable = (($parent || !$prepend_basename)?"$basename.":"")."$field_id";
+
+				$rel_fields = array();
+				$rel_fields['id'] = (object)array( 'type' => 'integer', 'minValue' => 0 );
+				$rel_fields["$basename.id"] = (object)array('$ref' => "/$basename/id", "required" => TRUE);
+				$rel_fields[$field_id] = $field->items;
+
+				$rel_cols = $this->sql_column_defs($rel_fields, $basename);
+
+				if(!empty($rel_cols['definition'])){
+					$rel_tables[$relTable] = $rel_cols['definition'];
+					if(!empty($rel_cols['relations'])){
+						$rel_tables = array_merge($rel_tables, $rel_cols['relations']);
+					}
+				}
+
+				if(!empty($basename_save)){
+					$basename = $basename_save;
+				}
+
+			}
+			else if(isset($field->type) && $field->type == 'object' && isset($field->properties)){
+				// object fields recursively flatten into multiple-columns
+				$object_cols = $this->sql_column_defs($field->properties, "$field_id.", $basename);
+				if(!empty($object_cols['definition'])){
+					$sql_cols .= ($sql_cols?", ":"").$object_cols['definition'];
+					if(!empty($object_cols['relations'])){
+						$rel_tables = array_merge($rel_tables, $object_cols['relations']);
+					}
+				}
+			}
+			else if($col_def = $this->sql_column_def($field_id, $field)){
+				// non-array fields can be generated by sql_column_def
+				if(!empty($col_def['column'])){
+					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+				}
+				if(!empty($col_def['keys'])){
+					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
+				}
+			}
+		}
+
+		// add any key constraints to the end of the column definition list
+		if($sql_keys){
+			$sql_cols .= ($sql_cols?", ":"").$sql_keys;
+		}
+		return array('definition' => $sql_cols, 'relations' => $rel_tables);
 	}
 
 	/** MySql specific functions **/

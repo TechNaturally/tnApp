@@ -15,13 +15,47 @@
 				"role": {
 					"title": "Roles",
 					"type": "array",
-					"items": {"type": "string"}
+					"items": {"type": "string", "maxLength": 50, "required": true }
+				},
+				"roller": {
+					"title": "Rollers",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"blades": { "type": "integer" },
+							"skates": {
+								"type": "object",
+								"properties": {
+									"strap": { "type": "string" },
+									"boot": { "type": "string" }
+								}
+							},
+							"cheker": {
+								"title": "Blast Off",
+								"$ref": "/chinko/id"
+							},
+							"wheels": {
+								"title": "Wheels",
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"front": { "type": "number" },
+										"center": { "type": "array", "items": { "type": "object", "properties": {"one": {"type":"string"}, "two": {"type":"string"}, "three": {"type":"string"} } } },
+										"rear": { "type": "number" }
+									}
+								}
+							}
+						}
+					}
 				},
 				"name": {
 					"title": "Name",
 					"type": "string",
 					"minLength": 0,
-					"maxLength": 255
+					"maxLength": 255,
+					"required": true
 				},
 				"email": {
 					"title": "Email Address",
@@ -34,6 +68,53 @@
 					"type": "string",
 					"minLength": 0,
 					"maxLength": 25
+				},
+				"test": {
+					"title": "Test",
+					"type": "object",
+					"properties": {
+						"check": {
+							"title": "Check",
+							"type": "integer"
+						},
+						"cheese": {
+							"title": "Cheese",
+							"type": "string",
+							"minLength": 0,
+							"maxLength": 25
+						},
+						"choose": {
+							"title": "Choose",
+							"type": "object",
+							"properties": {
+								"life": {
+									"title": "Life",
+									"type": "string",
+									"required": true,
+									"minLength": 42
+								},
+								"death": {
+									"title": "Death",
+									"type": "boolean"
+								},
+								"existence": {
+									"title": "Existence",
+									"type": "object",
+									"properties": {
+										"what": {
+											"title": "What",
+											"type": "number"
+										},
+										"ever": {
+											"title": "Ever",
+											"type": "boolean"
+										}
+
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
