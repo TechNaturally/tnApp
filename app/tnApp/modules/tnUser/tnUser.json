@@ -17,39 +17,6 @@
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50, "required": true }
 				},
-				"roller": {
-					"title": "Rollers",
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"blades": { "type": "integer" },
-							"skates": {
-								"type": "object",
-								"properties": {
-									"strap": { "type": "string" },
-									"boot": { "type": "string" }
-								}
-							},
-							"cheker": {
-								"title": "Blast Off",
-								"$ref": "/chinko/id"
-							},
-							"wheels": {
-								"title": "Wheels",
-								"type": "array",
-								"items": {
-									"type": "object",
-									"properties": {
-										"front": { "type": "number" },
-										"center": { "type": "array", "items": { "type": "object", "properties": {"one": {"type":"string"}, "two": {"type":"string"}, "three": {"type":"string"} } } },
-										"rear": { "type": "number" }
-									}
-								}
-							}
-						}
-					}
-				},
 				"name": {
 					"title": "Name",
 					"type": "string",
@@ -70,49 +37,52 @@
 					"maxLength": 25
 				},
 				"test": {
-					"title": "Test",
 					"type": "object",
 					"properties": {
-						"check": {
-							"title": "Check",
-							"type": "integer"
-						},
-						"cheese": {
-							"title": "Cheese",
-							"type": "string",
-							"minLength": 0,
-							"maxLength": 25
-						},
-						"choose": {
-							"title": "Choose",
+						"one": { "type": "string" },
+						"two": {
 							"type": "object",
 							"properties": {
-								"life": {
-									"title": "Life",
-									"type": "string",
-									"required": true,
-									"minLength": 42
+								"chew": {"type": "string"},
+								"choo": {
+									"type": "array",
+									"items": { "type": "string" }
 								},
-								"death": {
-									"title": "Death",
-									"type": "boolean"
-								},
-								"existence": {
-									"title": "Existence",
+								"ciao": {
 									"type": "object",
 									"properties": {
-										"what": {
-											"title": "What",
-											"type": "number"
-										},
-										"ever": {
-											"title": "Ever",
-											"type": "boolean"
-										}
-
+										"chinko": {"type": "string"},
+										"blinko": {"type": "integer"}
 									}
 								}
 							}
+						},
+						"three": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+
+									"checker": {
+										"type": "array",
+										"items": { "type": "integer" }
+									},
+									"choaker": {
+										"type": "array",
+										"items": { "type": "number" }
+									}
+								}
+							}
+						}
+					}
+				},
+				"taste": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"silly": { "type": "string" },
+							"billy": { "type": "number" }
 						}
 					}
 				}
