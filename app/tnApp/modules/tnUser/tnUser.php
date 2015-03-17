@@ -5,6 +5,7 @@ function user_list_get($tn){
 	$res_code = 200;
 
 	try{
+		$tn->data->assert('auth');
 		$tn->data->assert('user');
 
 		$users = $tn->data->user()->select('id', 'name', 'email')->fetchPairs('id');
@@ -69,6 +70,7 @@ function user_profile_put($tn, $id){
 
 function user_get_user($tn, $id, $field='id'){
 	try{
+		$tn->data->assert('auth');
 		$tn->data->assert('user');
 		if($user = $tn->data->user()->where($field, $id)->fetch()){
 			$user = $tn->data->rowToArray($user);
