@@ -36,56 +36,177 @@
 					"minLength": 0,
 					"maxLength": 25
 				},
-				"test": {
+				"testAR": {
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"testARwOBJ": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"abc": { "type": "string" },
+							"def": { "type": "integer" }
+						}
+					}
+				},
+				"testOBJ": {
 					"type": "object",
 					"properties": {
-						"one": { "type": "string" },
-						"two": {
-							"type": "object",
-							"properties": {
-								"chew": {"type": "string"},
-								"choo": {
-									"type": "array",
-									"items": { "type": "string" }
-								},
-								"ciao": {
-									"type": "object",
-									"properties": {
-										"chinko": {"type": "string"},
-										"blinko": {"type": "integer"}
-									}
-								}
-							}
+						"val1": { "type": "integer" },
+						"val2": { "type": "number" },
+						"vals3": {
+							"type": "array",
+							"items": { "type": "integer" }
 						},
-						"three": {
+						"vals4": {
 							"type": "array",
 							"items": {
 								"type": "object",
 								"properties": {
-
-									"checker": {
-										"type": "array",
-										"items": { "type": "integer" }
-									},
-									"choaker": {
-										"type": "array",
-										"items": { "type": "number" }
+									"slick": { "type": "boolean" },
+									"nick": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"testARwOBJwAR": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"test1": { "type": "string" },
+							"test2": { "type": "array", "items": { "type": "string" } }
+						}
+					}
+				},
+				"testWAR": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"test1": { "type": "string" },
+							"test2": {
+								"type": "array",
+								"items": { "type": "string" }
+							},
+							"test3": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"what": { "type": "string" },
+										"ever": { "type": "boolean" },
+										"worx": {
+											"type": "array",
+											"items": { "type": "number" }
+										},
+										"deep": {
+											"type": "array",
+											"items": {
+												"type": "object",
+												"properties": {
+													"really": { "type": "integer" },
+													"there": {
+														"type": "object",
+														"properties": {
+															"ya": { "type": "boolean" },
+															"cool": { "type": "string" },
+															"awesome": {
+																"type": "array",
+																"items": {
+																	"type": "number"
+																}
+															}
+														}
+													}
+												}
+											}
+										}
 									}
 								}
 							}
 						}
 					}
 				},
-				"taste": {
+				"testOBJwOBJwAR": {
+					"type": "object",
+					"properties": {
+						"cheek1": { "type": "string" },
+						"cheek2": {
+							"type": "object",
+							"properties": {
+								"cheek2a": { "type": "integer" },
+								"cheek2b": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"cheek2c": { "type": "boolean" },
+								"cheek2d": {
+									"type": "object",
+									"properties": {
+										"whiz": { "type": "boolean" },
+										"whuz": { "type": "string" }
+									}
+								}
+							}
+						},
+						"cheek3": { "type": "number" }
+					}
+				},
+				"testARwOBJwOBJwAR": {
 					"type": "array",
 					"items": {
 						"type": "object",
 						"properties": {
-							"silly": { "type": "string" },
-							"billy": { "type": "number" }
+							"check1": { "type": "string" },
+							"check2": {
+								"type": "object",
+								"properties": {
+									"check2a": { "type": "integer" },
+									"check2b": {
+										"type": "array",
+										"items": { "type": "string" }
+									},
+									"check2c": { "type": "boolean" },
+									"check2d": {
+										"type": "object",
+										"properties": {
+											"blast": { "type": "string" },
+											"off": { "type": "boolean" }
+										}
+									}
+								}
+							},
+							"check3": { "type": "number" },
+							"check4": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"ching": { "type": "string" },
+										"bling": { "type": "number" },
+										"zing": {
+											"type": "object",
+											"properties": {
+												"funky": { "type": "integer" },
+												"groove": { "type": "number" },
+												"mole": {
+													"type": "array",
+													"items": { "type": "string" }
+												}
+											}
+										}
+									}
+								}
+							}
 						}
 					}
+
 				}
+
+
 			}
 		}
 	},

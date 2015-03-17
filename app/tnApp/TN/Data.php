@@ -309,6 +309,16 @@ class Data extends NotORM {
 						$parent_obj = (substr($parent, -1) == '.');
 
 						$save_basename = $basename;
+
+						if(!$parent_obj){
+							$basename_split = explode('.', $basename, 3);
+							if(count($basename_split) > 2){
+								$basename = $basename_split[0].".";
+								$basename_trunc = $basename_split[1];
+							}
+							
+						}
+
 						$basename = substr($basename, 0, -1);
 
 						if($parent_obj){
@@ -318,6 +328,10 @@ class Data extends NotORM {
 
 						$rel_table = "$parent.$basename";;
 						$parent_table = "$parent";
+
+						if(!empty($basename_trunc)){
+							$rel_table .= ".$basename_trunc";
+						}
 
 						if(!$parent_obj){
 							$parent_table .= ".$basename";
@@ -348,7 +362,7 @@ class Data extends NotORM {
 			}
 			else if(isset($field->type) && $field->type == 'object' && isset($field->properties)){
 				// object fields recursively flatten into multiple-columns
-				$object_cols = $this->sql_column_defs($field->properties, ($prepend_basename?"$basename$field_id":$field_id).".", $parent?"$parent":"$basename."); //"$field_id.", $basename);
+				$object_cols = $this->sql_column_defs($field->properties, ($prepend_basename?"$basename":"")."$field_id.", ($parent)?(($parent == ".")?"$basename":"$parent"):"$basename.");
 
 				if(!empty($object_cols['definition'])){
 					$sql_cols .= ($sql_cols?", ":"").$object_cols['definition'];
