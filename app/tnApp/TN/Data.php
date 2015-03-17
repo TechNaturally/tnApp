@@ -48,29 +48,46 @@ class Data extends NotORM {
 			$config->save = array_flip($config->save);
 			$config->save = array_fill_keys(array_keys($config->save), TRUE);
 		}
+		if(is_array($config->input) && !empty($config->input)){
+			// input fields will always be stored as objects, but allow config as an array
+			$config->input = array_flip($config->input);
+			$config->input = array_fill_keys(array_keys($config->input), TRUE);
+		}
 		$this->fields[$type] = array(
+			'input' => (!empty($config->input))?(array)$config->input:"*",
 			'list' => (!empty($config->list))?(array)$config->list:"*",
 			'load' => (!empty($config->load))?(array)$config->load:"*",
 			'save' => (!empty($config->save))?(array)$config->save:"*",
 			'refs' => NULL
 		);
 
-		$saveFields = $this->getFields($type, 'save');
-
 /**
+		$inputFields = $this->getFields($type, 'input');
+		$inputFields = $this->getFields($type, 'input');
 		$listFields = $this->getFields($type, 'list');
 		$loadFields = $this->getFields($type, 'load');
 		$saveFields = $this->getFields($type, 'save');
 
+		print "$type:input=><pre>".print_r($inputFields,true)."</pre>\n\n";
 		print "$type:list=><pre>".print_r($listFields,true)."</pre>\n\n";
 		print "$type:load=><pre>".print_r($loadFields,true)."</pre>\n\n";
 		print "$type:save=><pre>".print_r($saveFields,true)."</pre>\n\n";
+		print "\n";
 		*/
+
+
 	}
 
 	public function getFields($type, $mode){
 		if(!empty($this->fields[$type][$mode])){
-			$structure = ($mode=='save');
+			$as_schema = ($mode=='input');
+			$structure = ($as_schema || $mode=='save');
+			$force_id = ($mode=='save');
+
+			// if it is a schema and it has already been processed
+			if($as_schema && !empty($this->fields[$type][$mode]->type) && $this->fields[$type][$mode]->type == "object"){
+				return $this->fields[$type][$mode];
+			}
 
 			// handle wildcarding
 			if(isset($this->fields[$type][$mode][0]) && $this->fields[$type][$mode][0] == "*"){
@@ -89,7 +106,7 @@ class Data extends NotORM {
 			// if we want the field structures
 			if($structure){
 				// force id field to be first
-				if(array_keys($this->fields[$type][$mode])[0] != 'id'){
+				if($force_id && array_keys($this->fields[$type][$mode])[0] != 'id'){
 					if(array_key_exists('id', $this->fields[$type][$mode])){
 						$id = $this->fields[$type][$mode]['id'];
 						unset($this->fields[$type][$mode]['id']);
@@ -109,9 +126,13 @@ class Data extends NotORM {
 						if(!empty($schema->properties)){
 							foreach($unstructured as $field_id => $use_field){
 								$schema_field = $this->getSchemaField($schema, $field_id);
-								print "Schema [$field_id]: ".($schema_field?"<pre>".print_r($schema_field, TRUE)."</pre>":"NULL")."<br/>\n";
-								
-								$this->fields[$type][$mode][$field_id] = isset($schema->properties->{$field_id})?$schema->properties->{$field_id}:NULL;
+								if(!$schema_field && isset($this->fields[$type][$mode][$field_id])){
+									// remove field if it is not found in the schema
+									unset($this->fields[$type][$mode][$field_id]);
+								}
+								else{
+									$this->fields[$type][$mode][$field_id] = $schema_field;
+								}
 							}
 						}
 					}
@@ -126,7 +147,13 @@ class Data extends NotORM {
 					}
 					array_unshift($this->fields[$type][$mode], 'id');
 				}
-
+			}
+			if($as_schema){
+				$this->fields[$type][$mode] = (object)array(
+					"id" => "/$type/$mode",
+					"type" => "object",
+					"properties" => (object)($this->fields[$type][$mode])
+					);
 			}
 			return $this->fields[$type][$mode];
 		}
@@ -145,8 +172,11 @@ class Data extends NotORM {
 		return $this->fields[$type][$mode];
 	}
 
-	public function getSchema($type){
+	public function getSchema($type, $mode=''){
 		if(empty($type)){ return NULL; }
+		if($mode=='input'){
+			return $this->getFields($type, $mode);
+		}
 		if($type[0] != '/'){ $type = '/'.$type; }
 		return $this->schemas->get($type);
 	}

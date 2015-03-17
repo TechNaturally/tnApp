@@ -55,7 +55,8 @@ class App {
 
 		// add a route for requesting the schema
 		$this->app->get('/schema/:id', function($id){
-			$schema = $this->data->getSchema($id);
+			// we generally (can't think of exceptions) only want to be telling the clients about the data they can input
+			$schema = $this->data->getSchema($id, 'input');
 			if($schema){
 				$this->deliver_schema($schema);
 			}
