@@ -36,175 +36,283 @@
 					"minLength": 0,
 					"maxLength": 25
 				},
-				"testAR": {
-					"type": "array",
-					"items": { "type": "string" }
-				},
-				"testARwOBJ": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"abc": { "type": "string" },
-							"def": { "type": "integer" }
-						}
-					}
-				},
-				"testOBJ": {
+				"testO": {
+					"title": "Object",
 					"type": "object",
 					"properties": {
-						"val1": { "type": "integer" },
-						"val2": { "type": "number" },
-						"vals3": {
+						"Ov1": { "type": "string" },
+						"Ov2": { "type": "integer" },
+						"Ov3": { "type": "number" }
+					}
+				},
+				"testOA": {
+					"title": "Object",
+					"type": "object",
+					"properties": {
+						"OAv1": { "type": "string" },
+						"OAv2": {
 							"type": "array",
 							"items": { "type": "integer" }
 						},
-						"vals4": {
-							"type": "array",
-							"items": {
+						"OAv3": { "type": "number" }
+					}
+				},
+				"testOO": {
+					"title": "Object w/ Object",
+					"type": "object",
+					"properties": {
+						"Ov1": { "type": "string" },
+						"Ov2": {
+							"type": "object",
+							"properties": {
+								"OOv1": { "type": "string" },
+								"OOv2": { "type": "integer" }
+							}
+						},
+						"Ov3": { "type": "integer" }
+					}
+				},
+				"testOOA": {
+					"title": "Object w/ Object w/ Array",
+					"type": "object",
+					"properties": {
+						"OOAv1": { "type": "string" },
+						"OOAv2": {
+							"type": "object",
+							"properties": {
+								"OOAv2a": { "type": "string" },
+								"OOAv2b": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"OOAv2c": { "type": "integer" }
+							}
+						},
+						"OOAv3": { "type": "integer" }
+					}
+
+				},
+				"testOOO": {
+					"title": "Object w/ Object w/ Object",
+					"type": "object",
+					"properties": {
+						"OOOv1": { "type": "string" },
+						"OOOv2": {
+							"type": "object",
+							"properties": {
+								"OOOv2a": { "type": "string" },
+								"OOOv2b": {
+									"type": "object",
+									"properties": {
+										"OOOv2b1": { "type": "string" },
+										"OOOv2b2": { "type": "number" },
+										"OOOV2b3": { "type": "integer" }
+									}
+								},
+								"OOOv2c": { "type": "integer" }
+							}
+						},
+						"OOOv3": { "type": "integer" }
+					}
+				},
+				"testOOOA": {
+					"title": "Object w/ Object w/ Object w/ Array",
+					"type": "object",
+					"properties": {
+						"OOOAv1": { "type": "string" },
+						"OOOAv2": {
+							"type": "object",
+							"properties": {
+								"OOOAv2a": { "type": "string" },
+								"OOOAv2b": {
+									"type": "object",
+									"properties": {
+										"OOOAv2b1": { "type": "string" },
+										"OOOAv2b2": {
+											"type": "array",
+											"items": { "type": "number" }
+										},
+										"OOOAV2b3": { "type": "integer" }
+									}
+								},
+								"OOOAv2c": { "type": "integer" }
+							}
+						},
+						"OOOAv3": { "type": "integer" }
+					}
+				},
+				"testA": {
+					"title": "Array",
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"testAO": {
+					"title": "Array w/ Object",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOv1": { "type": "string" },
+							"testAOv2": { "type": "integer" },
+							"testAOv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOA": {
+					"title": "Array w/ Object w/ Array",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOAv1": { "type": "string" },
+							"testAOAv2": {
+								"type": "array",
+								"items": { "type": "integer" }
+							},
+							"testAOAv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOO": {
+					"title": "Array w/ Object w/ Object",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOOv1": { "type": "string" },
+							"testAOOv2": {
 								"type": "object",
 								"properties": {
-									"slick": { "type": "boolean" },
-									"nick": { "type": "string" }
+									"testAOOv2a": { "type": "string" },
+									"testAOOv2b": { "type": "integer" },
+									"testAOOv2c": { "type": "number" }
 								}
-							}
-						}
-					}
-				},
-				"testARwOBJwAR": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"test1": { "type": "string" },
-							"test2": { "type": "array", "items": { "type": "string" } }
-						}
-					}
-				},
-				"testWAR": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"test1": { "type": "string" },
-							"test2": {
-								"type": "array",
-								"items": { "type": "string" }
 							},
-							"test3": {
+							"testAOOv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOOA": {
+					"title": "Array w/ Object w/ Object w/ Array",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOOAv1": { "type": "string" },
+							"testAOOAv2": {
+								"type": "object",
+								"properties": {
+									"testAOOAv2a": { "type": "string" },
+									"testAOOAv2b": {
+										"type": "array",
+										"items": { "type": "integer" }
+									},
+									"testAOOAv2c": { "type": "number" }
+								}
+							},
+							"testAOOAv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOOAO": {
+					"title": "Array w/ Object w/ Object w/ Array w/ Object",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOOAOv1": { "type": "string" },
+							"testAOOAOv2": {
+								"type": "object",
+								"properties": {
+									"testAOOAOv2a": { "type": "string" },
+									"testAOOAOv2b": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"properties": {
+												"testAOOAOv2b1": { "type": "string" },
+												"testAOOAOv2b2": { "type": "integer" },
+												"testAOOAOv2b3": { "type": "number" }
+											}
+										}
+									},
+									"testAOOAOv2c": { "type": "number" }
+								}
+							},
+							"testAOOAOv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOOAOA": {
+					"title": "Array w/ Object w/ Object w/ Array w/ Object w/ Array",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOOAOAv1": { "type": "string" },
+							"testAOOAOAv2": {
+								"type": "object",
+								"properties": {
+									"testAOOAOAv2a": { "type": "string" },
+									"testAOOAOAv2b": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"properties": {
+												"testAOOAOAv2b1": { "type": "string" },
+												"testAOOAOAv2b2": {
+													"type": "array",
+													"items": { "type": "integer" }
+												},
+												"testAOOAOAv2b3": { "type": "number" }
+											}
+										}
+									},
+									"testAOOAOAv2c": { "type": "number" }
+								}
+							},
+							"testAOOAOAv3": { "type": "number" }
+						}
+					}
+				},
+				"testAOAOAOA": {
+					"title": "Array w/ Object w/ Array w/ Object w/ Array w/ Object w/ Array",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"testAOAOAOAv1": { "type": "string" },
+							"testAOAOAOAv2": {
 								"type": "array",
 								"items": {
 									"type": "object",
 									"properties": {
-										"what": { "type": "string" },
-										"ever": { "type": "boolean" },
-										"worx": {
-											"type": "array",
-											"items": { "type": "number" }
-										},
-										"deep": {
+										"testAOAOAOAv2a": { "type": "string" },
+										"testAOAOAOAv2b": {
 											"type": "array",
 											"items": {
 												"type": "object",
 												"properties": {
-													"really": { "type": "integer" },
-													"there": {
-														"type": "object",
-														"properties": {
-															"ya": { "type": "boolean" },
-															"cool": { "type": "string" },
-															"awesome": {
-																"type": "array",
-																"items": {
-																	"type": "number"
-																}
-															}
+													"testAOAOAOAv2b1": { "type": "string" },
+													"testAOAOAOAv2b2": {
+														"type": "array",
+														"items": {
+															"type": "string"
 														}
-													}
+													},
+													"testAOAOAOAv2b3": { "type": "number" }
 												}
 											}
-										}
-									}
-								}
-							}
-						}
-					}
-				},
-				"testOBJwOBJwAR": {
-					"type": "object",
-					"properties": {
-						"cheek1": { "type": "string" },
-						"cheek2": {
-							"type": "object",
-							"properties": {
-								"cheek2a": { "type": "integer" },
-								"cheek2b": {
-									"type": "array",
-									"items": { "type": "string" }
-								},
-								"cheek2c": { "type": "boolean" },
-								"cheek2d": {
-									"type": "object",
-									"properties": {
-										"whiz": { "type": "boolean" },
-										"whuz": { "type": "string" }
-									}
-								}
-							}
-						},
-						"cheek3": { "type": "number" }
-					}
-				},
-				"testARwOBJwOBJwAR": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"check1": { "type": "string" },
-							"check2": {
-								"type": "object",
-								"properties": {
-									"check2a": { "type": "integer" },
-									"check2b": {
-										"type": "array",
-										"items": { "type": "string" }
-									},
-									"check2c": { "type": "boolean" },
-									"check2d": {
-										"type": "object",
-										"properties": {
-											"blast": { "type": "string" },
-											"off": { "type": "boolean" }
-										}
+										},
+										"testAOAOAOAv2c": { "type": "integer" }
 									}
 								}
 							},
-							"check3": { "type": "number" },
-							"check4": {
-								"type": "array",
-								"items": {
-									"type": "object",
-									"properties": {
-										"ching": { "type": "string" },
-										"bling": { "type": "number" },
-										"zing": {
-											"type": "object",
-											"properties": {
-												"funky": { "type": "integer" },
-												"groove": { "type": "number" },
-												"mole": {
-													"type": "array",
-													"items": { "type": "string" }
-												}
-											}
-										}
-									}
-								}
-							}
+							"testAOAOAOAv3": { "type": "integer" }
 						}
 					}
-
 				}
+
 
 
 			}

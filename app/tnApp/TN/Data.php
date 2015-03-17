@@ -307,7 +307,6 @@ class Data extends NotORM {
 				if($prepend_basename){
 					if($parent){
 						$parent_obj = (substr($parent, -1) == '.');
-
 						$save_basename = $basename;
 
 						if(!$parent_obj){
@@ -316,15 +315,13 @@ class Data extends NotORM {
 								$basename = $basename_split[0].".";
 								$basename_trunc = $basename_split[1];
 							}
-							
 						}
-
-						$basename = substr($basename, 0, -1);
-
-						if($parent_obj){
+						else{
 							$save_parent = $parent;
 							$parent = substr($parent, 0, -1);
 						}
+
+						$basename = substr($basename, 0, -1);
 
 						$rel_table = "$parent.$basename";;
 						$parent_table = "$parent";
@@ -344,7 +341,7 @@ class Data extends NotORM {
 				$rel_fields["$parent_table.id"] = (object)array('$ref' => "/$parent_table/id", "required" => TRUE); // setting required makes the ON DELETE CASCADE (rather than SET NULL)
 				$rel_fields[$field_id] = $field->items;
 
-				$rel_cols = $this->sql_column_defs($rel_fields, $basename, $parent.".".(isset($save_basename)?"$basename":''));
+				$rel_cols = $this->sql_column_defs($rel_fields, $basename, $parent.".".(isset($save_basename)?"$basename".(!empty($basename_trunc)?".$basename_trunc":""):''));
 
 				if(!empty($rel_cols['definition'])){
 					$rel_tables["$rel_table.$field_id"] = $rel_cols['definition'];
