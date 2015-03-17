@@ -33,7 +33,7 @@ class Data extends NotORM {
 	public function addType($type, $config){
 		// add schema
 		$schema = (!empty($config->schema))?$config->schema:NULL;
-		if($schema){
+		if($schema && !empty($schema->properties)){
 			if(!isset($schema->properties->id)){
 				$schema->properties = array_reverse((array)($schema->properties), TRUE);
 				$schema->properties['id'] = (object)array( 'type' => 'integer', 'minValue' => 0 );
@@ -55,6 +55,7 @@ class Data extends NotORM {
 			'refs' => NULL
 		);
 
+		$saveFields = $this->getFields($type, 'save');
 
 /**
 		$listFields = $this->getFields($type, 'list');
@@ -107,6 +108,9 @@ class Data extends NotORM {
 					if($schema = $this->getSchema($type)){
 						if(!empty($schema->properties)){
 							foreach($unstructured as $field_id => $use_field){
+								$schema_field = $this->getSchemaField($schema, $field_id);
+								print "Schema [$field_id]: ".($schema_field?"<pre>".print_r($schema_field, TRUE)."</pre>":"NULL")."<br/>\n";
+								
 								$this->fields[$type][$mode][$field_id] = isset($schema->properties->{$field_id})?$schema->properties->{$field_id}:NULL;
 							}
 						}
@@ -147,6 +151,42 @@ class Data extends NotORM {
 		return $this->schemas->get($type);
 	}
 
+	private function getNodeChild($node, $child_path){
+		if($node && $child_path){
+			$child_id = '';
+			do{
+				if(isset($node->{$child_path})){
+					if(isset($node->{$child_path})){
+						if($child_id){
+							if(!empty($node->{$child_path}->properties)){
+								return $this->getNodeChild($node->{$child_path}->properties, $child_id);
+							}
+							else{
+								return NULL;
+							}
+						}
+						return $node->{$child_path};
+					}
+				}
+				else{
+					$last_dot = strrpos($child_path, '.');
+					$child_id = substr($child_path, $last_dot+1).($child_id?'.':'')."$child_id";
+					$child_path = ($last_dot !== -1)?substr($child_path, 0, $last_dot):'';
+				}
+			} while($child_path);
+
+
+		}
+		return NULL;
+	}
+
+	protected function getSchemaField($schema, $field_id){
+		if($field_id && !empty($schema->properties)){
+			return $this->getNodeChild($schema->properties, $field_id);
+		}
+		return NULL;
+	}
+
 	public function assert($table){
 		try {
 			if(isset($this->table_exists[$table]) && $this->table_exists[$table]){
@@ -171,10 +211,6 @@ class Data extends NotORM {
 		return FALSE;
 	}
 
-	public function getTableSchema($table){
-		return NULL;
-	}
-
 	/** Sql specific functions **/
 	public function exists($table){
 		try {
@@ -188,21 +224,18 @@ class Data extends NotORM {
 
 	public function create($table){
 		try {
-			if($fields = $this->getFields($table, 'save')){
-				//print "create $table with fields:<pre>".print_r($fields,TRUE)."</pre>";
-				print "\n";
-				
+			if($fields = $this->getFields($table, 'save')){				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_cols = $this->sql_column_defs($fields, $table)){
 					if(!empty($sql_cols['definition'])){
 						$sql = "CREATE TABLE `$table`(".str_replace(", ", ", \n", $sql_cols['definition']).")";
-						//$this->connection->exec($sql);
-						print "SQL:$sql\n\n";
+						//print "SQL:$sql\n\n";
+						$this->connection->exec($sql);
 						if(!empty($sql_cols['relations'])){
 							foreach($sql_cols['relations'] as $relTable => $relTable_def){
 								$sql = "CREATE TABLE `$relTable`(".str_replace(", ", ", \n", $relTable_def).")";
-								//$this->connection->exec($sql);
-								print "REL_SQL:$sql\n\n";
+								//print "REL_SQL:$sql\n\n";
+								$this->connection->exec($sql);
 							}
 						}
 						return TRUE;
@@ -247,7 +280,7 @@ class Data extends NotORM {
 			$ref_split = explode('/', $ref_path);
 			if(count($ref_split)){
 				$ref_table = $ref_split[0];
-				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE ".(!empty($field->required)?"CASCASE":"SET NULL");
+				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE ".(!empty($field->required)?"CASCADE":"SET NULL");
 			}
 		}
 		else if(isset($field->type)){
