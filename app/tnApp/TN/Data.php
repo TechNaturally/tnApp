@@ -78,6 +78,15 @@ class Data extends NotORM {
 
 	}
 
+	public function rowToArray($row){
+		// transposes a NotORM row object into a simple array of the data
+		$array = array();
+		foreach ($row as $column => $data){
+			$array[$column] = $data;
+		}
+		return $array;
+	}
+
 	public function getFields($type, $mode){
 		if(!empty($this->fields[$type][$mode])){
 			$as_schema = ($mode=='input');
