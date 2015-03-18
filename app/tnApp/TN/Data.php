@@ -122,10 +122,10 @@ class Data extends NotORM {
 				$ref_fields = $this->getRefFields($type);
 				$array_fields = $this->getArrayFields($type);
 				$fields = array_filter($fields, function($value)use($ref_fields, $array_fields){
-					return (!in_array($value, array_keys($ref_fields)) && !in_array($value, array_keys($array_fields)));
+					return (!in_array($value, array_keys($array_fields)));
 				});
 
-				print "loading $type ".print_r($fields, true)."REF[".print_r($ref_fields,true)."],ARR[".print_r($array_fields,true)."] where ".print_r($args,true)."\n";
+				//print "loading $type ".print_r($fields, true)."REF[".print_r($ref_fields,true)."],ARR[".print_r($array_fields,true)."] WHERE ".print_r($args,true)."\n";
 
 
 
@@ -149,20 +149,30 @@ class Data extends NotORM {
 				if($result){
 					$data = $this->rowToArray($result);
 
-					// TODO: I think we need to switch back to _ delimeters... NotORM prefers them for FK's
-
 					// resolve array data
-					// TODO: what to do about .'s in field and table names
-/**					foreach($array_fields as $field_id => $field_table){
-						print "what $field_id => $field_table";
-						$field_data = $result->{$field_table}(); //->fetchPairs('id');
+					foreach($array_fields as $field_id => $field_table){
+						$field_data = $result->{$field_table}()->fetchPairs('id'); // arrays are a many-to-many
 						if($field_data){
-							print "got array data:".print_r($field_data, true)."\n";
+							$data[$field_id] = array();
+							foreach($field_data as $row_id => $row_data){
+								$data[$field_id][] = $row_data[$field_id];
+								// TODO: we will need to look at how to extract object fields also
+							}
 						}
 					}
-					*/
 
-					// TODO: resolve references
+					// resolve references
+					foreach($ref_fields as $field_id => $field_ref){
+						$ref_fields = $this->getFields($field_ref['table'], 'load');
+						$ref_query = $this->{$field_ref['table']}();
+						$ref_query = call_user_func_array(array($ref_query, 'select'), $ref_fields);
+						$field_data = $ref_query->where($field_ref['field'], $data[$field_id])->fetch(); // references are a many-to-1
+						if($field_data){
+							$data[$field_id] = $this->rowToArray($field_data);
+						}
+					}
+
+
 				}
 
 				return $data;
