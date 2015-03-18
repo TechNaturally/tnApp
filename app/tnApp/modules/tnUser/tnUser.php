@@ -5,10 +5,7 @@ function user_list_get($tn){
 	$res_code = 200;
 
 	try{
-		$tn->data->assert('auth');
-		$tn->data->assert('user');
-
-		$users = $tn->data->user()->select('id', 'name', 'email')->fetchPairs('id');
+		$users = $tn->data->listOf('user');
 		$res['users'] = $users;
 		$res['msg'] = count($users).' users found.';
 
@@ -27,7 +24,7 @@ function user_profile_get($tn, $id){
 	$res_code = 200;
 
 	try{
-		if($user = user_get_user($tn, $id)){
+		if($user = user_get_user($tn, array('id' => $id))){
 			$res['user'] = $user;
 		}
 		else{
@@ -68,18 +65,26 @@ function user_profile_put($tn, $id){
 	$tn->app->render($res_code, $res);
 }
 
-function user_get_user($tn, $id, $field='id'){
+function user_get_user($tn, $args){
 	try{
-		$tn->data->assert('auth');
-		$tn->data->assert('user');
-		if($user = $tn->data->user()->where($field, $id)->fetch()){
+		//$tn->data->assert('user');
+
+
+
+		if($user = $tn->data->load('user', $args)){
+			return $user;
+		}
+
+/**		if($user = $tn->data->user()->where($field, $id)->fetch()){
 			$user = $tn->data->rowToArray($user);
-			$tn->data->assert('user_role');
-			if($roles = $tn->data->user_role()->where('user_id', $user['id'])->fetchPairs('role', TRUE)){
+			//$tn->data->assert('user.role');
+			if($roles = $tn->data->{'user.role'}()->where('user.id', $user['id'])->fetchPairs('role', TRUE)){
 				$user['roles'] = array_keys($roles);
 			}
 			return $user;
 		}
+		*/
+
 	} catch (Exception $e) { throw $e; }
 	return NULL;
 }
