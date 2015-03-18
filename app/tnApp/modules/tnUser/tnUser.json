@@ -9,7 +9,7 @@
 			"id": "/user",
 			"type": "object",
 			"properties": {
-				"auth_id": {
+				"auth": {
 					"title": "Account",
 					"$ref": "/auth/id"
 				},
