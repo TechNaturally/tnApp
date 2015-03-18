@@ -125,7 +125,7 @@ class Data extends NotORM {
 					return (!in_array($value, array_keys($ref_fields)) && !in_array($value, array_keys($array_fields)));
 				});
 
-				print "loading $type ".print_r($fields, true)."[".print_r($ref_fields,true)."][".print_r($array_fields,true)."] where ".print_r($args,true)."\n";
+				print "loading $type ".print_r($fields, true)."REF[".print_r($ref_fields,true)."],ARR[".print_r($array_fields,true)."] where ".print_r($args,true)."\n";
 
 
 
