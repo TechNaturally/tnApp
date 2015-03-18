@@ -26,7 +26,7 @@ function auth_session_finish(){
 function auth_user_assert_profile($tn, $user){
 	try {
 		if(function_exists('user_get_user')){
-			$profile = user_get_user($tn, $user['id'], 'auth_id');
+			$profile = user_get_user($tn, array('auth_id' => $user['id']));
 
 			if(!$profile && function_exists('user_save_user')){
 				$profile = user_save_user($tn, array(
