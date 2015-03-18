@@ -58,7 +58,8 @@ class Data extends NotORM {
 			'list' => (!empty($config->list))?(array)$config->list:"*",
 			'load' => (!empty($config->load))?(array)$config->load:"*",
 			'save' => (!empty($config->save))?(array)$config->save:"*",
-			'refs' => NULL
+			'ref' => NULL,
+			'array' => NULL
 		);
 
 /**
@@ -76,6 +77,114 @@ class Data extends NotORM {
 		*/
 
 
+	}
+
+	public function listOf($type, $args=NULL, $page=NULL){
+		try{
+			if($fields = $this->getFields($type, 'list')){
+				$this->assert($type);
+
+				// basic SELECT with list fields
+				$query = $this->{$type}();
+				$query = call_user_func_array(array($query, 'select'), $fields);
+
+				// add WHERE arguments
+				if(!empty($args)){
+					foreach($args as $field_id => $field_value){
+						$query->where($field_id, $field_value);
+					}
+				}
+				
+				// add page LIMIT
+				if($page && !empty($page['limit'])){
+					$query->limit($page['limit'], !empty($page['offset'])?$page['offset']:0);
+				}
+
+				// retrieve the list as an array indexed by id
+				$list = $query->fetchPairs('id');
+
+				return $list;
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		
+		return array();
+	}
+
+	public function load($type, $args){
+		try{
+			if(!empty($args) && $fields = $this->getFields($type, 'load')){
+				$this->assert($type);
+
+				// extract arrays and $refs from $fields
+
+				
+				$ref_fields = $this->getRefFields($type);
+				$array_fields = $this->getArrayFields($type);
+				$fields = array_filter($fields, function($value)use($ref_fields, $array_fields){
+					return (!in_array($value, array_keys($ref_fields)) && !in_array($value, array_keys($array_fields)));
+				});
+
+				print "loading $type ".print_r($fields, true)."[".print_r($ref_fields,true)."][".print_r($array_fields,true)."] where ".print_r($args,true)."\n";
+
+
+
+				// basic SELECT with list fields
+				$query = $this->{$type}();
+				$query = call_user_func_array(array($query, 'select'), $fields);
+
+				// add JOINs for arrays and $refs
+
+				// add WHERE arguments
+				foreach($args as $field_id => $field_value){
+					$query->where($field_id, $field_value);
+				}
+
+				//print "loading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
+				//print "<pre>"..print_r($query, true)."</pre>\n";
+
+				$data = NULL;
+				// retrieve the first row and extract column data into assoc array
+				$result = $query->fetch();
+				if($result){
+					$data = $this->rowToArray($result);
+
+					// TODO: I think we need to switch back to _ delimeters... NotORM prefers them for FK's
+
+					// resolve array data
+					// TODO: what to do about .'s in field and table names
+/**					foreach($array_fields as $field_id => $field_table){
+						print "what $field_id => $field_table";
+						$field_data = $result->{$field_table}(); //->fetchPairs('id');
+						if($field_data){
+							print "got array data:".print_r($field_data, true)."\n";
+						}
+					}
+					*/
+
+					// TODO: resolve references
+				}
+
+				return $data;
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		return NULL;
+	}
+
+	public function save($type, $data){
+		if($fields = $this->getFields($type, 'save')){
+			// validate $data against $fields
+			// if $data->id do as update
+			// else do as insert
+			// return rowToArray (newRow)
+		}
+		return NULL;
+	}
+
+	public function validate($type, $data, $field_id){
+
+		return TRUE;
 	}
 
 	public function rowToArray($row){
@@ -169,13 +278,47 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function getRefFields($type){
-		$mode = 'refs';
+	public function getArrayFields($type){
+		$mode = 'array';
 		if($this->fields[$type][$mode] === NULL){
 			$this->fields[$type][$mode] = array();
 			if($fields = $this->getFields($type, 'save')){
-				$refFields = array_filter($fields, function($field){ return isset($field->{'$ref'}); });
-				$this->fields[$type][$mode] = array_keys($refFields);
+				$fields = array_filter($fields, function($field){ return (isset($field->type) && $field->type=='array'); });
+				$array_fields = array();
+
+				foreach($fields as $field_id => $field){
+					$array_fields[$field_id] = "$type.$field_id";
+				}
+
+				$this->fields[$type][$mode] = $array_fields;
+			}
+		}
+		return $this->fields[$type][$mode];
+	}
+
+	public function getRefFields($type, $keys=FALSE){
+		$mode = 'ref';
+		if($this->fields[$type][$mode] === NULL){
+			$this->fields[$type][$mode] = array();
+			if($fields = $this->getFields($type, 'save')){
+				$fields = array_filter($fields, function($field){ return isset($field->{'$ref'}); });
+				$ref_fields = array();
+
+				foreach($fields as $field_id => $field){
+					$ref_path = $field->{'$ref'};
+					if($ref_path[0] == '/'){
+						$ref_path = substr($ref_path, 1);
+					}
+					$ref_split = explode('/', $ref_path);
+					if(count($ref_split)){
+						$ref_fields[$field_id] = array(
+							'table' => $ref_split[0],
+							'field' => (count($ref_split) > 1)?$ref_split[1]:'id'
+							);
+					}
+				}
+				
+				$this->fields[$type][$mode] = $ref_fields;
 			}
 		}
 		return $this->fields[$type][$mode];
@@ -310,7 +453,6 @@ class Data extends NotORM {
 		
 		if(isset($field->{'$ref'})){
 			// reference fields create a Foreign Key
-			// TODO: to handle FK refs on fields besides id, we could retrieve the type from the $ref'ed schema
 			$col_def = "`$field_id` INT UNSIGNED";
 			$ref_path = $field->{'$ref'};
 			if($ref_path[0] == '/'){
@@ -319,7 +461,8 @@ class Data extends NotORM {
 			$ref_split = explode('/', $ref_path);
 			if(count($ref_split)){
 				$ref_table = $ref_split[0];
-				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE ".(!empty($field->required)?"CASCADE":"SET NULL");
+				$ref_field = (count($ref_split) > 1)?$ref_split[1]:'id';
+				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`$ref_field`) ON DELETE ".(!empty($field->required)?"CASCADE":"SET NULL");
 			}
 		}
 		else if(isset($field->type)){
