@@ -287,7 +287,7 @@ class Data extends NotORM {
 				$array_fields = array();
 
 				foreach($fields as $field_id => $field){
-					$array_fields[$field_id] = "$type.$field_id";
+					$array_fields[$field_id] = $type."_".$field_id;
 				}
 
 				$this->fields[$type][$mode] = $array_fields;
@@ -351,8 +351,8 @@ class Data extends NotORM {
 					}
 				}
 				else{
-					$last_dot = strrpos($child_path, '.');
-					$child_id = substr($child_path, $last_dot+1).($child_id?'.':'')."$child_id";
+					$last_dot = strrpos($child_path, '_');
+					$child_id = substr($child_path, $last_dot+1).($child_id?'_':'')."$child_id";
 					$child_path = ($last_dot !== -1)?substr($child_path, 0, $last_dot):'';
 				}
 			} while($child_path);
@@ -410,13 +410,13 @@ class Data extends NotORM {
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_cols = $this->sql_column_defs($fields, $table)){
 					if(!empty($sql_cols['definition'])){
-						$sql = "CREATE TABLE `$table`(".str_replace(", ", ", \n", $sql_cols['definition']).")";
-						//print "SQL:$sql\n\n";
+						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
+						//print "SQL:".str_replace(", ", ", \n", $sql)."\n\n";
 						$this->connection->exec($sql);
 						if(!empty($sql_cols['relations'])){
 							foreach($sql_cols['relations'] as $relTable => $relTable_def){
-								$sql = "CREATE TABLE `$relTable`(".str_replace(", ", ", \n", $relTable_def).")";
-								//print "REL_SQL:$sql\n\n";
+								$sql = "CREATE TABLE `$relTable`(".$relTable_def.")";
+								//print "REL_SQL:".str_replace(", ", ", \n", $sql)."\n\n";
 								$this->connection->exec($sql);
 							}
 						}
@@ -510,24 +510,24 @@ class Data extends NotORM {
 		$sql_cols = "";
 		$sql_keys = "";
 		$rel_tables = array();
-		$prepend_basename = ($basename && substr($basename, -1) == '.');
+		$prepend_basename = ($basename && substr($basename, -1) == '_');
 
 		foreach($fields as $field_id => $field){
 			if(isset($field->type) && $field->type == 'array' && isset($field->items)){
 				// array fields turn into a one-to-many table
-				$rel_table = "$basename";
-				$parent_table = "$basename";
+				$rel_table = $basename;
+				$parent_table = $basename;
 
 				// all this stuff about $parent_obj and $save_basename feels pretty ghetto, but it works for arrays of objects with arrays and other complex nesting
 				if($prepend_basename){
 					if($parent){
-						$parent_obj = (substr($parent, -1) == '.');
+						$parent_obj = (substr($parent, -1) == '_');
 						$save_basename = $basename;
 
 						if(!$parent_obj){
-							$basename_split = explode('.', $basename, 3);
+							$basename_split = explode('_', $basename, 3);
 							if(count($basename_split) > 2){
-								$basename = $basename_split[0].".";
+								$basename = $basename_split[0]."_";
 								$basename_trunc = $basename_split[1];
 							}
 						}
@@ -538,28 +538,28 @@ class Data extends NotORM {
 
 						$basename = substr($basename, 0, -1);
 
-						$rel_table = "$parent.$basename";;
-						$parent_table = "$parent";
+						$rel_table = $parent."_".$basename;
+						$parent_table = $parent;
 
 						if(!empty($basename_trunc)){
-							$rel_table .= ".$basename_trunc";
+							$rel_table .= "_".$basename_trunc;
 						}
 
 						if(!$parent_obj){
-							$parent_table .= ".$basename";
+							$parent_table .= "_".$basename;
 						}
 					}
 				}
 
 				$rel_fields = array();
 				$rel_fields['id'] = (object)array( 'type' => 'integer', 'minValue' => 0 );
-				$rel_fields["$parent_table.id"] = (object)array('$ref' => "/$parent_table/id", "required" => TRUE); // setting required makes the ON DELETE CASCADE (rather than SET NULL)
+				$rel_fields[$parent_table."_id"] = (object)array('$ref' => "/$parent_table/id", "required" => TRUE); // setting required makes the ON DELETE CASCADE (rather than SET NULL)
 				$rel_fields[$field_id] = $field->items;
 
-				$rel_cols = $this->sql_column_defs($rel_fields, $basename, $parent.".".(isset($save_basename)?"$basename".(!empty($basename_trunc)?".$basename_trunc":""):''));
+				$rel_cols = $this->sql_column_defs($rel_fields, $basename, $parent."_".(isset($save_basename)?"$basename".(!empty($basename_trunc)?"_".$basename_trunc:""):''));
 
 				if(!empty($rel_cols['definition'])){
-					$rel_tables["$rel_table.$field_id"] = $rel_cols['definition'];
+					$rel_tables[$rel_table."_".$field_id] = $rel_cols['definition'];
 					if(!empty($rel_cols['relations'])){
 						$rel_tables = array_merge($rel_tables, $rel_cols['relations']);
 					}
@@ -574,7 +574,7 @@ class Data extends NotORM {
 			}
 			else if(isset($field->type) && $field->type == 'object' && isset($field->properties)){
 				// object fields recursively flatten into multiple-columns
-				$object_cols = $this->sql_column_defs($field->properties, ($prepend_basename?"$basename":"")."$field_id.", ($parent)?(($parent == ".")?"$basename":"$parent"):"$basename.");
+				$object_cols = $this->sql_column_defs($field->properties, ($prepend_basename?$basename:"").$field_id."_", ($parent)?(($parent == "_")?$basename:$parent):$basename."_");
 
 				if(!empty($object_cols['definition'])){
 					$sql_cols .= ($sql_cols?", ":"").$object_cols['definition'];
@@ -583,7 +583,7 @@ class Data extends NotORM {
 					$rel_tables = array_merge($rel_tables, $object_cols['relations']);
 				}
 			}
-			else if($col_def = $this->sql_column_def($prepend_basename?"$basename$field_id":$field_id, $field)){
+			else if($col_def = $this->sql_column_def($prepend_basename?$basename.$field_id:$field_id, $field)){
 				// non-array fields can be generated by sql_column_def
 				if(!empty($col_def['column'])){
 					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
