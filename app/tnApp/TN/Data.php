@@ -218,7 +218,7 @@ class Data extends NotORM {
 		print "\nFLATTENING $name\n";
 
 		// if the $name ends with &, we know its parent is an array and has already had the field_name appened
-		$arrChild = ($name && substr($name, -1) == '&');
+		$arrChild = ($name && substr($name, -1) == '+');
 		if($arrChild){
 			$name = substr($name, 0, -1);
 		}
@@ -286,7 +286,7 @@ class Data extends NotORM {
 						// TODO: how to get proper array field tables named
 						// ((!empty($items[$field_id]->type) && $items[$field_id]->type=='object')?"":"_".$field_id)
 						print "GOFER array ($name) [$field_id] [".($arrChild?'arrChild':"not")."]\n";
-						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'&', $items);
+						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'+', $items);
 						
 						//print "$name:$field_id [arr] has ".count((array)$flat_field_tables)."\n";
 
