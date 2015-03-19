@@ -210,22 +210,32 @@ class Data extends NotORM {
 
 	}
 
-	protected function flattenToTables($name, $fields){
+	protected function flattenToTables($name, $fields, $parent_table=''){
 		// flatten an object field list ($name_$child)
 		// also spit out a side-array of support (array field) tables
 		$flat_tables = array();
 
-		print "\nFLATTENING $name\n";
+		print "\nFLATTENING $name (".count($fields).") [$parent_table]\n";
 
-		// if the $name ends with &, we know its parent is an array and has already had the field_name appened
-		$arrChild = ($name && substr($name, -1) == '+');
+		// if the $name ends with @, we know its parent is an array and has already had the field_name appened
+		$arrChild = ($name && substr($name, -1) == '@');
+		$objChild = ($parent_table && substr($parent_table, -1) == '+');
 		if($arrChild){
 			$name = substr($name, 0, -1);
+		}
+		if($objChild){
+			$parent_table = substr($parent_table, 0, -1);
+		}
+
+		if(!$parent_table){
+			$parent_table = $name;
 		}
 
 		$flat_tables[$name] = array();
 		foreach($fields as $field_id => $field){
+			//print "hmmm... $name $field_id ".print_r($field,true)."\n";
 			if(!empty($field->{'$ref'})){
+			//	print "\nref field!\n";
 				$field->type = 'ref';
 			}
 
@@ -234,34 +244,28 @@ class Data extends NotORM {
 					//  objects into flat field names
 					if(!empty($field->properties)){
 						
-						print "GOFER object ($name) [$field_id] [".($arrChild?'arrChild':'not')."]\n";
-						// (($name && substr($name, -1) != '_')?'_'.$field_id.'_':'')
-						//$flat_field_tables = $this->flattenToTables($name.'_'.((!$arrChild)?$field_id.'_':''), $field->properties);
-						//$objName = $name.(!$arrChild?'_'.$field_id:'');
-						$objName = $name.($arrChild?'':'_'.$field_id); // don't append the field_id if it is an array (the caller would already have appended it to $name)
-						$flat_field_tables = $this->flattenToTables($objName, $field->properties);
+						//print "GOFER object ($name) [$field_id] [".($arrChild?'arrChild':'not')."]\n";
 
-						print "$name:$field_id [obj] has ".count((array)$flat_field_tables)."\n";
+						$objName = $name.($arrChild?'':'_'.$field_id); // don't append the field_id if it is an array (the caller would already have appended it to $name)
+						$flat_field_tables = $this->flattenToTables($objName, $field->properties, $objChild?$name:($parent_table.($arrChild?'+':'')));
+
+						//print "$name:$field_id [obj] has ".count((array)$flat_field_tables)."\n";
 
 						if(!empty($flat_field_tables)){
-							//print "$name:$field_id got back flattened tables:\n".print_r($flat_field_tables, true)."\n";
 							foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
-								print "    $flat_field_table_name\n";
+								//print "    $flat_field_table_name\n";
 
 								if($flat_field_table_name == $objName){
 									foreach($flat_field_table_fields as $flat_field_id => $flat_field){
-										print "        $flat_field_id [$name]\n";
-									
-										//print "who is this? $name:$field_id:$flat_field_id\n";
+										//print "        $flat_field_id [$name]\n";
 										$flat_tables[$name][$field_id."_".$flat_field_id] = $flat_field;
 
 									}
 								}
 								else{
-									print "        $flat_field_id [new]\n";
+									//print "        $flat_field_id [new]\n";
+									//print "FLAT: $name ($field_id) [$parent_table]:".$flat_field_table_name.":".print_r($flat_field_table_fields,true)."\n";
 									// it's a different table
-									//print "another $field_id:".print_r($flat_field_table_fields, true)."\n";
-									//$flat_tables[$flat_field_table_name][$field_id."_".$flat_field_id] = $flat_field;
 									$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
 								}
 								
@@ -276,37 +280,30 @@ class Data extends NotORM {
 				}
 				else if($field->type == 'array'){
 					//  arrays into related tables with their own list of fields
-					// create a new flat_tables[$name."_".$field_id]
-					//$flat_tables[$name."_".$field_id] = $this->flattenToTables($name."_".$field_id, $field);
 					if(!empty($field->items)){
+						//print "HMMM array ($name) [$field_id] [".$parent_table."]\n";
+						if($objChild){
+							$parent_table = $name;
+						}
 						$items = array();
 						$items[$field_id] = $field->items;
+						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id');
 
-						//print "array in $name for $field_id\n";
-						// TODO: how to get proper array field tables named
-						// ((!empty($items[$field_id]->type) && $items[$field_id]->type=='object')?"":"_".$field_id)
-						print "GOFER array ($name) [$field_id] [".($arrChild?'arrChild':"not")."]\n";
-						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'+', $items);
-						
-						//print "$name:$field_id [arr] has ".count((array)$flat_field_tables)."\n";
+						print "GOFER array ($name) [$field_id] [".$parent_table.($objChild?'+':'')."]\n";
+						//print "fields:".print_r($items,true)."\n";
+						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'@', $items, $parent_table);
 
 						foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
-							print "array table:".$flat_field_table_name."\n";
 							$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
 						}
-
-						//print "flat so far:".print_r($flat_tables, true)."\n";
-
-						//print "ARRAY table: ".print_r($flat_field_tables, true)."\n";
-
 					}
 					
-
-
 					$field = NULL; // the array field is now referencing back to parent
 				}
 				else if($field->type == 'ref'){
 					//  $refs into descriptive [table, field] ... what about schema validation? - well get field schema like getField($ref['table'], $ref['save'])
+					//$flat_tables[$name][$field_id] = $field;
+					//print "REF:".$field_id.':'.print_r($field,true)."\n";
 
 				}
 				else{
