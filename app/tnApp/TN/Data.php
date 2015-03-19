@@ -206,27 +206,181 @@ class Data extends NotORM {
 		return $array;
 	}
 
+	public function getTableDef($table, $schema, $fields="*"){
+
+	}
+
+	protected function flattenToTables($name, $fields){
+		// flatten an object field list ($name_$child)
+		// also spit out a side-array of support (array field) tables
+		$flat_tables = array();
+
+		print "\nFLATTENING $name\n";
+
+		// if the $name ends with &, we know its parent is an array and has already had the field_name appened
+		$arrChild = ($name && substr($name, -1) == '&');
+		if($arrChild){
+			$name = substr($name, 0, -1);
+		}
+
+		$flat_tables[$name] = array();
+		foreach($fields as $field_id => $field){
+			if(!empty($field->{'$ref'})){
+				$field->type = 'ref';
+			}
+
+			if(!empty($field->type)){
+				if($field->type == 'object'){
+					//  objects into flat field names
+					if(!empty($field->properties)){
+						
+						print "GOFER object ($name) [$field_id] [".($arrChild?'arrChild':'not')."]\n";
+						// (($name && substr($name, -1) != '_')?'_'.$field_id.'_':'')
+						//$flat_field_tables = $this->flattenToTables($name.'_'.((!$arrChild)?$field_id.'_':''), $field->properties);
+						//$objName = $name.(!$arrChild?'_'.$field_id:'');
+						$objName = $name.($arrChild?'':'_'.$field_id); // don't append the field_id if it is an array (the caller would already have appended it to $name)
+						$flat_field_tables = $this->flattenToTables($objName, $field->properties);
+
+						print "$name:$field_id [obj] has ".count((array)$flat_field_tables)."\n";
+
+						if(!empty($flat_field_tables)){
+							//print "$name:$field_id got back flattened tables:\n".print_r($flat_field_tables, true)."\n";
+							foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
+								print "    $flat_field_table_name\n";
+
+								if($flat_field_table_name == $objName){
+									foreach($flat_field_table_fields as $flat_field_id => $flat_field){
+										print "        $flat_field_id [$name]\n";
+									
+										//print "who is this? $name:$field_id:$flat_field_id\n";
+										$flat_tables[$name][$field_id."_".$flat_field_id] = $flat_field;
+
+									}
+								}
+								else{
+									print "        $flat_field_id [new]\n";
+									// it's a different table
+									//print "another $field_id:".print_r($flat_field_table_fields, true)."\n";
+									//$flat_tables[$flat_field_table_name][$field_id."_".$flat_field_id] = $flat_field;
+									$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
+								}
+								
+							}
+						}
+					}
+					else{
+						// invalid object definition
+					}
+					$field = NULL; // don't add the object field itself (its children have been added instead)
+
+				}
+				else if($field->type == 'array'){
+					//  arrays into related tables with their own list of fields
+					// create a new flat_tables[$name."_".$field_id]
+					//$flat_tables[$name."_".$field_id] = $this->flattenToTables($name."_".$field_id, $field);
+					if(!empty($field->items)){
+						$items = array();
+						$items[$field_id] = $field->items;
+
+						//print "array in $name for $field_id\n";
+						// TODO: how to get proper array field tables named
+						// ((!empty($items[$field_id]->type) && $items[$field_id]->type=='object')?"":"_".$field_id)
+						print "GOFER array ($name) [$field_id] [".($arrChild?'arrChild':"not")."]\n";
+						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'&', $items);
+						
+						//print "$name:$field_id [arr] has ".count((array)$flat_field_tables)."\n";
+
+						foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
+							print "array table:".$flat_field_table_name."\n";
+							$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
+						}
+
+						//print "flat so far:".print_r($flat_tables, true)."\n";
+
+						//print "ARRAY table: ".print_r($flat_field_tables, true)."\n";
+
+					}
+					
+
+
+					$field = NULL; // the array field is now referencing back to parent
+				}
+				else if($field->type == 'ref'){
+					//  $refs into descriptive [table, field] ... what about schema validation? - well get field schema like getField($ref['table'], $ref['save'])
+
+				}
+				else{
+
+				}
+
+				if($field){
+					$flat_tables[$name][$field_id] = $field;
+				}
+			}
+		}
+
+
+		return $flat_tables;
+	}
+
+	public function getTableDefs($type, $fields="*"){
+		$tables = array();
+		// get an array of tables which each are a flat array of their field schema definitions
+		// objects will turn into flat field lists
+		// arrays will turn into many-to-one tables (with $refs set on the child table to link back to parent table)
+		// $refs will be resolved into ('type' => 'ref', 'table' => 'table_name', 'field' => 'field_name', 'schema' => 'field_schema_def')
+		// all field schema definitions that are returned should be of primitive JSON types (ref, boolean, integer, number, null, string)
+		if($schema = $this->getSchema($type)){
+			if(!empty($schema->properties)){
+				//$tables[$type] = array();
+
+				$tables = $this->flattenToTables($type, $schema->properties);
+			}
+
+			return $tables;
+		}
+		return NULL;
+	}
+
 	public function getFields($type, $mode){
 		if(!empty($this->fields[$type][$mode])){
 			$as_schema = ($mode=='input');
 			$structure = ($as_schema || $mode=='save');
 			$force_id = ($mode=='save');
+			$expand_objs = ($mode=='list' || $mode=='load');
 
 			// if it is a schema and it has already been processed
 			if($as_schema && !empty($this->fields[$type][$mode]->type) && $this->fields[$type][$mode]->type == "object"){
 				return $this->fields[$type][$mode];
 			}
 
+			$schema = NULL;
+
 			// handle wildcarding
 			if(isset($this->fields[$type][$mode][0]) && $this->fields[$type][$mode][0] == "*"){
-				if($schema = $this->getSchema($type)){
-					if(!empty($schema->properties)){
-						$keys = array_keys((array)$schema->properties);
-						if($structure){
-							$keys = array_flip($keys);
-							$keys = array_fill_keys(array_keys($keys), TRUE);
-						}
-						$this->fields[$type][$mode] = $keys;
+				if(!$schema){
+					$schema = $this->getSchema($type);
+				}
+				if($schema && !empty($schema->properties)){
+					$keys = array_keys((array)$schema->properties);
+					if($structure){
+						$keys = array_flip($keys);
+						$keys = array_fill_keys(array_keys($keys), TRUE);
+					}
+					$this->fields[$type][$mode] = $keys;
+				}
+			}
+
+			if($expand_objs){
+				//print "getFields $type [$mode] ".print_r($this->fields[$type][$mode],true)."\n";
+				if(!$schema){
+					$schema = $this->getSchema($type);
+				}
+				if($schema && !empty($schema->properties)){
+					//print "check out:".print_r($schema->properties, true)."\n";
+					$objFields = $this->getObjectFields($schema->properties);
+					if($objFields){
+						print "object fields: ".print_r($objFields, true)."\n";
 					}
 				}
 			}
@@ -250,17 +404,18 @@ class Data extends NotORM {
 				// load in structures for any fields that are flagged "TRUE"
 				$unstructured = array_filter($this->fields[$type][$mode], function($value){ return ($value===TRUE); });
 				if(count($unstructured)){
-					if($schema = $this->getSchema($type)){
-						if(!empty($schema->properties)){
-							foreach($unstructured as $field_id => $use_field){
-								$schema_field = $this->getSchemaField($schema, $field_id);
-								if(!$schema_field && isset($this->fields[$type][$mode][$field_id])){
-									// remove field if it is not found in the schema
-									unset($this->fields[$type][$mode][$field_id]);
-								}
-								else{
-									$this->fields[$type][$mode][$field_id] = $schema_field;
-								}
+					if(!$schema){
+						$schema = $this->getSchema($type);
+					}
+					if($schema && !empty($schema->properties)){
+						foreach($unstructured as $field_id => $use_field){
+							$schema_field = $this->getSchemaField($schema, $field_id);
+							if(!$schema_field && isset($this->fields[$type][$mode][$field_id])){
+								// remove field if it is not found in the schema
+								unset($this->fields[$type][$mode][$field_id]);
+							}
+							else{
+								$this->fields[$type][$mode][$field_id] = $schema_field;
 							}
 						}
 					}
@@ -298,7 +453,16 @@ class Data extends NotORM {
 
 				foreach($fields as $field_id => $field){
 					$array_fields[$field_id] = $type."_".$field_id;
+
+					if(!empty($field->items->type) && $field->items->type == 'object' && !empty($field->items->properties)){
+						//print "array field $field_id => ".print_r($field,true)."\n";
+						$objFields = $this->getObjectFields($field->items->properties);
+						if($objFields){
+							print "got array's object fields: ".print_r($objFields, true)."\n";
+						}
+					}
 				}
+				// TODO: here we could pass the $field to the getObj
 
 				$this->fields[$type][$mode] = $array_fields;
 			}
@@ -306,7 +470,7 @@ class Data extends NotORM {
 		return $this->fields[$type][$mode];
 	}
 
-	public function getRefFields($type, $keys=FALSE){
+	public function getRefFields($type){
 		$mode = 'ref';
 		if($this->fields[$type][$mode] === NULL){
 			$this->fields[$type][$mode] = array();
@@ -332,6 +496,17 @@ class Data extends NotORM {
 			}
 		}
 		return $this->fields[$type][$mode];
+	}
+
+	public function getObjectFields($schema){
+		//$mode = 'obj';
+		
+		$fields = array_filter((array)$schema, function($field){ return (isset($field->type) && $field->type=='object'); });
+		//print "found ".print_r($fields, true)."\n";
+
+
+
+		return $fields;
 	}
 
 	public function getSchema($type, $mode=''){
@@ -420,6 +595,12 @@ class Data extends NotORM {
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_cols = $this->sql_column_defs($fields, $table)){
 					if(!empty($sql_cols['definition'])){
+						// make sure any referenced tables exist
+						$ref_fiels = $this->getRefFields($table);
+						foreach($ref_fiels as $field_id => $field_ref){
+							$this->assert($field_ref['table']);
+						}
+
 						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
 						//print "SQL:".str_replace(", ", ", \n", $sql)."\n\n";
 						$this->connection->exec($sql);
