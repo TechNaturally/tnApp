@@ -7,12 +7,14 @@ class DataException extends Exception{}
 
 class Data extends NotORM {
 	protected $schemas;
+	protected $tables;
 	protected $fields;
 	protected $table_exists = array();
 	protected $connection_type;
 
 	public function __construct($config) {
 		$this->schemas = new SchemaStore();
+		$this->tables = array();
 		$this->fields = array();
 
 		$connection = NULL;
@@ -233,9 +235,8 @@ class Data extends NotORM {
 
 		$flat_tables[$name] = array();
 		foreach($fields as $field_id => $field){
-			//print "hmmm... $name $field_id ".print_r($field,true)."\n";
+			$field = clone $field; // so we leave the original schema in tact
 			if(!empty($field->{'$ref'})){
-			//	print "\nref field!\n";
 				$field->type = 'ref';
 			}
 
@@ -289,7 +290,7 @@ class Data extends NotORM {
 						$items[$field_id] = $field->items;
 						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id');
 
-						print "GOFER array ($name) [$field_id] [".$parent_table.($objChild?'+':'')."]\n";
+					//	print "GOFER array ($name) [$field_id] [".$parent_table.($objChild?'+':'')."]\n";
 						//print "fields:".print_r($items,true)."\n";
 						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'@', $items, $parent_table);
 
@@ -302,8 +303,23 @@ class Data extends NotORM {
 				}
 				else if($field->type == 'ref'){
 					//  $refs into descriptive [table, field] ... what about schema validation? - well get field schema like getField($ref['table'], $ref['save'])
-					//$flat_tables[$name][$field_id] = $field;
-					//print "REF:".$field_id.':'.print_r($field,true)."\n";
+					//print "hello $field_id".print_r($field,true)."\n";
+					if($ref_str = $field->{'$ref'}){
+						unset($field->{'$ref'});
+						if($ref_str[0] == '/'){
+							$ref_str = substr($ref_str, 1);
+						}
+						$ref_split = explode('/', $ref_str, 2);
+						$field->table = $ref_split[0];
+						$field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
+
+						// try to get the field schema
+						if($table_schema = $this->getSchema($field->table)){
+							if($field_schema = $this->getSchemaField($table_schema, $field->field)){
+								$field->schema = $field_schema;
+							}
+						}
+					}
 
 				}
 				else{
@@ -321,19 +337,22 @@ class Data extends NotORM {
 	}
 
 	public function getTableDefs($type, $fields="*"){
-		$tables = array();
+		if(isset($this->tables[$type])){
+			return $this->tables[$type];
+		}
 		// get an array of tables which each are a flat array of their field schema definitions
 		// objects will turn into flat field lists
 		// arrays will turn into many-to-one tables (with $refs set on the child table to link back to parent table)
 		// $refs will be resolved into ('type' => 'ref', 'table' => 'table_name', 'field' => 'field_name', 'schema' => 'field_schema_def')
 		// all field schema definitions that are returned should be of primitive JSON types (ref, boolean, integer, number, null, string)
 		if($schema = $this->getSchema($type)){
+			$tables = NULL;
 			if(!empty($schema->properties)){
-				//$tables[$type] = array();
-
 				$tables = $this->flattenToTables($type, $schema->properties);
+				if(!empty($tables)){
+					$this->tables[$type] = $tables;
+				}
 			}
-
 			return $tables;
 		}
 		return NULL;
