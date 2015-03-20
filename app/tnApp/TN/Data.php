@@ -9,8 +9,11 @@ class Data extends NotORM {
 	protected $schemas;
 	protected $tables;
 	protected $fields;
-	protected $table_exists = array();
 	protected $connection_type;
+	private $field_configs = array();
+	private $table_exists = array();
+	private $readModes = array('list', 'load');
+	private $writeModes = array('input', 'save');
 
 	public function __construct($config) {
 		$this->schemas = new SchemaStore();
@@ -45,25 +48,27 @@ class Data extends NotORM {
 		}
 		
 		// add fields
-		if(is_array($config->save) && !empty($config->save)){
+		$this->fields[$type] = array(); // this will get filled as [$type] = [fields] the first time the fields are requested 
+		$this->field_configs[$type] = array();
+		foreach($this->writeModes as $mode){
 			// save fields will always be stored as objects, but allow config as an array
-			$config->save = array_flip($config->save);
-			$config->save = array_fill_keys(array_keys($config->save), TRUE);
+			if(is_array($config->{$mode}) && !empty($config->{$mode})){
+				$config->{$mode} = array_flip($config->{$mode});
+				$config->{$mode} = array_fill_keys(array_keys($config->{$mode}), TRUE);
+			}
+			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
 		}
-		if(is_array($config->input) && !empty($config->input)){
-			// input fields will always be stored as objects, but allow config as an array
-			$config->input = array_flip($config->input);
-			$config->input = array_fill_keys(array_keys($config->input), TRUE);
+		foreach($this->readModes as $mode){
+			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
 		}
-		$this->fields[$type] = array(
-			'input' => (!empty($config->input))?(array)$config->input:"*",
-			'list' => (!empty($config->list))?(array)$config->list:"*",
-			'load' => (!empty($config->load))?(array)$config->load:"*",
-			'save' => (!empty($config->save))?(array)$config->save:"*",
+
+		
+		// TODO: probably won't need this
+/**		$this->fields[$type] = array(
 			'ref' => NULL,
 			'array' => NULL
 		);
-
+*/
 /**
 		$inputFields = $this->getFields($type, 'input');
 		$inputFields = $this->getFields($type, 'input');
@@ -120,12 +125,13 @@ class Data extends NotORM {
 
 				// extract arrays and $refs from $fields
 
-				
+				/**
 				$ref_fields = $this->getRefFields($type);
 				$array_fields = $this->getArrayFields($type);
 				$fields = array_filter($fields, function($value)use($ref_fields, $array_fields){
 					return (!in_array($value, array_keys($array_fields)));
 				});
+				*/
 
 				//print "loading $type ".print_r($fields, true)."REF[".print_r($ref_fields,true)."],ARR[".print_r($array_fields,true)."] WHERE ".print_r($args,true)."\n";
 
@@ -151,8 +157,10 @@ class Data extends NotORM {
 				if($result){
 					$data = $this->rowToArray($result);
 
+					print "got $type data:".print_r($data, true)."\n";
+
 					// resolve array data
-					foreach($array_fields as $field_id => $field_table){
+/**					foreach($array_fields as $field_id => $field_table){
 						$field_data = $result->{$field_table}()->fetchPairs('id'); // arrays are a many-to-many
 						if($field_data){
 							$data[$field_id] = array();
@@ -173,6 +181,7 @@ class Data extends NotORM {
 							$data[$field_id] = $this->rowToArray($field_data);
 						}
 					}
+					*/
 
 
 				}
@@ -208,16 +217,12 @@ class Data extends NotORM {
 		return $array;
 	}
 
-	public function getTableDef($table, $schema, $fields="*"){
-
-	}
-
 	protected function flattenToTables($name, $fields, $parent_table=''){
 		// flatten an object field list ($name_$child)
 		// also spit out a side-array of support (array field) tables
 		$flat_tables = array();
 
-		print "\nFLATTENING $name (".count($fields).") [$parent_table]\n";
+		//print "\nFLATTENING $name (".count($fields).") [$parent_table]\n";
 
 		// if the $name ends with @, we know its parent is an array and has already had the field_name appened
 		$arrChild = ($name && substr($name, -1) == '@');
@@ -287,8 +292,9 @@ class Data extends NotORM {
 							$parent_table = $name;
 						}
 						$items = array();
-						$items[$field_id] = $field->items;
 						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id');
+						$items[$field_id] = $field->items;
+						
 
 					//	print "GOFER array ($name) [$field_id] [".$parent_table.($objChild?'+':'')."]\n";
 						//print "fields:".print_r($items,true)."\n";
@@ -336,7 +342,7 @@ class Data extends NotORM {
 		return $flat_tables;
 	}
 
-	public function getTableDefs($type, $fields="*"){
+	public function getTableDefs($type){
 		if(isset($this->tables[$type])){
 			return $this->tables[$type];
 		}
@@ -359,6 +365,83 @@ class Data extends NotORM {
 	}
 
 	public function getFields($type, $mode){
+		$read = in_array($mode, $this->readModes);
+		$write = in_array($mode, $this->writeModes);
+		$as_schema = ($mode=='input'); // flag to return as a schema object
+		$structure = $write; // flag to return field structures instead of just a list
+
+		if(!empty($this->fields[$type][$mode])){
+			return $this->fields[$type][$mode];
+		}
+
+		//$force_id = ($mode=='save');
+
+		$tables = $this->getTableDefs($type);
+		if(!empty($tables)){
+			if(!empty($this->field_configs[$type][$mode])){
+				$fields = $this->field_configs[$type][$mode];
+
+				// handle wildcarding
+				if(isset($fields[0]) && $fields[0] == "*"){
+					unset($fields[0]);
+					foreach($tables as $table_name => $table){
+						foreach($table as $field_id => $field){
+							$fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
+						}
+					}
+					if($read){
+						$fields = array_keys($fields);
+					}
+//					print "\nWILDCARDED fields: ".print_r($fields,true)."\n";
+				}
+
+				$result = array();
+				foreach($fields as $field_id => $field){
+					$field_table = $type;
+					$field_name = $field_id;
+
+					if($read){
+						$field_name = $field;
+					}
+
+					// support for nested fields
+					$field_split = explode('.', $field_name, 2);
+					if(count($field_split) > 1){
+						$field_table = $field_split[0];
+						$field_name = str_replace('.', '_', $field_split[1]);
+					}
+					if(!empty($tables[$field_table][$field_name])){
+						$field_id = ( ($field_table && $field_table != $type)?$field_table.'.':'' ).$field_name;
+						if($structure){
+							$result[$field_id] = $tables[$field_table][$field_name]; //(!empty($fields[$field_id]))?$fields[$field_id]:$tables[$field_table][$field_name];
+						}
+						else{
+							$result[] = $field_id;
+						}
+					}
+				}
+				$this->fields[$type][$mode] = $result;
+				return $result;
+			}
+
+		}
+		return NULL;
+	}
+
+	public function getTableDef($tables, $fields="*"){
+		// foreach ($table in $tables)
+		//		foreach ($field in $table)
+		//			if($field_id in $fields)
+		//				use it in result
+
+		// return array:
+		//			[table] => [filtered fields from table]
+
+	}
+
+	// TODO: rebuild the getFields stuff (getFields, getRefFields, getArrayFields, etc)
+
+	public function getFields1($type, $mode){
 		if(!empty($this->fields[$type][$mode])){
 			$as_schema = ($mode=='input');
 			$structure = ($as_schema || $mode=='save');
@@ -605,6 +688,7 @@ class Data extends NotORM {
 		return ($result !== FALSE);
 	}
 
+	// TODO: rewrite to use new flattenToTables
 	public function create($table){
 		try {
 			if($fields = $this->getFields($table, 'save')){				
