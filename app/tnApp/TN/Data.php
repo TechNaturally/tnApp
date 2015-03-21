@@ -384,96 +384,80 @@ class Data extends NotORM {
 			foreach($field_ids as $field_id){
 				$table_name = $type;
 				$field_name = str_replace('.', '_', $field_id);
+				
+				$field = NULL;
+				$objectFields = NULL;
+				$objectTables = NULL;
 
-				if($structure && $fields[$field_id] !== TRUE){
-					// TODO: do we actually need this? ... for save, list, load... not really
-					print "overwrite field $field_id\n";
-					foreach($result[$table_name] as $result_field_id => $result_field){
-						if(strpos($result_field_id, $field_name) === 0){
-							unset($result[$table_name][$result_field_id]);
+				//print "filter field: $table_name [$field_name]\n";
+
+				// straight field
+				if(!empty($tables[$table_name][$field_name])){
+					$field = $tables[$table_name][$field_name];
+				}
+
+				// object fields (in root table)
+				if(!$field && !empty($tables[$table_name])){
+					$objectFields = $this->getObjectFields($field_name, $tables[$table_name]);
+				}
+
+				// related field tables (array tables)
+				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
+
+				// do we have any matching fields or field tables?
+				if($field || !empty($objectFields) || !empty($objectTables)){
+					if(!isset($result[$table_name])){
+						$result[$table_name] = array();
+					}
+
+					// simple field
+					if($field){
+						if($structure){
+							$result[$table_name][$field_name] = $field;
+						}
+						else{
+							$result[$table_name][] = $field_name;
 						}
 					}
 
-					foreach($result as $result_table_name => $result_fields){
-						if(strpos($result_table_name, $table_name.'_'.$field_name) === 0){
-							unset($result[$result_table_name]);
+					// object children
+					if(!empty($objectFields)){
+						foreach($objectFields as $object_field_id => $object_field){
+							if($structure){
+								$result[$table_name][$object_field_id] = $object_field;
+							}
+							else{
+								$result[$table_name][] = $object_field_id;
+							}
+						}
+					}
+
+					// array tables
+					if(!empty($objectTables)){
+						foreach($objectTables as $object_table_name => $object_table){
+							$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
+							$object_table_fields = $this->getObjectFields($object_field_prefix, $object_table);
+							if(!empty($object_table_fields)){
+								if(!isset($result[$object_table_name])){
+									$result[$object_table_name] = array();
+								}
+								foreach($object_table_fields as $object_field_id => $object_field){
+									if($structure){
+										$result[$object_table_name][$object_field_id] = $object_field;
+									}
+									else{
+										$result[$object_table_name][] = $object_field_id;
+									}
+								}
+							}
 						}
 					}
 				}
 				else{
-					$field = NULL;
-					$objectFields = NULL;
-					$objectTables = NULL;
-
-					print "filter field: $table_name [$field_name]\n";
-
-					// straight field
-					if(!empty($tables[$table_name][$field_name])){
-						$field = $tables[$table_name][$field_name];
-					}
-
-					// object fields (in root table)
-					if(!$field && !empty($tables[$table_name])){
-						$objectFields = $this->getObjectFields($field_name, $tables[$table_name]);
-					}
-
-					// related field tables (array tables)
-					$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
-
-					// do we have any matching fields or field tables?
-					if($field || !empty($objectFields) || !empty($objectTables)){
-						if(!isset($result[$table_name])){
-							$result[$table_name] = array();
-						}
-
-						// simple field
-						if($field){
-							if($structure){
-								$result[$table_name][$field_name] = $field;
-							}
-							else{
-								$result[$table_name][] = $field_name;
-							}
-						}
-
-						// object children
-						if(!empty($objectFields)){
-							foreach($objectFields as $object_field_id => $object_field){
-								if($structure){
-									$result[$table_name][$object_field_id] = $object_field;
-								}
-								else{
-									$result[$table_name][] = $object_field_id;
-								}
-							}
-						}
-
-						// array tables
-						if(!empty($objectTables)){
-							foreach($objectTables as $object_table_name => $object_table){
-								$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
-								$object_table_fields = $this->getObjectFields($object_field_prefix, $object_table);
-								if(!empty($object_table_fields)){
-									if(!isset($result[$object_table_name])){
-										$result[$object_table_name] = array();
-									}
-									foreach($object_table_fields as $object_field_id => $object_field){
-										if($structure){
-											$result[$object_table_name][$object_field_id] = $object_field;
-										}
-										else{
-											$result[$object_table_name][] = $object_field_id;
-										}
-									}
-								}
-							}
-						}
-					}
-					else{
-						print "MISSING $field_name [$table_name]\n";
-					}
-
+					print "MISSING $field_name [$table_name]\n";
 				}
+
+				
 
 			}
 
