@@ -256,7 +256,6 @@ class Data extends NotORM {
 								if($flat_field_table_name == $objName){
 									foreach($flat_field_table_fields as $flat_field_id => $flat_field){
 										$flat_tables[$name][$field_id."_".$flat_field_id] = $flat_field;
-
 									}
 								}
 								else{
@@ -279,7 +278,6 @@ class Data extends NotORM {
 						if($objChild){
 							$parent_table = $name;
 						}
-						print "\n\narray field....$field_id\n\n";
 						$items = array();
 						$items['id'] = (object)array( 'type' => 'integer', 'minValue' => 0);
 						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id');
@@ -348,12 +346,187 @@ class Data extends NotORM {
 		return NULL;
 	}
 
+	protected function getObjectFields($field_id, $table){
+		$object_fields = array();
+		foreach($table as $object_field_id => $object_field){
+			if($object_field_id == $field_id || strpos($object_field_id, $field_id.'_') === 0){
+				$object_fields[$object_field_id] = $object_field;
+			}
+		}
+		return count($object_fields)?$object_fields:NULL;
+	}
+
+	protected function getObjectTables($field_id, $tables){
+		$object_tables = array();
+		foreach($tables as $table_id => $table){
+			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0){
+				$object_tables[$table_id] = $table;
+			}
+		}
+		return count($object_tables)?$object_tables:NULL;
+	}
+
+	protected function getFilteredFields($type, $fields, $structure=false){
+		$field_ids = $structure?array_keys($fields):$fields;
+		// fields is array OR object of { $field_id => TRUE | $field_def }
+		// this lets us overwrite the object definition in the config
+
+		//print "\ngetFilteredFields (".($structure?'structure':'ids').") $type\n"; //.print_r($field_ids,true)."\n";
+
+		if($tables = $this->getTableDefs($type)){
+			if($structure){
+				print "tables:".print_r($tables,true)."\n";
+			}
+			$result = array();
+
+			print "filter fields: (".implode(', ', $field_ids).")\n";
+
+			foreach($field_ids as $field_id){
+				$table_name = $type;
+				$field_name = str_replace('.', '_', $field_id);
+
+				if($structure && $fields[$field_id] !== TRUE){
+					// TODO: do we actually need this? ... for save, list, load... not really
+					print "overwrite field $field_id\n";
+					foreach($result[$table_name] as $result_field_id => $result_field){
+						if(strpos($result_field_id, $field_name) === 0){
+							unset($result[$table_name][$result_field_id]);
+						}
+					}
+
+					foreach($result as $result_table_name => $result_fields){
+						if(strpos($result_table_name, $table_name.'_'.$field_name) === 0){
+							unset($result[$result_table_name]);
+						}
+					}
+				}
+				else{
+					$field = NULL;
+					$objectFields = NULL;
+					$objectTables = NULL;
+
+					print "filter field: $table_name [$field_name]\n";
+
+					// straight field
+					if(!empty($tables[$table_name][$field_name])){
+						$field = $tables[$table_name][$field_name];
+					}
+
+					// object fields (in root table)
+					if(!$field && !empty($tables[$table_name])){
+						$objectFields = $this->getObjectFields($field_name, $tables[$table_name]);
+					}
+
+					// related field tables (array tables)
+					$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
+
+					// do we have any matching fields or field tables?
+					if($field || !empty($objectFields) || !empty($objectTables)){
+						if(!isset($result[$table_name])){
+							$result[$table_name] = array();
+						}
+
+						// simple field
+						if($field){
+							if($structure){
+								$result[$table_name][$field_name] = $field;
+							}
+							else{
+								$result[$table_name][] = $field_name;
+							}
+						}
+
+						// object children
+						if(!empty($objectFields)){
+							foreach($objectFields as $object_field_id => $object_field){
+								if($structure){
+									$result[$table_name][$object_field_id] = $object_field;
+								}
+								else{
+									$result[$table_name][] = $object_field_id;
+								}
+							}
+						}
+
+						// array tables
+						if(!empty($objectTables)){
+							foreach($objectTables as $object_table_name => $object_table){
+								$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
+								$object_table_fields = $this->getObjectFields($object_field_prefix, $object_table);
+								if(!empty($object_table_fields)){
+									if(!isset($result[$object_table_name])){
+										$result[$object_table_name] = array();
+									}
+									foreach($object_table_fields as $object_field_id => $object_field){
+										if($structure){
+											$result[$object_table_name][$object_field_id] = $object_field;
+										}
+										else{
+											$result[$object_table_name][] = $object_field_id;
+										}
+									}
+								}
+							}
+						}
+					}
+					else{
+						print "MISSING $field_name [$table_name]\n";
+					}
+
+				}
+
+			}
+
+			//print "FILTERED FIELDS:".print_r($result, TRUE)."\n";
+			return $result;
+		}
+
+		
+
+		// array fields - resolve child tables
+		// $ref fields - resolve reference table
+
+		// returns fields as schemas when $structure is true , returns fields as array list when $structure is false
+
+		// USED for: data read/write
+
+
+
+		return NULL;
+	}
+
+	protected function getFilteredSchema($type, $fields){
+		$field_ids = array_keys($fields);
+		// fields is object of { $field_id => TRUE | $field_def }
+		// this lets us overwrite the object definition in the config
+
+		print "\ngetFilteredSchema $type ".print_r($field_ids,true)."\n";
+
+		if($schema = $this->getSchema($type)){
+			foreach($field_ids as $field_id){
+			}
+		}
+		
+		
+
+		// array fields - do nothing special
+		// $ref fields - resolve referenced field
+
+		// returns schema object with only fields from $fields in it
+
+		// USED for: input schema (form and validation)
+
+		// at some point we will need to translate the schema'd input into the writeable field list
+
+		return NULL;
+	}
+
 	public function getFields($type, $mode){
 		// here is where we filter the fields down based on the input mode configuration
-		$read = in_array($mode, $this->readModes);
-		$write = in_array($mode, $this->writeModes);
-		$as_schema = ($mode=='input'); // flag to return as a schema object
-		$structure = $write; // flag to return field structures instead of just a list
+//		$read = in_array($mode, $this->readModes);
+//		$write = in_array($mode, $this->writeModes);
+//		$as_schema = ($mode=='input'); // flag to return as a schema object
+//		$structure = $write; // flag to return field structures instead of just a list
 
 		// how we use these fields in lookups is important:
 		// 	read operations:
@@ -371,11 +544,60 @@ class Data extends NotORM {
 		//					b) foreach ($tables as $table where $table != $primary_table)
 		//				2. then update the primary table
 
+		/** USE CASES
+			- input: return schema, filtered by fields
+			- list: return field list sorted into tables
+			- load: return field list sorted into tables
+			- save: return field schemas sorted into tables
+		*/
+
+		// readModes:  getFieldsFromTables() // use for retrieving data
+		// writeModes: getFieldsFromTables() // use for saving data
+		// inputModes: getSchemaFields()	 // use for input forms & validating data
 
 		// allow for caching
 		if(!empty($this->fields[$type][$mode])){
 			return $this->fields[$type][$mode];
 		}
+
+		if(!empty($this->field_configs[$type][$mode])){
+			// work with the field lists loaded from the module config
+			$config_fields = $this->field_configs[$type][$mode];
+
+			// handle wildcarding
+			if(isset($config_fields[0]) && $config_fields[0] == "*"){
+				unset($config_fields[0]);
+
+				if($tables = $this->getTableDefs($type)){
+					foreach($tables as $table_name => $table){
+						foreach($table as $field_id => $field){
+							$config_fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
+						}
+					}
+				}
+
+				if(in_array($mode, $this->readModes)){
+					$config_fields = array_keys($config_fields);
+				}
+				//	print "\nWILDCARDED fields: ".print_r($fields,true)."\n";
+			}
+		}
+
+		if($mode == 'input'){
+			$fields = $this->getFilteredSchema($type, $config_fields);
+		}
+		else{
+			$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
+		}
+
+		if($fields){
+			$this->fields[$type][$mode] = $fields;
+			return $this->fields[$type][$mode];
+		}
+
+		return NULL;
+
+		// below this is obsolete
 
 		//$force_id = ($mode=='save');
 
