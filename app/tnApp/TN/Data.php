@@ -125,7 +125,7 @@ class Data extends NotORM {
 
 				// extract arrays and $refs from $fields
 
-				/**
+				/** TODO: this stuff is bunk now
 				$ref_fields = $this->getRefFields($type);
 				$array_fields = $this->getArrayFields($type);
 				$fields = array_filter($fields, function($value)use($ref_fields, $array_fields){
@@ -222,6 +222,8 @@ class Data extends NotORM {
 		// returns as an array where result[$name] is the base table
 		// any additional entries are arrays from within the object
 		$flat_tables = array();
+
+		//print "flattening $name [$parent_table] with ".print_r($fields, TRUE)."\n";
 
 		// if the $name ends with @, we know its parent is an array and has already had the field_name appened
 		$arrChild = ($name && substr($name, -1) == '@');
@@ -369,6 +371,7 @@ class Data extends NotORM {
 	protected function getFilteredFields($type, $fields, $structure=false){
 		$field_ids = $structure?array_keys($fields):$fields;
 
+
 		// TODO: overwriting object definition currently not supported
 		// fields is array OR object of { $field_id => TRUE | $field_def }
 		// this lets us overwrite the object definition in the config
@@ -468,6 +471,24 @@ class Data extends NotORM {
 					}
 				}
 			}
+			
+			// force id fields and many-to-one id fields on all resulting tables (these are required for properly relating the datas)
+			foreach($result as $table_name => $table_fields){
+				if(!empty($tables[$table_name])){
+					$id_fields = array();
+					if(!empty($tables[$table_name]['id'])){
+						$id_fields['id'] = $tables[$table_name]['id'];
+					}
+					$id_fields = array_merge($id_fields, array_filter($tables[$table_name], function($field) use ($type){
+						return (isset($field->type) && $field->type == 'ref' && isset($field->field) && $field->field == 'id' && isset($field->table) && strpos($field->table, $type) === 0);
+					}));
+
+					if(!empty($id_fields)){
+						$result[$table_name] = array_merge($id_fields, $result[$table_name]);
+					}
+				}
+			}
+
 			return $result;
 		}
 
@@ -500,10 +521,6 @@ class Data extends NotORM {
 
 	public function getFields($type, $mode){
 		// here is where we filter the fields down based on the input mode configuration
-//		$read = in_array($mode, $this->readModes);
-//		$write = in_array($mode, $this->writeModes);
-//		$as_schema = ($mode=='input'); // flag to return as a schema object
-//		$structure = $write; // flag to return field structures instead of just a list
 
 		// how we use these fields in lookups is important:
 		// 	read operations:
@@ -538,43 +555,46 @@ class Data extends NotORM {
 			return $this->fields[$type][$mode];
 		}
 
+		// work with the field lists loaded from the module config
 		if(!empty($this->field_configs[$type][$mode])){
-			// work with the field lists loaded from the module config
 			$config_fields = $this->field_configs[$type][$mode];
+
+			$tables = NULL;
 
 			// handle wildcarding
 			if(isset($config_fields[0]) && $config_fields[0] == "*"){
 				unset($config_fields[0]);
-
-				if($tables = $this->getTableDefs($type)){
+				if(!$tables){
+					$tables = $this->getTableDefs($type);
+				}
+				if($tables){
 					foreach($tables as $table_name => $table){
 						foreach($table as $field_id => $field){
 							$config_fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
 						}
 					}
 				}
-
 				if(in_array($mode, $this->readModes)){
 					$config_fields = array_keys($config_fields);
 				}
-				//	print "\nWILDCARDED fields: ".print_r($fields,true)."\n";
 			}
 		}
 
 		if($mode == 'input'){
 			$fields = $this->getFilteredSchema($type, $config_fields);
 		}
-		else{
+		else{			
 			$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
+
+			print "what $type:".print_r($fields, TRUE)."\n";
 
 			$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
 			$ref_table_names = array_flip($ref_table_names);
 			$ref_tables = array_intersect_key($fields, $ref_table_names);
-			$fields = array_diff_key($fields, $ref_table_names);
+			$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
 
-			//print "ref tables: ".print_r($ref_tables, TRUE)."\n";
 			foreach($ref_tables as $ref_table_name => $ref_table_fields){
-				$ref_table_name = substr($ref_table_name, 1);
+				$ref_table_name = substr($ref_table_name, 1); // remove the $ (ref table indicator)
 
 				// assert the referenced table exists (otherwise we've got a problem)
 				try{
@@ -634,9 +654,6 @@ class Data extends NotORM {
 		//			[table] => [filtered fields from table]
 
 	}
-
-	// TODO: rebuild the getFields stuff (getFields, getRefFields, getArrayFields, etc)
-
 
 	public function getSchema($type, $mode=''){
 		if(empty($type)){ return NULL; }
@@ -723,7 +740,9 @@ class Data extends NotORM {
 			if($fields = $this->getFields($table, 'save')){				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_defs = $this->sql_column_defs($fields)){
-					print "sql defs for $table:".print_r($fields, TRUE)."\n";
+					print "Got SQL defs for $table:".print_r($fields, TRUE)."\n";
+
+					// TODO: this stuff is bunk now...
 					/**if(!empty($sql_cols['definition'])){
 						// make sure any referenced tables exist
 						$ref_fiels = $this->getRefFields($table);
@@ -755,11 +774,92 @@ class Data extends NotORM {
 		return FALSE;
 	}
 
-	protected function sql_column_defs($fields, $table=''){
-		//return array();
-		print "Get SQL defs for $table ".print_r($fields, true)."\n";
+	protected function sql_column_def($field_id, $field){
+		// transforms a JSON field definition into a SQL column definition
+		/** JSON types:
+				array - A JSON array.
+				boolean - A JSON boolean.
+				integer - A JSON number without a fraction or exponent part.
+				number - Any JSON number. Number includes integer.
+				null - The JSON null value.
+				object - A JSON object.
+				string - A JSON string.
+		*/
 
-		return NULL;
+		$col_def = '';
+		$key_def = '';
+
+		// force unsigned integer for id fields
+		if($field_id == 'id' && !isset($field->minValue)){
+			$field->minValue = 0;
+		}
+
+/**
+		if(isset($field->type)){
+			if($field->type == 'boolean'){
+				$col_def = "`$field_id` TINYINT(1)";
+			}
+			else if($field->type == 'integer'){
+				$col_def = "`$field_id` INT";
+				if(isset($field->minValue) && $field->minValue >= 0){
+					$col_def .= " UNSIGNED";
+				}
+			}
+			else if($field->type == 'number'){
+				$col_def = "`$field_id` FLOAT";
+			}
+			else if($field->type == 'string'){
+				$col_def = "`$field_id`";
+				if(isset($field->maxLength) && $field->maxLength <= 255){
+					if(isset($field->minLength) && $field->minLength == $field->maxLength){
+						// fixed-length strings
+						$col_def .= " CHAR(".$field->maxLength.")";
+					}
+					else{
+						$col_def .= " VARCHAR(".$field->maxLength.")";
+					}
+				}
+				else{
+					$col_def .= " TEXT";
+				}
+			}
+		}
+		*/
+
+
+
+
+		return array('col' => $col_def, 'key' => $key_def);
+	}
+
+	protected function sql_column_defs($fields){
+		// transform field definitions into SQL columns
+		$table_defs = array();
+		print "\nGet SQL defs from: ".print_r($fields, true)."\n";
+
+		foreach($fields as $table => $table_fields){
+			$table_cols = '';
+			$table_keys = '';
+
+			foreach($table_fields as $field_id => $field){
+				$field_def = $this->sql_column_def($field_id, $field);
+				if(!empty($field_def['col'])){
+					$table_cols .= ($table_cols?', ':'').$field_def['col'];
+				}
+				if(!empty($field_def['key'])){
+					$table_keys .= ($table_keys?', ':'').$table_keys['key'];
+				}
+			}
+
+			if($table_cols){
+				$table_defs[$table] = $table_cols;
+				if($table_keys){
+					$table_defs[$table] .= ', '.$table_keys;
+				}
+			}
+		}
+
+		return !empty($table_defs)?$table_defs:NULL;
 	}
 
 	
