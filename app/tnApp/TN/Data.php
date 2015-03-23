@@ -282,7 +282,7 @@ class Data extends NotORM {
 						}
 						$items = array();
 						$items['id'] = (object)array( 'type' => 'integer', 'minValue' => 0);
-						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id');
+						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id', 'required' => TRUE);
 						$items[$field_id] = $field->items;
 						
 						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'@', $items, $parent_table);
@@ -304,14 +304,19 @@ class Data extends NotORM {
 						$field->table = $ref_split[0];
 						$field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
 
-						// look up the referenced field schema so we can use it for first-level valiation
-						if($table_schema = $this->getSchema($field->table)){
-							if($field_schema = $this->getSchemaField($table_schema, $field->field)){
-								$field->schema = $field_schema;
+						if($field->field == 'id'){
+							// all id fields in our system should be unsigned integers
+							$field->schema = (object)array( 'type' => 'integer', 'minValue' => 0);
+						}
+						else{
+							// look up the referenced field schema so we can use it for first-level valiation
+							if($table_schema = $this->getSchema($field->table)){
+								if($field_schema = $this->getSchemaField($table_schema, $field->field)){
+									$field->schema = $field_schema;
+								}
 							}
 						}
 					}
-
 				}
 				else{
 					// other fields type don't need any extra processing, add them as is
@@ -586,8 +591,6 @@ class Data extends NotORM {
 		else{			
 			$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
 
-			print "what $type:".print_r($fields, TRUE)."\n";
-
 			$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
 			$ref_table_names = array_flip($ref_table_names);
 			$ref_tables = array_intersect_key($fields, $ref_table_names);
@@ -740,7 +743,22 @@ class Data extends NotORM {
 			if($fields = $this->getFields($table, 'save')){				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_defs = $this->sql_column_defs($fields)){
-					print "Got SQL defs for $table:".print_r($fields, TRUE)."\n";
+					//print "Got SQL defs for $table:".print_r($sql_defs, TRUE)."\n";
+
+					// we need at least a definition for the requested table
+					if(!empty($sql_defs[$table])){
+
+						foreach($sql_defs as $table_name => $table_def){
+							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
+							//print "\n$sql\n";
+							$this->connection->exec($sql);
+							print "created $table_name!\n";
+						}
+
+						// the only way it can fail now is by an exception thrown by the connection
+						return TRUE;
+					}
+					
 
 					// TODO: this stuff is bunk now...
 					/**if(!empty($sql_cols['definition'])){
@@ -794,8 +812,10 @@ class Data extends NotORM {
 			$field->minValue = 0;
 		}
 
-/**
-		if(isset($field->type)){
+		if(!empty($field->type)){
+			// create the column definition depending on what type of field it is
+			// array and object field types should be already handled by flattenToTables
+
 			if($field->type == 'boolean'){
 				$col_def = "`$field_id` TINYINT(1)";
 			}
@@ -823,11 +843,24 @@ class Data extends NotORM {
 					$col_def .= " TEXT";
 				}
 			}
+			else if($field->type == 'ref'){
+				if(!empty($field->schema) && !empty($field->table) && !empty($field->field)){
+					$ref_def = $this->sql_column_def($field_id, $field->schema);
+					if(!empty($ref_def['col'])){
+						$col_def = $ref_def['col'];
+						$key_def = "FOREIGN KEY (`".$field_id."`) REFERENCES `".$field->table."`(`".$field->field."`) ON DELETE ".(!empty($field->required)?"CASCADE":"SET NULL");
+					}
+				}
+			}
 		}
-		*/
 
+		if(isset($field->required) && $field->required){
+			$col_def .= " NOT NULL";
+		}
 
-
+		if($col_def && $field_id == 'id' && isset($field->type) && $field->type == 'integer'){
+			$col_def .= " AUTO_INCREMENT PRIMARY KEY";
+		}
 
 		return array('col' => $col_def, 'key' => $key_def);
 	}
@@ -835,7 +868,6 @@ class Data extends NotORM {
 	protected function sql_column_defs($fields){
 		// transform field definitions into SQL columns
 		$table_defs = array();
-		print "\nGet SQL defs from: ".print_r($fields, true)."\n";
 
 		foreach($fields as $table => $table_fields){
 			$table_cols = '';
@@ -847,7 +879,7 @@ class Data extends NotORM {
 					$table_cols .= ($table_cols?', ':'').$field_def['col'];
 				}
 				if(!empty($field_def['key'])){
-					$table_keys .= ($table_keys?', ':'').$table_keys['key'];
+					$table_keys .= ($table_keys?', ':'').$field_def['key'];
 				}
 			}
 
