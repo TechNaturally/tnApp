@@ -578,8 +578,7 @@ class Data extends NotORM {
 
 				// assert the referenced table exists (otherwise we've got a problem)
 				try{
-					print "ASSERT REF $ref_table_name...\n";
-					//$this->assert($ref_table_name);
+					$this->assert($ref_table_name);
 				}
 				catch(Exception $e){ throw $e; }
 
@@ -724,7 +723,7 @@ class Data extends NotORM {
 			if($fields = $this->getFields($table, 'save')){				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_defs = $this->sql_column_defs($fields)){
-					//print "sql defs for $table:".print_r($fields, TRUE)."\n";
+					print "sql defs for $table:".print_r($fields, TRUE)."\n";
 					/**if(!empty($sql_cols['definition'])){
 						// make sure any referenced tables exist
 						$ref_fiels = $this->getRefFields($table);
@@ -758,7 +757,7 @@ class Data extends NotORM {
 
 	protected function sql_column_defs($fields, $table=''){
 		//return array();
-		print "SQL defs for $table ".print_r($fields, true)."\n";
+		print "Get SQL defs for $table ".print_r($fields, true)."\n";
 
 		return NULL;
 	}
