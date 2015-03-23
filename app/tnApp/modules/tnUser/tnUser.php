@@ -24,7 +24,85 @@ function user_profile_get($tn, $id){
 	$res_code = 200;
 
 	try{
-		if($user = user_get_user($tn, array('id' => $id))){
+		/**$table_def = $tn->data->getTableDefs('user'); // table defs working
+		if($table_def){
+			print "user table def:".print_r($table_def,true)."\n";
+		}
+		else{
+			print "bad news bears up in there!\n";
+		}
+		*/
+
+/**
+		if($fields = $tn->data->getFields('auth', 'input')){
+			print "auth input fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no auth input fields :(\n";
+		}
+
+		if($fields = $tn->data->getFields('auth', 'save')){
+			print "auth save fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no auth save fields :(\n";
+		}
+
+		if($fields = $tn->data->getFields('auth', 'list')){
+			print "auth list fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no auth list fields :(\n";
+		}
+		if($fields = $tn->data->getFields('auth', 'load')){
+			print "auth load fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no auth load fields :(\n";
+		}
+		*/
+
+		//$tn->data->assert('user');
+
+/**
+		if($fields = $tn->data->getFields('user', 'input')){
+			print "user input fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no user input fields :(\n\n";
+		}
+
+		if($fields = $tn->data->getFields('user', 'save')){
+			print "user save fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no user save fields :(\n\n";
+		}
+
+		if($fields = $tn->data->getFields('user', 'list')){
+			print "user list fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no user list fields :(\n\n";
+		}
+		if($fields = $tn->data->getFields('user', 'load')){
+			print "user load fields:".print_r($fields,true)."\n";
+		}
+		else{
+			print "no user load fields :(\n\n";
+		}
+*/
+
+		// TODO: filter tableDefs by field list
+		// - getTableDef('input')
+		// - getTableDef('save')
+		// - getTableDef('list')
+		// - getTableDef('load')
+
+		//$tn->data->assert('user');
+
+
+		if($user = user_get_user($tn, array('user.id' => $id))){
 			$res['user'] = $user;
 		}
 		else{

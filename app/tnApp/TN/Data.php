@@ -61,29 +61,6 @@ class Data extends NotORM {
 		foreach($this->readModes as $mode){
 			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
 		}
-
-		
-		// TODO: probably won't need this
-/**		$this->fields[$type] = array(
-			'ref' => NULL,
-			'array' => NULL
-		);
-*/
-/**
-		$inputFields = $this->getFields($type, 'input');
-		$inputFields = $this->getFields($type, 'input');
-		$listFields = $this->getFields($type, 'list');
-		$loadFields = $this->getFields($type, 'load');
-		$saveFields = $this->getFields($type, 'save');
-
-		print "$type:input=><pre>".print_r($inputFields,true)."</pre>\n\n";
-		print "$type:list=><pre>".print_r($listFields,true)."</pre>\n\n";
-		print "$type:load=><pre>".print_r($loadFields,true)."</pre>\n\n";
-		print "$type:save=><pre>".print_r($saveFields,true)."</pre>\n\n";
-		print "\n";
-		*/
-
-
 	}
 
 	public function listOf($type, $args=NULL, $page=NULL){
@@ -118,28 +95,18 @@ class Data extends NotORM {
 		return array();
 	}
 
+	// TODO: build the read operations
+
 	public function load($type, $args){
 		try{
 			if(!empty($args) && $fields = $this->getFields($type, 'load')){
 				$this->assert($type);
 
-				// extract arrays and $refs from $fields
-
-				/** TODO: this stuff is bunk now
-				$ref_fields = $this->getRefFields($type);
-				$array_fields = $this->getArrayFields($type);
-				$fields = array_filter($fields, function($value)use($ref_fields, $array_fields){
-					return (!in_array($value, array_keys($array_fields)));
-				});
-				*/
-
-				//print "loading $type ".print_r($fields, true)."REF[".print_r($ref_fields,true)."],ARR[".print_r($array_fields,true)."] WHERE ".print_r($args,true)."\n";
-
-
+				print "load $type : ".print_r($fields, true)."\n";
 
 				// basic SELECT with list fields
 				$query = $this->{$type}();
-				$query = call_user_func_array(array($query, 'select'), $fields);
+				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
 
 				// add JOINs for arrays and $refs
 
@@ -149,15 +116,16 @@ class Data extends NotORM {
 				}
 
 				//print "loading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
-				//print "<pre>"..print_r($query, true)."</pre>\n";
+				//print "<pre>".print_r($query, true)."</pre>\n";
 
+				$result = NULL;
 				$data = NULL;
 				// retrieve the first row and extract column data into assoc array
 				$result = $query->fetch();
 				if($result){
 					$data = $this->rowToArray($result);
 
-					print "got $type data:".print_r($data, true)."\n";
+//					print "got $type data:".print_r($data, true)."\n";
 
 					// resolve array data
 /**					foreach($array_fields as $field_id => $field_table){
@@ -489,7 +457,12 @@ class Data extends NotORM {
 					}));
 
 					if(!empty($id_fields)){
-						$result[$table_name] = array_merge($id_fields, $result[$table_name]);
+						if($structure){
+							$result[$table_name] = array_merge($id_fields, $result[$table_name]);
+						}
+						else{
+							$result[$table_name] = array_merge(array_keys($id_fields), $result[$table_name]);
+						}
 					}
 				}
 			}
@@ -647,17 +620,6 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function getTableDef($tables, $fields="*"){
-		// foreach ($table in $tables)
-		//		foreach ($field in $table)
-		//			if($field_id in $fields)
-		//				use it in result
-
-		// return array:
-		//			[table] => [filtered fields from table]
-
-	}
-
 	public function getSchema($type, $mode=''){
 		if(empty($type)){ return NULL; }
 		if($mode=='input'){
@@ -752,36 +714,12 @@ class Data extends NotORM {
 							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
 							//print "\n$sql\n";
 							$this->connection->exec($sql);
-							print "created $table_name!\n";
+							//print "created $table_name!\n";
 						}
 
 						// the only way it can fail now is by an exception thrown by the connection
 						return TRUE;
 					}
-					
-
-					// TODO: this stuff is bunk now...
-					/**if(!empty($sql_cols['definition'])){
-						// make sure any referenced tables exist
-						$ref_fiels = $this->getRefFields($table);
-						foreach($ref_fiels as $field_id => $field_ref){
-							$this->assert($field_ref['table']);
-						}
-
-						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-						print "SQL:".str_replace(", ", ", \n", $sql)."\n\n";
-						//$this->connection->exec($sql);
-						if(!empty($sql_cols['relations'])){
-							foreach($sql_cols['relations'] as $relTable => $relTable_def){
-								$sql = "CREATE TABLE `$relTable`(".$relTable_def.")";
-								print "REL_SQL:".str_replace(", ", ", \n", $sql)."\n\n";
-								//$this->connection->exec($sql);
-							}
-						}
-						return TRUE;
-					}
-					*/
-
 				}
 			}
 		} catch (Exception $e) {
