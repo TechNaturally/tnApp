@@ -368,18 +368,13 @@ class Data extends NotORM {
 
 	protected function getFilteredFields($type, $fields, $structure=false){
 		$field_ids = $structure?array_keys($fields):$fields;
+
+		// TODO: overwriting object definition currently not supported
 		// fields is array OR object of { $field_id => TRUE | $field_def }
 		// this lets us overwrite the object definition in the config
 
-		//print "\ngetFilteredFields (".($structure?'structure':'ids').") $type\n"; //.print_r($field_ids,true)."\n";
-
 		if($tables = $this->getTableDefs($type)){
-			if($structure){
-				print "tables:".print_r($tables,true)."\n";
-			}
 			$result = array();
-
-			print "filter fields: (".implode(', ', $field_ids).")\n";
 
 			foreach($field_ids as $field_id){
 				$table_name = $type;
@@ -388,10 +383,6 @@ class Data extends NotORM {
 				$field = NULL;
 				$objectFields = NULL;
 				$objectTables = NULL;
-
-				print "filter field: $table_name [$field_name]\n";
-
-				// TODO: how to handle reference fields? ... we are getting straight refs, but we can't select fields from them
 
 				// straight field
 				if(!empty($tables[$table_name][$field_name])){
@@ -405,8 +396,6 @@ class Data extends NotORM {
 
 				// related field tables (array tables)
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
-
-//				print "   $table_name [$field_name]: ".($field?'field':'null')." ".count($objectFields).' '.count($objectTables)."\n";
 
 				// check if it's a reference field
 				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
@@ -478,28 +467,9 @@ class Data extends NotORM {
 						}
 					}
 				}
-				else{
-					print "MISSING $field_name [$table_name]\n";
-				}
-
-				
-
 			}
-
-			//print "FILTERED FIELDS:".print_r($result, TRUE)."\n";
 			return $result;
 		}
-
-		
-
-		// array fields - resolve child tables
-		// $ref fields - resolve reference table
-
-		// returns fields as schemas when $structure is true , returns fields as array list when $structure is false
-
-		// USED for: data read/write
-
-
 
 		return NULL;
 	}
@@ -516,8 +486,6 @@ class Data extends NotORM {
 			}
 		}
 		
-		
-
 		// array fields - do nothing special
 		// $ref fields - resolve referenced field
 
@@ -644,19 +612,9 @@ class Data extends NotORM {
 								}
 							}
 						}
-
-						//print "REF ($ref_table_name : $mode) Fields: ".print_r($ref_fields, TRUE)."\n";
 					}
-					
 				}
-
 			}
-			
-
-
-
-			//$f = array_filter(array_keys($a), function ($k){ return strlen($k)>=4; }); 
-			//$b = array_intersect_key($a, array_flip($f));
 		}
 
 		if($fields){
@@ -664,166 +622,6 @@ class Data extends NotORM {
 			return $this->fields[$type][$mode];
 		}
 
-		return NULL;
-
-		// below this is obsolete
-
-		//$force_id = ($mode=='save');
-
-		$tables = $this->getTableDefs($type);
-		if(!empty($tables)){
-			if(!empty($this->field_configs[$type][$mode])){
-				// work with the field lists loaded from the module config
-				$config_fields = $this->field_configs[$type][$mode];
-
-				// handle wildcarding
-				if(isset($config_fields[0]) && $config_fields[0] == "*"){
-					unset($config_fields[0]);
-					foreach($tables as $table_name => $table){
-						foreach($table as $field_id => $field){
-							$config_fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
-						}
-					}
-					if($read){
-						$config_fields = array_keys($config_fields);
-					}
-//					print "\nWILDCARDED fields: ".print_r($fields,true)."\n";
-				}
-
-//				print "\n\n$type $mode loading ".print_r($config_fields, true). " from ".print_r($tables, true)."\n\n";
-
-				$ref_tables = array();
-
-				$fields = array();
-				foreach($config_fields as $field_id => $field){
-					$field_table = $type;
-					$field_name = $read?$field:$field_id; // read field configs have fields listed as array, so field is the field name and field_id is actually the index
-
-					// support for nested fields
-					$field_split = explode('.', $field_name, 2);
-					if(count($field_split) > 1){
-						$field_table = $field_split[0];
-						$field_name = str_replace('.', '_', $field_split[1]);
-					}
-
-					// detect if it is an array or reference field
-					if(!empty($tables[$type.'_'.$field_name][$field_name])){
-						//print "array field $type.'_'.$field_name => $field_name\n";
-					}
-					else if(!empty($tables[$type.'_'.$field_table])){
-						//print "array field $type.'_'.$field_name => $field_name\n";
-					}
-
-
-					print "checkin? $field_table [$field_name]\n";
-
-					// support for array fields
-					if(!empty($tables[$type.'_'.$field_name])){
-						print "ok... $field_table [$field_name]";
-						$field_table = $type.'_'.$field_name;
-						print " => $field_table\n";
-
-
-						if(empty($tables[$field_table][$field_name])){
-							// array is an object, take all the fields that start with $field_name
-							print "   full object $field_name\n";
-							if(!isset($fields[$field_table])){
-								$fields[$field_table] = array();
-							}
-							foreach($tables[$field_table] as $array_field_id => $array_field){
-								if(strpos($array_field_id, $field_name.'_') !== 0){
-									continue;
-								}
-
-								if($structure){
-									$fields[$field_table][$array_field_id] = $array_field;
-								}
-								else{
-									$fields[$field_table][] = $array_field_id;
-
-								}
-
-							}
-						}
-						else{
-							// array is a single field
-							print "   single field $field_name\n";
-						}
-						
-					}
-					else if(!empty($tables[$type.'_'.$field_table])){
-						print "mmhmm... $field_table [$field_name]\n";
-						if(!empty($tables[$type.'_'.$field_table][$field_table.'_'.$field_name])){
-							$field_name = $field_table.'_'.$field_name;
-						}
-						$field_table = $type.'_'.$field_table;
-					}
-
-					// we are missing the array object structures? - we can get specific array fields, but not the whole thing
-
-					if(!empty($tables[$field_table][$field_name]->type) && $tables[$field_table][$field_name]->type == 'ref'){
-						// support for full reference fields (ie. all fields out of a referenced table for the requested mode)
-						print "full ref:".$field_table."=>".$field_name."\n";
-						if(empty($ref_tables[$field_name])){
-							$ref_fields = $this->getFields($field_name, $mode);
-							if(!empty($ref_fields[$field_name])){
-								$ref_tables[$field_name] = $ref_fields[$field_name];
-							}
-						}
-						
-						if(!empty($ref_tables[$field_name])){
-							if(!isset($fields["$$field_name"])){
-								$fields["$$field_name"] = $ref_tables[$field_name];
-							}
-							else{
-								$fields["$$field_name"] = array_merge($fields["$$field_name"], $ref_tables[$field_name]);
-							}
-						}
-					}
-					else if(!empty($tables[$type][$field_table]->type) && $tables[$type][$field_table]->type == 'ref'){
-						// support for specific reference fields (ie. single fields out of a referenced table)
-						print "partial ref:".$field_table."=>".$field_name."\n";
-						// TODO: what about nested references?  ... ex reffed_field_another_reffed or reffed_field_array
-						if(!isset($fields["$$field_table"])){
-							$fields["$$field_table"] = array();
-						}
-						if($structure){
-							if(empty($ref_tables[$field_table])){
-								$ref_fields = $this->getFields($field_table, $mode);
-								if(!empty($ref_fields[$field_table])){
-									$ref_tables[$field_table] = $ref_fields[$field_table];
-								}
-							}
-							if(!empty($ref_tables[$field_table][$field_name])){
-								if(!isset($fields["$$field_table"])){
-									$fields["$$field_table"] = array();
-								}
-								$fields["$$field_table"][$field_name] = $ref_tables[$field_table][$field_name];
-							}
-						}
-						else{
-							$fields["$$field_table"][] = $field_name;
-						}
-					}
-					else if(!empty($tables[$field_table][$field_name])){
-						print "a field :) $field_table [$field_name]\n\n";
-						if(!isset($fields[$field_table])){
-							$fields[$field_table] = array();
-						}
-						if($structure){
-							$fields[$field_table][$field_name] = $tables[$field_table][$field_name];
-						}
-						else{
-							$fields[$field_table][] = $field_name;
-
-						}
-					}
-				}
-				$this->fields[$type][$mode] = $fields;
-				return $fields;
-			}
-
-		}
 		return NULL;
 	}
 
@@ -926,6 +724,7 @@ class Data extends NotORM {
 			if($fields = $this->getFields($table, 'save')){				
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_defs = $this->sql_column_defs($fields)){
+					//print "sql defs for $table:".print_r($fields, TRUE)."\n";
 					/**if(!empty($sql_cols['definition'])){
 						// make sure any referenced tables exist
 						$ref_fiels = $this->getRefFields($table);
