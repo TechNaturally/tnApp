@@ -389,7 +389,9 @@ class Data extends NotORM {
 				$objectFields = NULL;
 				$objectTables = NULL;
 
-				//print "filter field: $table_name [$field_name]\n";
+				print "filter field: $table_name [$field_name]\n";
+
+				// TODO: how to handle reference fields? ... we are getting straight refs, but we can't select fields from them
 
 				// straight field
 				if(!empty($tables[$table_name][$field_name])){
@@ -403,6 +405,29 @@ class Data extends NotORM {
 
 				// related field tables (array tables)
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
+
+//				print "   $table_name [$field_name]: ".($field?'field':'null')." ".count($objectFields).' '.count($objectTables)."\n";
+
+				// check if it's a reference field
+				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
+					$field_split = explode('.', $field_id, 2);
+
+					$ref_field = count($field_split)?$field_split[0]:$field_name;
+					if(!empty($tables[$table_name][$ref_field])){
+						$field_name = $ref_field;
+						$field = $tables[$table_name][$ref_field];
+					}
+
+					if(!$structure){
+						$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
+						if(count($field_split) > 1){
+							$field_name = $field_split[1]; //;str_replace('.', '_', $field_split[1]);
+						}
+					}
+					else if(!isset($result[$ref_field])){
+						$result["$$ref_field"] = TRUE;
+					}
+				}
 
 				// do we have any matching fields or field tables?
 				if($field || !empty($objectFields) || !empty($objectTables)){
@@ -524,9 +549,10 @@ class Data extends NotORM {
 
 		// write operations:
 		//				1. handle any reference updates first
-		//					a) foreach ($field->type == ref) (use array_filter for that)
-		//					b) foreach ($tables as $table where $table != $primary_table)
+		//					- foreach ($field->type == ref) (use array_filter for that)
 		//				2. then update the primary table
+		//				3. then update the array tables
+		//					- foreach ($tables as $table where $table != $primary_table)
 
 		/** USE CASES
 			- input: return schema, filtered by fields
@@ -572,6 +598,65 @@ class Data extends NotORM {
 		}
 		else{
 			$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
+
+			$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
+			$ref_table_names = array_flip($ref_table_names);
+			$ref_tables = array_intersect_key($fields, $ref_table_names);
+			$fields = array_diff_key($fields, $ref_table_names);
+
+			//print "ref tables: ".print_r($ref_tables, TRUE)."\n";
+			foreach($ref_tables as $ref_table_name => $ref_table_fields){
+				$ref_table_name = substr($ref_table_name, 1);
+
+				// assert the referenced table exists (otherwise we've got a problem)
+				try{
+					print "ASSERT REF $ref_table_name...\n";
+					//$this->assert($ref_table_name);
+				}
+				catch(Exception $e){ throw $e; }
+
+				// load the fields for the referenced type
+				if(in_array($mode, $this->readModes)){
+					$ref_fields = $this->getFields($ref_table_name, $mode);
+					if(count($ref_fields)){
+						if(count($ref_fields[$ref_table_name]) && is_array($ref_table_fields) && !in_array($ref_table_name, $ref_table_fields)){
+							//print "filter down to: ".print_r($ref_table_fields, TRUE)."\n";
+							$ref_fields[$ref_table_name] = array_filter($ref_fields[$ref_table_name], function($ref_field) use ($ref_table_fields){
+								return (in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', $ref_field), $ref_table_fields));
+							});
+						}
+
+						// add the referenced fields
+						foreach($ref_fields as $ref_field_table_name => $ref_field_table_fields){
+							if($ref_field_table_name == $ref_table_name){
+								// root referenced table, append as simple list
+								foreach($ref_field_table_fields as $ref_field_table_field){
+									$fields[$type][] = "$ref_table_name.$ref_field_table_field";
+								}
+							}
+							else{
+								// referenced array table, append the table if it is named in $ref_table_fields
+								foreach($ref_table_fields as $ref_field_table_field){
+									$ref_field_table_field_name = $ref_table_name.'_'.str_replace('.', '_', $ref_field_table_field);
+									if($ref_field_table_field == $ref_table_name || strpos($ref_field_table_name, $ref_field_table_field_name) === 0){
+										$fields[$ref_field_table_name] = $ref_field_table_fields;
+									}
+								}
+							}
+						}
+
+						//print "REF ($ref_table_name : $mode) Fields: ".print_r($ref_fields, TRUE)."\n";
+					}
+					
+				}
+
+			}
+			
+
+
+
+			//$f = array_filter(array_keys($a), function ($k){ return strlen($k)>=4; }); 
+			//$b = array_intersect_key($a, array_flip($f));
 		}
 
 		if($fields){
