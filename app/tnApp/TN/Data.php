@@ -104,6 +104,13 @@ class Data extends NotORM {
 
 				print "load $type : ".print_r($fields, true)."\n";
 
+				// FAILS:
+				// SELECT id, name, email, phone, test_t1, test_t2_tB, auth.id, auth.email, auth.username, auth.check_zing FROM user LEFT JOIN auth ON user.auth_id = auth.id WHERE (user.id = '1')
+
+				// WORKS:
+				// SELECT user.id, name, user.email, test_t1, test_t2_tB, auth.id, auth.email, auth.username, auth.check_zing FROM user LEFT JOIN auth ON user.auth = auth.id WHERE (user.id = '1')
+
+
 				// basic SELECT with list fields
 				$query = $this->{$type}();
 				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
