@@ -2,9 +2,9 @@
 	"id": "auth",
 	"data": {
 		"input": ["email", "username", "password"],
-		"list": ["username", "email"],
-		"load": ["email", "username"],
-		"save": ["username", "email", "hash"],
+		"list": ["username", "email", "check"],
+		"load": ["email", "username", "check"],
+		"save": ["username", "email", "hash", "check"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -33,6 +33,13 @@
 					"minLength": 101,
 					"maxLength": 101,
 					"required": true
+				},
+				"check": {
+					"type": "object",
+					"properties": {
+						"zing": { "type": "string" },
+						"zray": { "type": "array", "items": {"type":"number"} }
+					}
 				}
 			}
 		}
