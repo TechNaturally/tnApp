@@ -102,7 +102,7 @@ class Data extends NotORM {
 			if(!empty($args) && $fields = $this->getFields($type, 'load')){
 				$this->assert($type);
 
-				print "load $type : ".print_r($fields, true)."\n";
+				//print "load $type : ".print_r($fields, true)."\n";
 
 				// FAILS:
 				// SELECT id, name, email, phone, test_t1, test_t2_tB, auth.id, auth.email, auth.username, auth.check_zing FROM user LEFT JOIN auth ON user.auth_id = auth.id WHERE (user.id = '1')
@@ -419,6 +419,9 @@ class Data extends NotORM {
 						}
 					}
 					else if(!isset($result["$$ref_field"])){
+						if($field->field == 'id'){
+							$field_name = $field->table."_id";
+						}
 						$result["$$ref_field"] = $field->table;
 					}
 				}
@@ -540,7 +543,7 @@ class Data extends NotORM {
 	}
 
 	public function getFields($type, $mode){
-		print "*** GET FIELDS $type [$mode]\n";
+//		print "*** GET FIELDS $type [$mode]\n";
 		// here is where we filter the fields down based on the input mode configuration
 
 		// how we use these fields in lookups is important:
@@ -605,12 +608,8 @@ class Data extends NotORM {
 			if($mode == 'input'){
 				$fields = $this->getFilteredSchema($type, $config_fields);
 			}
-			else{			
+			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
-
-				if($mode == 'list' || $mode == 'load'){
-					//print "what we do here? $type [$mode] \n".print_r($fields, TRUE)."\n";
-				}
 				
 //				print "what we GOT $type [$mode] \n".print_r($fields, TRUE)."\n";
 
@@ -633,19 +632,18 @@ class Data extends NotORM {
 						$ref_table_name = $ref_table_fields;
 					}
 
-
-
 					// assert the referenced table exists (otherwise we've got a problem)
 					try{
 						$this->assert($ref_table_name);
 					}
 					catch(Exception $e){ throw $e; }
 
-
 					// load the fields for the referenced type
 					if(in_array($mode, $this->readModes)){
 						$ref_fields = $this->getFields($ref_table_name, $mode);
 						if(count($ref_fields)){
+							//print "ref fields for $type $mode \n";
+//							print "alright so we doing $ref_table_name with: ".print_r($ref_fields, TRUE)."\n";
 							if(count($ref_fields[$ref_table_name]) && is_array($ref_table_fields) && !in_array($ref_table_name, $ref_table_fields)){
 								// filter the ref_table_fields to only the ones requested
 //								print "filter ".print_r($ref_fields[$ref_table_name], TRUE)."\n";
@@ -653,8 +651,8 @@ class Data extends NotORM {
 								$ref_fields[$ref_table_name] = array_filter($ref_fields[$ref_table_name], function($ref_field) use ($ref_table_name, $ref_table_fields){
 									return (in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', "$ref_field"), $ref_table_fields));
 								});
-//								print "filtered:".print_r($ref_fields[$ref_table_name], TRUE)."\n";
 							}
+//							print "filtered:".print_r($ref_fields[$ref_table_name], TRUE)."\n";
 
 							// add the referenced fields
 
@@ -662,7 +660,7 @@ class Data extends NotORM {
 								if($ref_field_table_name == $ref_table_name){
 									// root referenced table, append as simple list
 									foreach($ref_field_table_fields as $ref_field_table_field){
-										$fields[$type][] = "$ref_table_name.$ref_field_table_field";
+										$fields[$type][] = $ref_field_table_field;
 									}
 								}
 								else{
@@ -675,7 +673,6 @@ class Data extends NotORM {
 									}
 								}
 							}
-
 						}
 					}
 
@@ -686,6 +683,7 @@ class Data extends NotORM {
 		}
 
 		if($fields){
+			//print "\n*** FINALLY $type [$mode]: ".print_r($fields, TRUE)."\n";
 			$this->fields[$type][$mode] = $fields;
 			return $this->fields[$type][$mode];
 		}
@@ -787,7 +785,7 @@ class Data extends NotORM {
 						foreach($sql_defs as $table_name => $table_def){
 							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
 							//print "\n$sql\n";
-							//$this->connection->exec($sql);
+							$this->connection->exec($sql);
 							//print "created $table_name!\n";
 						}
 
