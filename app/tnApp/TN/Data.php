@@ -68,9 +68,11 @@ class Data extends NotORM {
 			if($fields = $this->getFields($type, 'list')){
 				$this->assert($type);
 
+				print "\nlisting $type with ".print_r($fields[$type], TRUE)."\n";
+
 				// basic SELECT with list fields
 				$query = $this->{$type}();
-				$query = call_user_func_array(array($query, 'select'), $fields);
+				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
 
 				// add WHERE arguments
 				if(!empty($args)){
@@ -84,8 +86,8 @@ class Data extends NotORM {
 					$query->limit($page['limit'], !empty($page['offset'])?$page['offset']:0);
 				}
 
-				// retrieve the list as an array indexed by id
-				$list = $query->fetchPairs('id');
+				// retrieve the list as an array indexed by first field
+				$list = $query->fetchPairs($fields[$type][0]);
 
 				return $list;
 			}
