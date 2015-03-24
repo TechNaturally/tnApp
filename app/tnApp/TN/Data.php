@@ -127,40 +127,56 @@ class Data extends NotORM {
 				$result = $query->fetch();
 				if($result){
 					$data = $this->rowToArray($result);
+
+					// retrieve any array data
 					foreach($fields as $table_name => $table_fields){
 						if($table_name !== $type){
 							$array_query = NULL;
 							$data_field_id = $table_name;
+							$parent_field_name = $type;
+
 							if(strpos($table_name, $type."_") === 0){
 								$data_field_id = substr($table_name, strlen($type."_"));
 								$array_query = $result->{$table_name}(); //->fetchPairs($table_fields[0]);
-								$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+								
 							}
 							else{
 								$ref_table_split = explode('_', $table_name, 2);
-								if(!empty($data[$ref_table_split[0].'.id'])){
+								$parent_field_name = $ref_table_split[0]."_id";
+								$parent_field_id = $ref_table_split[0].".id";
+								if(!empty($data[$parent_field_id])){
 									$data_field_id = implode('.', $ref_table_split);
 									$array_query = $this->{$table_name}();
-									$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
-									$array_query->where($ref_table_split[0]."_id", $data[$ref_table_split[0].'.id']);
+									$array_query->where($parent_field_name, $data[$parent_field_id]);
 								}
 							}
 							if(!empty($array_query)){
-								$array_data = array();
-								$array_rows = $array_query->fetchPairs($table_fields[0]);
-								foreach($array_rows as $array_row_id => $array_row){
-									$array_data[$array_row_id] = $this->rowToArray($array_row);
-								}
+								// take out the strucutral fields
+								$table_fields = array_filter($table_fields, function($field_id) use ($table_name, $parent_field_name){
+									return ($field_id != 'id' && $field_id != "$table_name.id" && $field_id != $parent_field_name && $field_id != "$table_name.$parent_field_name" && $field_id != "$table_name.$parent_field_name"."_id");
+								});
+								
+								// make the query
+								$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
 
+								// process the results
+								$array_data = array();
+								while($array_row = $array_query->fetch()){
+									$array_data[] = $this->getArrayRowValue($array_row, $table_name);
+								}
 								if(!empty($array_data)){
-									$data[$data_field_id] = $array_data;
+									// add the results to the data array
+									$data[$data_field_id.'s'] = $array_data;
 								}
 							}
 						}
 					}
+
+					// compile the data array into the object structure
+					$data = $this->compileObject($data);
 				}
 
-				
+
 
 				return $data;
 			}
@@ -184,14 +200,49 @@ class Data extends NotORM {
 		return TRUE;
 	}
 
-	public function rowToArray($row){
-		// transposes a NotORM row object into a simple array of the data
-		return $row->getRow();
-/**		$array = array();
-		foreach ($row as $column => $data){
-			$array[$column] = $data;
+		public function rowToArray($row){
+			// transposes a NotORM row object into a simple array of the data
+			return $row->getRow();
 		}
-		return $array;*/
+
+	public function getArrayRowValue($array_row, $array_name){
+		$name_split = preg_split("/(\.|_)/", $array_name);
+		$simple_name = array_pop($name_split);
+
+		$value = $this->rowToArray($array_row);
+
+		if(isset($value[$simple_name])){
+			$value = $value[$simple_name];
+		}
+
+		return $value;
+	}
+
+	public function compileObject($data){
+		$object = array();
+		foreach($data as $field => $value){
+			// organize the value into objects (. and _ on field names make a child node)
+			$field_split = preg_split("/(\.|_)/", $field);
+			if(count($field_split) > 1){
+				$cNode = &$object;
+				foreach($field_split as $idx => $obj_node){
+					if($idx < count($field_split)-1){
+						if(!isset($cNode[$obj_node])){
+							$cNode[$obj_node] = array();
+						}
+						$cNode = &$cNode[$obj_node];
+					}
+					else{
+						$cNode[$obj_node] = $value;
+					}
+				}
+			}
+			else{
+				$object[$field] = $value;
+			}
+		}
+		print "\nOBJECT: ".print_r($object, true)."\n";
+		return $object;
 	}
 
 	protected function flattenToTables($name, $fields, $parent_table=''){
