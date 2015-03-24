@@ -102,15 +102,6 @@ class Data extends NotORM {
 			if(!empty($args) && $fields = $this->getFields($type, 'load')){
 				$this->assert($type);
 
-				//print "load $type : ".print_r($fields, true)."\n";
-
-				// FAILS:
-				// SELECT id, name, email, phone, test_t1, test_t2_tB, auth.id, auth.email, auth.username, auth.check_zing FROM user LEFT JOIN auth ON user.auth_id = auth.id WHERE (user.id = '1')
-
-				// WORKS:
-				// SELECT user.id, name, user.email, test_t1, test_t2_tB, auth.id, auth.email, auth.username, auth.check_zing FROM user LEFT JOIN auth ON user.auth = auth.id WHERE (user.id = '1')
-
-
 				// basic SELECT with list fields
 				$query = $this->{$type}();
 				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
@@ -280,12 +271,6 @@ class Data extends NotORM {
 						$field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
 
 						if($field->field == 'id'){
-							// if the field_id matches the table name, append _id so NotORM relations work
-/**							if($field_id == $field->table){
-								$field_id = $field->table.'_'.$field->field;
-							}
-							*/
-
 							// all id fields in our system should be unsigned integers
 							$field->schema = (object)array( 'type' => 'integer', 'minValue' => 0);
 						}
@@ -385,11 +370,8 @@ class Data extends NotORM {
 				}
 
 				// related field tables (array tables)
-				// TODO: what about arrays of references?
+				// TODO: what about arrays with references?
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
-
-				
-				//print "    ".($field?'FIELD':'NOFIELD')."  ".count($objectFields)."  ".count($objectTables)."\n";
 
 				// check if it's a reference field
 				$ref_field = NULL;
@@ -402,20 +384,18 @@ class Data extends NotORM {
 						$field = $tables[$table_name][$ref_field];
 					}
 
-//					print "*** REF FIELD: [$field_id] $ref_field ($field_name)\n".print_r($field, TRUE)."\n";
-
 					if(!$structure){
 						$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
-						//$table_name = $field->table;
 
 						if($field_id == $ref_field){
-							$field_name = $field->table; //.".".str_replace('.', '_', $field->field);;
+							$field_name = $field->table;
 						}
 						else if(count($field_split) > 1){
+							// prepend the table name to referenced fields
 							$field_name = $field->table.".".str_replace('.', '_', $field_split[1]);
 						}
 						else{
-							// $field = NULL; // ? not sure about this...
+							// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
 						}
 					}
 					else if(!isset($result["$$ref_field"])){
@@ -496,11 +476,6 @@ class Data extends NotORM {
 						}
 					}
 
- 			// simple array_filter version does not handle appending the $table_prefix unfortunately
-/**					$id_fields = array_merge($id_fields, array_filter($tables[$table_name], function($field) use ($type){
-						return (isset($field->type) && $field->type == 'ref' && isset($field->field) && $field->field == 'id' && isset($field->table) && strpos($field->table, $type) === 0);
-					}));
-*/
 					if(!empty($id_fields)){
 						if($structure){
 							$result[$table_name] = array_merge($id_fields, $result[$table_name]);
@@ -610,19 +585,13 @@ class Data extends NotORM {
 			}
 			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
-				
-//				print "what we GOT $type [$mode] \n".print_r($fields, TRUE)."\n";
 
 				$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
 				$ref_table_names = array_flip($ref_table_names);
 				$ref_tables = array_intersect_key($fields, $ref_table_names);
 				$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
 
-//				print "ref tables $type [$mode]: ".print_r($ref_tables, TRUE)."\n";
-
 				foreach($ref_tables as $ref_table_name => $ref_table_fields){
-//					print "olaka: $ref_table_name : ".$ref_table_fields."\n";
-
 					if(is_array($ref_table_fields)){
 						$first_field = $ref_table_fields[0];
 						$first_field_split = explode('.', $first_field, 2);
@@ -642,25 +611,20 @@ class Data extends NotORM {
 					if(in_array($mode, $this->readModes)){
 						$ref_fields = $this->getFields($ref_table_name, $mode);
 						if(count($ref_fields)){
-							//print "ref fields for $type $mode \n";
-//							print "alright so we doing $ref_table_name with: ".print_r($ref_fields, TRUE)."\n";
 							if(count($ref_fields[$ref_table_name]) && is_array($ref_table_fields) && !in_array($ref_table_name, $ref_table_fields)){
 								// filter the ref_table_fields to only the ones requested
-//								print "filter ".print_r($ref_fields[$ref_table_name], TRUE)."\n";
-//								print "  Down to: ".print_r($ref_table_fields, TRUE)."\n";
 								$ref_fields[$ref_table_name] = array_filter($ref_fields[$ref_table_name], function($ref_field) use ($ref_table_name, $ref_table_fields){
 									return (in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', "$ref_field"), $ref_table_fields));
 								});
 							}
-//							print "filtered:".print_r($ref_fields[$ref_table_name], TRUE)."\n";
 
-							// add the referenced fields
-
+							// add the referenced fields to the root table
 							foreach($ref_fields as $ref_field_table_name => $ref_field_table_fields){
 								if($ref_field_table_name == $ref_table_name){
 									// root referenced table, append as simple list
+									// use the "as `$ref_field_table_field`" to preserve table name-spacing (since they are selected in same query as root $type)
 									foreach($ref_field_table_fields as $ref_field_table_field){
-										$fields[$type][] = $ref_field_table_field;
+										$fields[$type][] = "$ref_field_table_field as `$ref_field_table_field`";
 									}
 								}
 								else{
