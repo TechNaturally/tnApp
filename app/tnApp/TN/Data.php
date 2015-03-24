@@ -1,9 +1,15 @@
 <?php
 
 namespace TN;
-use PDO, NotORM, SchemaStore, Exception, stdClass, Jsv4;
+use PDO, NotORM, NotORM_Row, SchemaStore, Exception, stdClass, Jsv4;
 
 class DataException extends Exception{}
+
+class DataRow extends NotORM_Row {
+	public function getRow(){
+		return $this->row;
+	}
+}
 
 class Data extends NotORM {
 	protected $schemas;
@@ -33,6 +39,7 @@ class Data extends NotORM {
 		if($connection){
 			parent::__construct($connection);
 		}
+		$this->rowClass = '\TN\DataRow';
 	}
 
 	public function addType($type, $config){
@@ -68,8 +75,6 @@ class Data extends NotORM {
 			if($fields = $this->getFields($type, 'list')){
 				$this->assert($type);
 
-				print "\nlisting $type with ".print_r($fields[$type], TRUE)."\n";
-
 				// basic SELECT with list fields
 				$query = $this->{$type}();
 				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
@@ -97,8 +102,6 @@ class Data extends NotORM {
 		return array();
 	}
 
-	// TODO: build the read operations
-
 	public function load($type, $args){
 		try{
 			if(!empty($args) && $fields = $this->getFields($type, 'load')){
@@ -124,35 +127,40 @@ class Data extends NotORM {
 				$result = $query->fetch();
 				if($result){
 					$data = $this->rowToArray($result);
+					foreach($fields as $table_name => $table_fields){
+						if($table_name !== $type){
+							$array_query = NULL;
+							$data_field_id = $table_name;
+							if(strpos($table_name, $type."_") === 0){
+								$data_field_id = substr($table_name, strlen($type."_"));
+								$array_query = $result->{$table_name}(); //->fetchPairs($table_fields[0]);
+								$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+							}
+							else{
+								$ref_table_split = explode('_', $table_name, 2);
+								if(!empty($data[$ref_table_split[0].'.id'])){
+									$data_field_id = implode('.', $ref_table_split);
+									$array_query = $this->{$table_name}();
+									$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+									$array_query->where($ref_table_split[0]."_id", $data[$ref_table_split[0].'.id']);
+								}
+							}
+							if(!empty($array_query)){
+								$array_data = array();
+								$array_rows = $array_query->fetchPairs($table_fields[0]);
+								foreach($array_rows as $array_row_id => $array_row){
+									$array_data[$array_row_id] = $this->rowToArray($array_row);
+								}
 
-//					print "got $type data:".print_r($data, true)."\n";
-
-					// resolve array data
-/**					foreach($array_fields as $field_id => $field_table){
-						$field_data = $result->{$field_table}()->fetchPairs('id'); // arrays are a many-to-many
-						if($field_data){
-							$data[$field_id] = array();
-							foreach($field_data as $row_id => $row_data){
-								$data[$field_id][] = $row_data[$field_id];
-								// TODO: we will need to look at how to extract object fields also
+								if(!empty($array_data)){
+									$data[$data_field_id] = $array_data;
+								}
 							}
 						}
 					}
-
-					// resolve references
-					foreach($ref_fields as $field_id => $field_ref){
-						$ref_fields = $this->getFields($field_ref['table'], 'load');
-						$ref_query = $this->{$field_ref['table']}();
-						$ref_query = call_user_func_array(array($ref_query, 'select'), $ref_fields);
-						$field_data = $ref_query->where($field_ref['field'], $data[$field_id])->fetch(); // references are a many-to-1
-						if($field_data){
-							$data[$field_id] = $this->rowToArray($field_data);
-						}
-					}
-					*/
-
-
 				}
+
+				
 
 				return $data;
 			}
@@ -178,11 +186,12 @@ class Data extends NotORM {
 
 	public function rowToArray($row){
 		// transposes a NotORM row object into a simple array of the data
-		$array = array();
+		return $row->getRow();
+/**		$array = array();
 		foreach ($row as $column => $data){
 			$array[$column] = $data;
 		}
-		return $array;
+		return $array;*/
 	}
 
 	protected function flattenToTables($name, $fields, $parent_table=''){
