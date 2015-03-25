@@ -119,7 +119,7 @@ class Data extends NotORM {
 					$query->where($field_id, $field_value);
 				}
 
-				//print "loading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
+				print "\nloading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
 				//print "<pre>".print_r($query, true)."</pre>\n";
 
 				$result = NULL;
@@ -150,15 +150,47 @@ class Data extends NotORM {
 
 	public function loadRowArrays($row_type, $row, $fields){
 		$row_arrays = array();
+		//print "LOAD ARRAYS FOR $row_type:".print_r($row, TRUE)."\n";
+		//print "load arrays for $row_type:".print_r($row->getRow(), TRUE)."\n";
 		foreach($fields as $table_name => $table_fields){
-			if($table_name !== $row_type && in_array($table_name.".".$row_type."_id", $table_fields)){
-				$child_array = $this->loadChildArray($row_type, $row, $table_name, $fields);
+			//print "ok...:".$table_name.":".print_r($table_fields, TRUE)."\n";
+			if($table_name !== $row_type && strpos($table_name, '_') !== FALSE){
+				$child_array = NULL;
+				if(in_array($table_name.".".$row_type."_id", $table_fields)){
+					$child_array = $this->loadChildArray($row_type, $row, $table_name, $fields);
+				}
+				else{
+					if($ref_name = substr($table_name, 0, strpos($table_name, '_'))){
+						if(array_key_exists($ref_name.".id", $row->getRow())){
+							$child_array = $this->loadRefArray($table_name, $table_fields, $ref_name."_id", $row[$ref_name.".id"]);
+						}
+					}
+				}
 				if(!empty($child_array)){
 					$row_arrays[str_replace($row_type.'_', '', $table_name)] = $child_array;
 				}
 			}
 		}
 		return !empty($row_arrays)?$row_arrays:NULL;
+	}
+
+	private function loadRefArray($table_name, $table_fields, $ref_field, $ref_value){
+		$array_query = $this->{$table_name}();
+
+		// make the query
+		$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+
+		$array_query->where($ref_field, $ref_value);
+
+		// process the results
+		$array_data = array();
+		while($array_row = $array_query->fetch()){
+			$row_value = $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id"));
+			$array_data[] = $row_value;
+		}
+
+		return $array_data;
+
 	}
 
 	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
@@ -412,8 +444,8 @@ class Data extends NotORM {
 	protected function getObjectTables($field_id, $tables){
 		$object_tables = array();
 		foreach($tables as $table_id => $table){
-			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0){
-				$object_tables[$table_id] = $table;
+			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0 || strpos($field_id, $table_id) !== FALSE){
+				$object_tables[$table_id] = $table;				
 			}
 		}
 		return count($object_tables)?$object_tables:NULL;
@@ -429,7 +461,7 @@ class Data extends NotORM {
 		if($tables = $this->getTableDefs($type)){
 			$result = array();
 
-//			print "FILTERING $type tables: ".print_r($tables[$type], TRUE)."\n";
+			//print "FILTERING $type ".print_r($field_ids, TRUE)." tables: ".print_r($tables[$type], TRUE)."\n";
 
 			foreach($field_ids as $field_id){
 				$table_name = $type;
@@ -450,7 +482,6 @@ class Data extends NotORM {
 				}
 
 				// related field tables (array tables)
-				// TODO: what about arrays with references?
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
 
 				// check if it's a reference field
@@ -527,12 +558,27 @@ class Data extends NotORM {
 								if(!isset($result[$object_table_name])){
 									$result[$object_table_name] = array();
 								}
+
+								$object_name = str_replace($type."_", '', $object_table_name);
+								$object_name = substr($object_name, 0, strrpos($object_name, '_'));
+								$object_name = str_replace('_', '.', $object_name);
 								foreach($object_table_fields as $object_field_id => $object_field){
 									if($structure){
 										$result[$object_table_name][$object_field_id] = $object_field;
 									}
 									else{
-										$result[$object_table_name][] = $object_table_prefix.$object_field_id;
+										$object_field_id_norm = str_replace('_', '.', $object_field_id);
+										$use_field = in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
+										if(!$use_field){
+											$matching_fields = array_filter($field_ids, function($field_id) use ($object_name, $object_field_id_norm){
+												return (strpos($object_name.'.'.$object_field_id_norm, $field_id) !== FALSE);
+
+											});
+											$use_field = !empty($matching_fields);
+										}
+										if($use_field){
+											$result[$object_table_name][] = $object_table_prefix.$object_field_id;
+										}
 									}
 								}
 							}
