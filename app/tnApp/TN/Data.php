@@ -105,6 +105,7 @@ class Data extends NotORM {
 	public function load($type, $args){
 		try{
 			if(!empty($args) && $fields = $this->getFields($type, 'load')){
+				//print "\nloading $type with fields: ".print_r($fields,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -128,48 +129,10 @@ class Data extends NotORM {
 				if($result){
 					$data = $this->rowToArray($result);
 
-					// retrieve any array data
-					foreach($fields as $table_name => $table_fields){
-						if($table_name !== $type){
-							$array_query = NULL;
-							$data_field_id = $table_name;
-							$parent_field_name = $type;
-
-							if(strpos($table_name, $type."_") === 0){
-								$data_field_id = substr($table_name, strlen($type."_"));
-								$array_query = $result->{$table_name}(); //->fetchPairs($table_fields[0]);
-								
-							}
-							else{
-								$ref_table_split = explode('_', $table_name, 2);
-								$parent_field_name = $ref_table_split[0]."_id";
-								$parent_field_id = $ref_table_split[0].".id";
-								if(!empty($data[$parent_field_id])){
-									$data_field_id = implode('.', $ref_table_split);
-									$array_query = $this->{$table_name}();
-									$array_query->where($parent_field_name, $data[$parent_field_id]);
-								}
-							}
-							if(!empty($array_query)){
-								// take out the strucutral fields
-								$table_fields = array_filter($table_fields, function($field_id) use ($table_name, $parent_field_name){
-									return ($field_id != 'id' && $field_id != "$table_name.id" && $field_id != $parent_field_name && $field_id != "$table_name.$parent_field_name" && $field_id != "$table_name.$parent_field_name"."_id");
-								});
-								
-								// make the query
-								$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
-
-								// process the results
-								$array_data = array();
-								while($array_row = $array_query->fetch()){
-									$array_data[] = $this->getArrayRowValue($array_row, $table_name);
-								}
-								if(!empty($array_data)){
-									// add the results to the data array
-									$data[$data_field_id.'s'] = $array_data;
-								}
-							}
-						}
+					// load any array data for this row
+					$row_arrays = $this->loadRowArrays($type, $result, $fields);
+					if(!empty($row_arrays)){
+						$data = array_merge($data, $row_arrays);
 					}
 
 					// compile the data array into the object structure
@@ -182,6 +145,48 @@ class Data extends NotORM {
 			}
 		}
 		catch(Exception $e){ throw $e; }
+		return NULL;
+	}
+
+	public function loadRowArrays($row_type, $row, $fields){
+		$row_arrays = array();
+		foreach($fields as $table_name => $table_fields){
+			if($table_name !== $row_type && in_array($table_name.".".$row_type."_id", $table_fields)){
+				$child_array = $this->loadChildArray($row_type, $row, $table_name, $fields);
+				if(!empty($child_array)){
+					$row_arrays[str_replace($row_type.'_', '', $table_name)] = $child_array;
+				}
+			}
+		}
+		return !empty($row_arrays)?$row_arrays:NULL;
+	}
+
+	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
+		if(!empty($fields[$table_name])){
+			$table_fields = $fields[$table_name];
+
+			$array_query = $parent_row->{$table_name}();
+
+			// make the query
+			$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+
+			// process the results
+			$array_data = array();
+			while($array_row = $array_query->fetch()){
+				$row_value = $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id", "$parent_name"."_id", "$table_name.$parent_name"."_id"));
+
+				// load any array data for this row
+				$row_arrays = $this->loadRowArrays($table_name, $array_row, $fields);
+				if(!empty($row_arrays)){
+					$row_value = array_merge($row_value, $row_arrays);
+				}
+
+				$array_data[] = $row_value;
+			}
+
+			return $array_data;
+		}
+
 		return NULL;
 	}
 
@@ -200,19 +205,32 @@ class Data extends NotORM {
 		return TRUE;
 	}
 
-		public function rowToArray($row){
-			// transposes a NotORM row object into a simple array of the data
-			return $row->getRow();
-		}
+	public function rowToArray($row){
+		// transposes a NotORM row object into a simple array of the data
+		return $row->getRow();
+	}
 
-	public function getArrayRowValue($array_row, $array_name){
+	public function getArrayRowValue($array_row, $array_name, $exclude_fields){
 		$name_split = preg_split("/(\.|_)/", $array_name);
 		$simple_name = array_pop($name_split);
 
 		$value = $this->rowToArray($array_row);
 
+		$value = array_diff_key($value, array_flip($exclude_fields));
+
 		if(isset($value[$simple_name])){
 			$value = $value[$simple_name];
+		}
+		else{
+			$new_value = array();
+			foreach($value as $key => $child_value){
+				if(strpos($key, $simple_name.'_') === 0){
+					$new_value[str_replace($simple_name.'_', '', $key)] = $child_value;
+				}
+			}
+			$value = $new_value;
+			//print "how about $simple_name in :".print_r($value, TRUE)."\n";
+			//$value = $this->compileObject($value);
 		}
 
 		return $value;
