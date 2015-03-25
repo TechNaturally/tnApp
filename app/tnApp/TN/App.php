@@ -57,10 +57,18 @@ class App {
 		$this->app->get('/schema/:id', function($id){
 			// we generally (can't think of exceptions) only want to be telling the clients about the data they can input
 			$schema = $this->data->getSchema($id, 'input');
+			if(!$schema){
+				// make an empty schema
+				$schema = new stdClass;
+				$schema->id = "/$id";
+				$schema->type = "object";
+				$schema->properties = new stdClass;
+			}
 			if($schema){
 				$this->deliver_schema($schema);
 			}
 			else{
+				// could not find the schema
 				$this->app->pass();
 			}
 		});
