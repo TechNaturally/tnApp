@@ -190,7 +190,6 @@ class Data extends NotORM {
 		}
 
 		return $array_data;
-
 	}
 
 	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
@@ -444,8 +443,8 @@ class Data extends NotORM {
 	protected function getObjectTables($field_id, $tables){
 		$object_tables = array();
 		foreach($tables as $table_id => $table){
-			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0 || strpos($field_id, $table_id) !== FALSE){
-				$object_tables[$table_id] = $table;				
+			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0 || (strpos($table_id, '_') !== FALSE && strpos($field_id, $table_id) !== FALSE)){
+				$object_tables[$table_id] = $table;
 			}
 		}
 		return count($object_tables)?$object_tables:NULL;
@@ -461,7 +460,7 @@ class Data extends NotORM {
 		if($tables = $this->getTableDefs($type)){
 			$result = array();
 
-			//print "FILTERING $type ".print_r($field_ids, TRUE)." tables: ".print_r($tables[$type], TRUE)."\n";
+			//print "FILTERING $type ".print_r($field_ids, TRUE)." tables: ".print_r($tables, TRUE)."\n";
 
 			foreach($field_ids as $field_id){
 				$table_name = $type;
@@ -484,10 +483,15 @@ class Data extends NotORM {
 				// related field tables (array tables)
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
 
+//				print "\ncheck field: $field_id\n";
+//				print "    ".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
+
 				// check if it's a reference field
 				$ref_field = NULL;
 				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
 					$field_split = explode('.', $field_id, 2);
+
+					//print "ref field $field_id:".print_r($field_split, TRUE)."...\n";
 
 					$ref_field = count($field_split)?$field_split[0]:$field_name;
 					if(!empty($tables[$table_name][$ref_field])){
@@ -538,6 +542,7 @@ class Data extends NotORM {
 
 					// object children
 					if(!empty($objectFields)){
+						//print "[$field_id] fields:".print_r($objectFields, TRUE)."\n";
 						foreach($objectFields as $object_field_id => $object_field){
 							if($structure){
 								$result[$table_name][$object_field_id] = $object_field;
@@ -550,6 +555,7 @@ class Data extends NotORM {
 
 					// array tables
 					if(!empty($objectTables)){
+						//print "[$field_id] tables:".print_r($objectTables, TRUE)."\n";
 						foreach($objectTables as $object_table_name => $object_table){
 							$object_table_prefix = empty($ref_field)?$object_table_name.'.':'';
 							$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
@@ -736,11 +742,12 @@ class Data extends NotORM {
 					// load the fields for the referenced type
 					if(in_array($mode, $this->readModes)){
 						$ref_fields = $this->getFields($ref_table_name, $mode);
+
 						if(count($ref_fields)){
 							if(count($ref_fields[$ref_table_name]) && is_array($ref_table_fields) && !in_array($ref_table_name, $ref_table_fields)){
 								// filter the ref_table_fields to only the ones requested
 								$ref_fields[$ref_table_name] = array_filter($ref_fields[$ref_table_name], function($ref_field) use ($ref_table_name, $ref_table_fields){
-									return (in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', "$ref_field"), $ref_table_fields));
+									return ($ref_field == $ref_table_name.'.id' || in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', "$ref_field"), $ref_table_fields) || count(array_filter($ref_table_fields, function($ref_table_field) use ($ref_field){ return (strpos($ref_field, $ref_table_field) === 0); } )));
 								});
 							}
 
@@ -756,8 +763,8 @@ class Data extends NotORM {
 								else{
 									// referenced array table, append the table if it is named in $ref_table_fields
 									foreach($ref_table_fields as $ref_field_table_field){
-										$ref_field_table_field_name = $ref_table_name.'_'.str_replace('.', '_', $ref_field_table_field);
-										if($ref_field_table_field == $ref_table_name || strpos($ref_field_table_name, $ref_field_table_field_name) === 0){
+										$ref_field_table_field_name = str_replace('.', '_', $ref_field_table_field);
+										if($ref_field_table_field == $ref_table_name || strpos($ref_field_table_name, $ref_field_table_field_name) === 0 || strpos($ref_field_table_name, $ref_table_name.'_'.$ref_field_table_field_name) === 0){
 											$fields[$ref_field_table_name] = $ref_field_table_fields;
 										}
 									}
@@ -765,8 +772,6 @@ class Data extends NotORM {
 							}
 						}
 					}
-
-
 				}
 			}
 
