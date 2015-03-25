@@ -626,15 +626,61 @@ class Data extends NotORM {
 	}
 
 	protected function getFilteredSchema($type, $fields){
-		$field_ids = array_keys($fields);
 		// fields is object of { $field_id => TRUE | $field_def }
 		// this lets us overwrite the object definition in the config
 
-		print "\ngetFilteredSchema $type ".print_r($field_ids,true)."\n";
-
 		if($schema = $this->getSchema($type)){
-			foreach($field_ids as $field_id){
+			$filtered_schema = new stdClass;
+			$filtered_schema->id = !empty($schema->id)?$schema->id:"/$type";
+			$filtered_schema->type = "object";
+			$filtered_schema->properties = new stdClass;
+
+			foreach($fields as $field_id => $field){
+				if($field === TRUE){
+					$field = $this->getNodeChild($schema->properties, $field_id);
+					if(!$field){
+						// not found, check dot-notation
+						$field_id_split = explode('.', $field_id, 2);
+
+						if($ref_field = $this->getNodeChild($schema->properties, $field_id_split[0])){
+							if($ref_str = $ref_field->{'$ref'}){
+								// found it as a $ref field in the schema
+
+								// parse the $ref_str into a table and referenced field
+								unset($ref_field->{'$ref'});
+								if($ref_str[0] == '/'){
+									$ref_str = substr($ref_str, 1);
+								}
+								$ref_split = explode('/', $ref_str, 2);
+								$ref_field->table = $ref_split[0];
+
+								// use the field requested by dot-notation if there is one
+								$ref_field->field = (count($field_id_split) > 1)?$field_id_split[1]:'';
+								if(empty($ref_field->field)){
+									// otherwise use the referenced field
+									$ref_field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
+								}
+								if($ref_field->table && $ref_field->field){
+									// look up the requested field in the referenced schema
+									if($ref_schema = $this->getSchema($ref_field->table)){
+										if(!empty($ref_schema->properties)){
+											$field = $this->getNodeChild($ref_schema->properties, $ref_field->field);
+										}
+									}
+								}
+							}
+
+						}
+
+					}
+				}
+				if($field){
+					$filtered_schema->properties->{$field_id} = $field;
+				}
 			}
+
+			print "filtered schema:".print_r($filtered_schema, TRUE)."\n";
+			return $filtered_schema;
 		}
 		
 		// array fields - do nothing special
@@ -798,19 +844,18 @@ class Data extends NotORM {
 	private function getNodeChild($node, $child_path){
 		if($node && $child_path){
 			$child_id = '';
+			$child_path = str_replace('.', '_', $child_path);
 			do{
 				if(isset($node->{$child_path})){
-					if(isset($node->{$child_path})){
-						if($child_id){
-							if(!empty($node->{$child_path}->properties)){
-								return $this->getNodeChild($node->{$child_path}->properties, $child_id);
-							}
-							else{
-								return NULL;
-							}
+					if($child_id){
+						if(!empty($node->{$child_path}->properties)){
+							return $this->getNodeChild($node->{$child_path}->properties, $child_id);
 						}
-						return $node->{$child_path};
+						else{
+							return NULL;
+						}
 					}
+					return $node->{$child_path};
 				}
 				else{
 					$last_dot = strrpos($child_path, '_');
