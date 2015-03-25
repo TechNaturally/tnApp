@@ -678,19 +678,8 @@ class Data extends NotORM {
 					$filtered_schema->properties->{$field_id} = $field;
 				}
 			}
-
-			print "filtered schema:".print_r($filtered_schema, TRUE)."\n";
 			return $filtered_schema;
 		}
-		
-		// array fields - do nothing special
-		// $ref fields - resolve referenced field
-
-		// returns schema object with only fields from $fields in it
-
-		// USED for: input schema (form and validation)
-
-		// at some point we will need to translate the schema'd input into the writeable field list
 
 		return NULL;
 	}
