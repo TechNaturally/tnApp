@@ -3,8 +3,8 @@
 	"data": {
 		"input": ["email", "username", "password"],
 		"list": ["username", "email", "check"],
-		"load": ["email", "username", "check"],
-		"save": ["username", "email", "hash", "check"],
+		"load": ["email", "username", "check", "thAr", "thArOb", "thArObOb", "thObAr"],
+		"save": ["username", "email", "hash", "check", "thAr", "thArOb", "thArObOb", "thObAr"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -34,7 +34,42 @@
 					"maxLength": 101,
 					"required": true
 				},
-				"check": {
+				"thAr": {
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"thArOb": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"first": { "type": "string" },
+							"second": { "type": "integer" },
+							"third": {
+								"type": "array",
+								"items": { "type": "number" }
+							}
+						}
+					}
+				},
+				"thArObOb": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"me": { "type": "string" },
+							"what": {
+								"type": "object",
+								"properties": {
+									"ever": { "type": "string" },
+									"it": { "type": "string" }
+								}
+							}
+						}
+					}
+
+				},
+				"thObAr": {
 					"type": "object",
 					"properties": {
 						"zing": { "type": "string" },
