@@ -790,17 +790,15 @@ class Data extends NotORM {
 							//$ref_field = $ref_field[2];
 							//print_r($ref_splits);
 						}
-						if($ref_table && !in_array($ref_table, $ref_tables)){
+						if($ref_table && $ref_table != $type && strpos($ref_table, $type.'_') === FALSE && !in_array($ref_table, $ref_tables)){
 							$ref_tables[] = $ref_table;
 						}
 					}
 
-					//print "$type [$mode] [$table_name] ref tables: ".print_r($ref_tables, TRUE)."\n";
-
 					// assert the referenced tables exist (otherwise we've got a problem)
 					foreach($ref_tables as $ref_table_name){
 						try{
-						//	$this->assert($ref_table_name);
+							$this->assert($ref_table_name);
 						}
 						catch(Exception $e){ throw $e; }
 					}
@@ -975,8 +973,8 @@ class Data extends NotORM {
 
 						foreach($sql_defs as $table_name => $table_def){
 							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
-							//print "\n$sql\n";
-							$this->connection->exec($sql);
+							print "\n$sql\n";
+							//$this->connection->exec($sql);
 							//print "created $table_name!\n";
 						}
 
