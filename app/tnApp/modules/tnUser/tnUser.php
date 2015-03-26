@@ -100,6 +100,22 @@ function user_profile_get($tn, $id){
 		// - getTableDef('load')
 
 		//$tn->data->assert('user');
+		/**
+		$row = $tn->data->user()->select("user.id", "user.name", "auth.username")->where('user.id', $id)->fetch();
+		$data = $tn->data->rowToArray($row);
+		$rows = $row->user_test_t2_tD()->select("user_test_t2_tD.tD_d1")->fetchPairs('id');
+		$array_rows = array();
+		foreach($rows as $c_id => $c_row){
+			$c_a_rows = $c_row->user_test_t2_tD_d2()->fetchPairs('id');
+			$array_rows[$c_id] = array();
+			foreach($c_a_rows as $c_a_id => $c_a_row){
+				$array_rows[$c_id][$c_a_id] = $tn->data->getArrayRowValue($c_a_row, 'user_test_t2_tD_d2');
+			}
+		}
+		print "\nDATA:".print_r($array_rows,TRUE)."\n";
+*/
+		
+		
 
 
 		if($user = user_get_user($tn, array('user.id' => $id))){

@@ -1,9 +1,9 @@
 {
 	"id": "user",
 	"data": {
-		"input": {"auth.username": true, "name": true, "email": true, "test.t2": { "type": "integer" }},
-		"list": ["name", "email", "auth.check.zing", "test", "tast"],
-		"load": ["auth", "name", "email", "phone", "role", "test.t1", "test.t2.tB"],
+		"input": {"auth": true, "name": true, "email": true, "test.t2": { "type": "integer" }},
+		"list": ["name", "email", "auth.username", "auth.email", "test", "tast"],
+		"load": ["auth", "name", "email", "role", "test.t1", "test.t2.tD"],
 		"save": {"auth": true, "name": true, "email": true, "tast": true, "test": true, "tost": true, "role": true, "test.t2": true},
 		"schema": {
 			"id": "/user",
@@ -42,7 +42,7 @@
 					"items": {
 						"type": "object",
 						"properties": {
-							"a1": { "$ref": "/auth/id" },
+							"auth": { "$ref": "/auth/id" },
 							"a2": { "type": "string" }
 						}
 					}
