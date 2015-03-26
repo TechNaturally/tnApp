@@ -484,14 +484,12 @@ class Data extends NotORM {
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
 
 //				print "\ncheck field: $field_id\n";
-//				print "    ".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
+//				print "    A:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
 
 				// check if it's a reference field
 				$ref_field = NULL;
 				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
 					$field_split = explode('.', $field_id, 2);
-
-					//print "ref field $field_id:".print_r($field_split, TRUE)."...\n";
 
 					$ref_field = count($field_split)?$field_split[0]:$field_name;
 					if(!empty($tables[$table_name][$ref_field])){
@@ -499,28 +497,30 @@ class Data extends NotORM {
 						$field = $tables[$table_name][$ref_field];
 					}
 
-					if(!$structure){
-						$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
+					if($field){
+						if(!$structure){
+							$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
 
-						if($field_id == $ref_field){
-							$field_name = $field->table;
+							if($field_id == $ref_field){
+								$field_name = $field->table;
+							}
+							else if(count($field_split) > 1){
+								// prepend the table name to referenced fields
+								$field_name = $field->table.".".str_replace('.', '_', $field_split[1]);
+							}
+							else{
+								// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
+							}
 						}
-						else if(count($field_split) > 1){
-							// prepend the table name to referenced fields
-							$field_name = $field->table.".".str_replace('.', '_', $field_split[1]);
+						else if(!isset($result["$$ref_field"])){
+							if($field->field == 'id'){
+								$field_name = $field->table."_id";
+							}
+							$result["$$ref_field"] = $field->table;
 						}
-						else{
-							// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
-						}
-					}
-					else if(!isset($result["$$ref_field"])){
-						if($field->field == 'id'){
-							$field_name = $field->table."_id";
-						}
-						$result["$$ref_field"] = $field->table;
 					}
 				}
-
+				//print "    B:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
 
 				// do we have any matching fields or field tables?
 				if($field || !empty($objectFields) || !empty($objectTables)){
@@ -720,7 +720,6 @@ class Data extends NotORM {
 		if(!empty($this->fields[$type][$mode])){
 			return $this->fields[$type][$mode];
 		}
-
 		// work with the field lists loaded from the module config
 		if(!empty($this->field_configs[$type][$mode])){
 			$config_fields = $this->field_configs[$type][$mode];
@@ -759,6 +758,7 @@ class Data extends NotORM {
 				$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
 
 				foreach($ref_tables as $ref_table_name => $ref_table_fields){
+					$ref_field_name = substr($ref_table_name, 1);
 					if(is_array($ref_table_fields)){
 						$first_field = $ref_table_fields[0];
 						$first_field_split = explode('.', $first_field, 2);
@@ -770,7 +770,7 @@ class Data extends NotORM {
 
 					// assert the referenced table exists (otherwise we've got a problem)
 					try{
-						$this->assert($ref_table_name);
+					//	$this->assert($ref_table_name);
 					}
 					catch(Exception $e){ throw $e; }
 
@@ -792,7 +792,7 @@ class Data extends NotORM {
 									// root referenced table, append as simple list
 									// use the "as `$ref_field_table_field`" to preserve table name-spacing (since they are selected in same query as root $type)
 									foreach($ref_field_table_fields as $ref_field_table_field){
-										$fields[$type][] = "$ref_field_table_field as `$ref_field_table_field`";
+										$fields[$type][] = "$ref_field_table_field as `".str_replace($ref_field_table_name.'.', $ref_field_name.'.', $ref_field_table_field)."`";
 									}
 								}
 								else{
