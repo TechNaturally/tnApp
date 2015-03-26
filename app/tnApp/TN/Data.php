@@ -562,14 +562,12 @@ class Data extends NotORM {
 										}
 										if(!empty($use_field)){
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
-												$field_split = explode('.', $field_id, 2);
-												$result[$object_table_name][] = "$$type".'_'."$object_field_id$$object_field->table".((count($field_split) > 1)?'.'.$field_split[1]:'');
+												$object_field_ref_field = substr($field_id, strlen($object_field_id)+1);
+												$result[$object_table_name][] = "$$type".'_'."$object_field_id$$object_field->table".($object_field_ref_field?".$object_field_ref_field":'');
 											}
 											else{
 												$result[$object_table_name][] = $object_table_prefix.$object_field_id;
 											}
-											
-											
 										}
 									}
 								}
