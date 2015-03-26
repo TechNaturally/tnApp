@@ -499,14 +499,14 @@ class Data extends NotORM {
 
 					if($field){
 						if(!$structure){
-							$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
+							//$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
 
 							if($field_id == $ref_field){
-								$field_name = $field->table;
+								$field_name = "$$ref_field$$field->table";
 							}
 							else if(count($field_split) > 1){
 								// prepend the table name to referenced fields
-								$field_name = $field->table.".".str_replace('.', '_', $field_split[1]);
+								$field_name = "$$ref_field$$field->table.".str_replace('.', '_', $field_split[1]);
 							}
 							else{
 								// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
@@ -514,9 +514,9 @@ class Data extends NotORM {
 						}
 						else if(!isset($result["$$ref_field"])){
 							if($field->field == 'id'){
-								$field_name = $field->table."_id";
+								//$field_name = $field->table."_id";
 							}
-							$result["$$ref_field"] = $field->table;
+							//$result["$$ref_field"] = $field->table;
 						}
 					}
 				}
@@ -752,10 +752,82 @@ class Data extends NotORM {
 			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
 
-				$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
-				$ref_table_names = array_flip($ref_table_names);
-				$ref_tables = array_intersect_key($fields, $ref_table_names);
-				$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
+				//print "$type [$mode] filtered: ".print_r($fields, TRUE)."\n";
+
+				$ref_tables = array();
+
+				foreach($fields as $table_name => $table_fields){
+//					print "$table_name\n";
+					$ref_fields = array_filter($table_fields, function($field){
+						return ( (is_object($field) && !empty($field->type) && $field->type == 'ref')
+								|| (is_string($field) && $field[0] == '$') );
+					});
+
+//					print "$type [$mode] [$table_name] refs: ".print_r($ref_fields, TRUE)."\n";
+					foreach($ref_fields as $ref_field_def){
+						$ref_table = NULL;
+						if(is_object($ref_field_def) && !empty($ref_field_def->table)){
+							$ref_table = $ref_field_def->table;
+						}
+						else if(is_string($ref_field_def)){
+							$ref_splits = explode('$', $ref_field_def);
+							if(count($ref_splits) > 2){
+								$ref_field_name = $ref_splits[1];
+								$ref_split_field = explode('.', $ref_splits[2], 2);
+								$ref_table = $ref_split_field[0];
+								$ref_field = (count($ref_split_field) > 1)?$ref_split_field[1]:'';
+								if(!$ref_field){
+									$ref_field = $this->getFields($ref_table, $mode);
+									// now inject these into the $fields[$table_name]
+//									print "got $ref_table [$mode]: ".print_r($ref_field, TRUE)."\n";
+								}
+
+								if($ref_field){
+									$ref_join_fields = array();
+									if(is_string($ref_field)){
+										$ref_join_fields[] = "$ref_table.id AS `$ref_field_name.id`";
+										$ref_join_fields[] = "$ref_table.$ref_field AS `$ref_field_name.$ref_field`";
+									}
+									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
+										foreach($ref_field[$ref_table] as $ref_join_field){
+											$ref_join_fields[] = "$ref_join_field AS `$ref_field_name.".str_replace("$ref_table.", '', $ref_join_field)."`";;
+										}
+									}
+									if(!empty($ref_join_fields)){
+										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
+										array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
+									}
+								}
+							}
+							
+							//$ref_field = $ref_field[2];
+							//print_r($ref_splits);
+						}
+						if($ref_table && !in_array($ref_table, $ref_tables)){
+							$ref_tables[] = $ref_table;
+						}
+					}
+
+					//print "$type [$mode] [$table_name] ref tables: ".print_r($ref_tables, TRUE)."\n";
+
+					// assert the referenced tables exist (otherwise we've got a problem)
+					foreach($ref_tables as $ref_table_name){
+						try{
+						//	$this->assert($ref_table_name);
+						}
+						catch(Exception $e){ throw $e; }
+					}
+				}
+				
+				
+
+				/**				$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
+								$ref_table_names = array_flip($ref_table_names);
+								$ref_tables = array_intersect_key($fields, $ref_table_names);
+								$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
+								*/
+
+				/**
 
 				foreach($ref_tables as $ref_table_name => $ref_table_fields){
 					$ref_field_name = substr($ref_table_name, 1);
@@ -808,6 +880,9 @@ class Data extends NotORM {
 						}
 					}
 				}
+
+				*/
+
 			}
 
 		}
