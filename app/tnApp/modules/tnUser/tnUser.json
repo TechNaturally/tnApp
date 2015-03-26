@@ -1,36 +1,90 @@
 {
 	"id": "user",
-	"database": "*",
-	"schema": {
-		"id": "/user",
-		"type": "object",
-		"properties": {
-			"auth_id": {
-				"title": "Account",
-				"$ref": "/auth/id"
-			},
-			"role": {
-				"title": "Roles",
-				"type": "array",
-				"items": {"type": "string"}
-			},
-			"name": {
-				"title": "Name",
-				"type": "string",
-				"minLength": 0,
-				"maxLength": 255
-			},
-			"email": {
-				"title": "Email Address",
-				"type": "string",
-				"minLength": 16,
-				"maxLength": 255
-			},
-			"phone": {
-				"title": "Phone Number",
-				"type": "string",
-				"minLength": 0,
-				"maxLength": 25
+	"data": {
+		"input": {"auth.username": true, "name": true, "email": true, "test.t2": { "type": "integer" }},
+		"list": ["name", "email", "auth.check.zing", "test", "tast"],
+		"load": ["auth", "name", "email", "phone", "role", "test.t1", "test.t2.tB"],
+		"save": {"auth": true, "name": true, "email": true, "tast": true, "test": true, "tost": true, "role": true, "test.t2": true},
+		"schema": {
+			"id": "/user",
+			"type": "object",
+			"properties": {
+				"auth": {
+					"title": "Account",
+					"$ref": "/auth/id"
+				},
+				"role": {
+					"title": "Roles",
+					"type": "array",
+					"items": {"type": "string", "maxLength": 50, "required": true }
+				},
+				"name": {
+					"title": "Name",
+					"type": "string",
+					"minLength": 0,
+					"maxLength": 255,
+					"required": true
+				},
+				"email": {
+					"title": "Email Address",
+					"type": "string",
+					"minLength": 16,
+					"maxLength": 255
+				},
+				"phone": {
+					"title": "Phone Number",
+					"type": "string",
+					"minLength": 0,
+					"maxLength": 25
+				},
+				"tast": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"a1": { "$ref": "/auth/id" },
+							"a2": { "type": "string" }
+						}
+					}
+				},
+				"tost": {
+					"type": "object",
+					"properties": {
+						"c1": { "type": "string" },
+						"c2": { "type": "string" },
+						"c3": { "type": "array", "items": { "type": "integer" } }
+
+					}
+				},
+				"test": {
+					"type": "object",
+					"properties":{
+						"t1": {"type": "string" },
+						"t2": {
+							"type": "object",
+							"properties": {
+								"tA": { "type": "string" },
+								"tB": { "type": "string" },
+								"tC": {
+									"type": "array",
+									"items": { "type": "integer" }
+								},
+								"tD": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"d1": { "type": "string" },
+											"d2": { "type": "array", "items": { "type": "string" }},
+											"d3": { "type": "string" }
+
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	},

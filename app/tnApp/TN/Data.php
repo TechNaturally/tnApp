@@ -1,64 +1,868 @@
 <?php
+
 namespace TN;
-use PDO, NotORM, SchemaStore, Exception, stdClass;
+use PDO, NotORM, NotORM_Row, SchemaStore, Exception, stdClass, Jsv4;
 
 class DataException extends Exception{}
 
+class DataRow extends NotORM_Row {
+	public function getRow(){
+		return $this->row;
+	}
+}
+
 class Data extends NotORM {
 	protected $schemas;
-	protected $table_fields = array();
-	protected $table_exists = array();
+	protected $tables;
+	protected $fields;
 	protected $connection_type;
+	private $field_configs = array();
+	private $table_exists = array();
+	private $readModes = array('list', 'load');
+	private $writeModes = array('input', 'save');
 
 	public function __construct($config) {
 		$this->schemas = new SchemaStore();
+		$this->tables = array();
+		$this->fields = array();
 
 		$connection = NULL;
 		foreach($config as $type => $settings){
+			// this is where we can initialize different connection types
 			if($type == 'mysql'){
 				$connection = $this->get_pdo_mysql($settings);
 				$this->connection_type = $type;
 			}
 		}
 
+		// initialize NotORM with our pdo $connection
 		if($connection){
 			parent::__construct($connection);
 		}
+		$this->rowClass = '\TN\DataRow';
 	}
 
-	public function addTableFields($table, $fields){
-		if(empty($table)){ return; }
-		$this->table_fields[$table] = $fields;
-	}
-	public function getTableFields($table){
-		if(empty($table)){ return NULL; }
-		return (isset($this->table_fields[$table])?$this->table_fields[$table]:NULL);
+	public function addType($type, $config){
+		// add schema
+		$schema = (!empty($config->schema))?$config->schema:NULL;
+		if($schema && !empty($schema->properties)){
+			if(!isset($schema->properties->id)){
+				$schema->properties = array_reverse((array)($schema->properties), TRUE);
+				$schema->properties['id'] = (object)array( 'type' => 'integer', 'minValue' => 0 );
+				$schema->properties = (object)array_reverse($schema->properties, TRUE);
+			}
+			$this->schemas->add("/$type", $schema);
+		}
+		
+		// add fields
+		$this->fields[$type] = array(); // this will get filled as [$type] = [fields] the first time the fields are requested 
+		$this->field_configs[$type] = array();
+		foreach($this->writeModes as $mode){
+			// save fields will always be stored as objects, but allow config as an array
+			if(is_array($config->{$mode}) && !empty($config->{$mode})){
+				$config->{$mode} = array_flip($config->{$mode});
+				$config->{$mode} = array_fill_keys(array_keys($config->{$mode}), TRUE);
+			}
+			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
+		}
+		foreach($this->readModes as $mode){
+			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
+		}
 	}
 
-	public function addSchema($schema_id, $schema){
-		if(empty($schema_id)){ return; }
-		if($schema_id[0] != '/'){ $schema_id = '/'.$schema_id; }
-		$this->schemas->add($schema_id, $schema);
+	public function listOf($type, $args=NULL, $page=NULL){
+		try{
+			if($fields = $this->getFields($type, 'list')){
+				$this->assert($type);
+
+				// basic SELECT with list fields
+				$query = $this->{$type}();
+				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
+
+				// add WHERE arguments
+				if(!empty($args)){
+					foreach($args as $field_id => $field_value){
+						$query->where($field_id, $field_value);
+					}
+				}
+				
+				// add page LIMIT
+				if($page && !empty($page['limit'])){
+					$query->limit($page['limit'], !empty($page['offset'])?$page['offset']:0);
+				}
+
+				// retrieve the list as an array indexed by first field
+				$list = $query->fetchPairs($fields[$type][0]);
+
+				return $list;
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		
+		return array();
 	}
 
-	public function getSchema($schema_id){
-		if(empty($schema_id)){ return NULL; }
-		if($schema_id[0] != '/'){ $schema_id = '/'.$schema_id; }
-		return $this->schemas->get($schema_id);
+	public function load($type, $args){
+		try{
+			if(!empty($args) && $fields = $this->getFields($type, 'load')){
+				//print "\nloading $type with fields: ".print_r($fields,true)."\n";
+				$this->assert($type);
+
+				// basic SELECT with list fields
+				$query = $this->{$type}();
+				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
+
+				// add JOINs for arrays and $refs
+
+				// add WHERE arguments
+				foreach($args as $field_id => $field_value){
+					$query->where($field_id, $field_value);
+				}
+
+				print "\nloading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
+				//print "<pre>".print_r($query, true)."</pre>\n";
+
+				$result = NULL;
+				$data = NULL;
+				// retrieve the first row and extract column data into assoc array
+				$result = $query->fetch();
+				if($result){
+					$data = $this->rowToArray($result);
+
+					// load any array data for this row
+					$row_arrays = $this->loadRowArrays($type, $result, $fields);
+					if(!empty($row_arrays)){
+						$data = array_merge($data, $row_arrays);
+					}
+
+					// compile the data array into the object structure
+					$data = $this->compileObject($data);
+				}
+
+
+
+				return $data;
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		return NULL;
 	}
 
-	public function getTableSchema($table){
-		$fields = $this->getTableFields($table);
-		$schema = $this->getSchema($table);
-		return $this->buildTableSchema($schema, $fields);
+	public function loadRowArrays($row_type, $row, $fields){
+		$row_arrays = array();
+		//print "LOAD ARRAYS FOR $row_type:".print_r($row, TRUE)."\n";
+		//print "load arrays for $row_type:".print_r($row->getRow(), TRUE)."\n";
+		foreach($fields as $table_name => $table_fields){
+			//print "ok...:".$table_name.":".print_r($table_fields, TRUE)."\n";
+			if($table_name !== $row_type && strpos($table_name, '_') !== FALSE){
+				$child_array = NULL;
+				if(in_array($table_name.".".$row_type."_id", $table_fields)){
+					$child_array = $this->loadChildArray($row_type, $row, $table_name, $fields);
+				}
+				else{
+					if($ref_name = substr($table_name, 0, strpos($table_name, '_'))){
+						if(array_key_exists($ref_name.".id", $row->getRow())){
+							$child_array = $this->loadRefArray($table_name, $table_fields, $ref_name."_id", $row[$ref_name.".id"]);
+						}
+					}
+				}
+				if(!empty($child_array)){
+					$row_arrays[str_replace($row_type.'_', '', $table_name)] = $child_array;
+				}
+			}
+		}
+		return !empty($row_arrays)?$row_arrays:NULL;
+	}
+
+	private function loadRefArray($table_name, $table_fields, $ref_field, $ref_value){
+		$array_query = $this->{$table_name}();
+
+		// make the query
+		$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+
+		$array_query->where($ref_field, $ref_value);
+
+		// process the results
+		$array_data = array();
+		while($array_row = $array_query->fetch()){
+			$row_value = $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id"));
+			$array_data[] = $row_value;
+		}
+
+		return $array_data;
+	}
+
+	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
+		if(!empty($fields[$table_name])){
+			$table_fields = $fields[$table_name];
+
+			$array_query = $parent_row->{$table_name}();
+
+			// make the query
+			$array_query = call_user_func_array(array($array_query, 'select'), $table_fields);
+
+			// process the results
+			$array_data = array();
+			while($array_row = $array_query->fetch()){
+				$row_value = $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id", "$parent_name"."_id", "$table_name.$parent_name"."_id"));
+
+				// load any array data for this row
+				$row_arrays = $this->loadRowArrays($table_name, $array_row, $fields);
+				if(!empty($row_arrays)){
+					$row_value = array_merge($row_value, $row_arrays);
+				}
+
+				$array_data[] = $row_value;
+			}
+
+			return $array_data;
+		}
+
+		return NULL;
+	}
+
+	public function save($type, $data){
+		if($fields = $this->getFields($type, 'save')){
+			// validate $data against $fields
+			// if $data->id do as update
+			// else do as insert
+			// return rowToArray (newRow)
+		}
+		return NULL;
+	}
+
+	public function validate($type, $data, $field_id){
+
+		return TRUE;
 	}
 
 	public function rowToArray($row){
-		$array = array();
-		foreach ($row as $column => $data){
-			$array[$column] = $data;
+		// transposes a NotORM row object into a simple array of the data
+		return $row->getRow();
+	}
+
+	public function getArrayRowValue($array_row, $array_name, $exclude_fields){
+		$name_split = preg_split("/(\.|_)/", $array_name);
+		$simple_name = array_pop($name_split);
+
+		$value = $this->rowToArray($array_row);
+
+		$value = array_diff_key($value, array_flip($exclude_fields));
+
+		if(isset($value[$simple_name])){
+			$value = $value[$simple_name];
 		}
-		return $array;
+		else{
+			$new_value = array();
+			foreach($value as $key => $child_value){
+				if(strpos($key, $simple_name.'_') === 0){
+					$new_value[str_replace($simple_name.'_', '', $key)] = $child_value;
+				}
+			}
+			$value = $new_value;
+			//print "how about $simple_name in :".print_r($value, TRUE)."\n";
+			//$value = $this->compileObject($value);
+		}
+
+		return $value;
+	}
+
+	public function compileObject($data){
+		$object = array();
+		foreach($data as $field => $value){
+			// organize the value into objects (. and _ on field names make a child node)
+			$field_split = preg_split("/(\.|_)/", $field);
+			if(count($field_split) > 1){
+				$cNode = &$object;
+				foreach($field_split as $idx => $obj_node){
+					if($idx < count($field_split)-1){
+						if(!isset($cNode[$obj_node])){
+							$cNode[$obj_node] = array();
+						}
+						$cNode = &$cNode[$obj_node];
+					}
+					else{
+						$cNode[$obj_node] = $value;
+					}
+				}
+			}
+			else{
+				$object[$field] = $value;
+			}
+		}
+		print "\nOBJECT: ".print_r($object, true)."\n";
+		return $object;
+	}
+
+	protected function flattenToTables($name, $fields, $parent_table=''){
+		// flatten an object field list ($name_$child)
+		// returns as an array where result[$name] is the base table
+		// any additional entries are arrays from within the object
+		$flat_tables = array();
+
+		//print "flattening $name [$parent_table] with ".print_r($fields, TRUE)."\n";
+
+		// if the $name ends with @, we know its parent is an array and has already had the field_name appened
+		$arrChild = ($name && substr($name, -1) == '@');
+		$objChild = ($parent_table && substr($parent_table, -1) == '+');
+		if($arrChild){
+			$name = substr($name, 0, -1);
+		}
+		if($objChild){
+			$parent_table = substr($parent_table, 0, -1);
+		}
+
+		if(!$parent_table){
+			$parent_table = $name;
+		}
+
+		$flat_tables[$name] = array();
+		foreach($fields as $field_id => $field){
+			$field = clone $field; // so we leave the original schema in tact
+			if(!empty($field->{'$ref'})){
+				$field->type = 'ref';
+			}
+
+			if(!empty($field->type)){
+				if($field->type == 'object'){
+					//  objects into flat field names
+					if(!empty($field->properties)){
+						$objName = $name.($arrChild?'':'_'.$field_id); // don't append the field_id if it is an array (the caller would already have appended it to $name)
+						$flat_field_tables = $this->flattenToTables($objName, $field->properties, $objChild?$name:($parent_table.($arrChild?'+':'')));
+
+						if(!empty($flat_field_tables)){
+							foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
+								if($flat_field_table_name == $objName){
+									foreach($flat_field_table_fields as $flat_field_id => $flat_field){
+										$flat_tables[$name][$field_id."_".$flat_field_id] = $flat_field;
+									}
+								}
+								else{
+									// it's a different table (ie. an array table)
+									$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
+								}
+								
+							}
+						}
+					}
+					else{
+						// invalid object definition
+					}
+					$field = NULL; // don't add the object field itself (its children have been added instead)
+
+				}
+				else if($field->type == 'array'){
+					//  arrays into related tables with their own list of fields
+					if(!empty($field->items)){
+						if($objChild){
+							$parent_table = $name;
+						}
+						$items = array();
+						$items['id'] = (object)array( 'type' => 'integer', 'minValue' => 0);
+						$items[$parent_table.'_id'] = (object)array( '$ref' => '/'.$parent_table.'/id', 'required' => TRUE);
+						$items[$field_id] = $field->items;
+						
+						$flat_field_tables = $this->flattenToTables($name."_".$field_id.'@', $items, $parent_table);
+
+						foreach($flat_field_tables as $flat_field_table_name => $flat_field_table_fields){
+							$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
+						}
+					}
+					
+					$field = NULL; // the array field is now referencing back to parent
+				}
+				else if($field->type == 'ref'){
+					if($ref_str = $field->{'$ref'}){
+						unset($field->{'$ref'});
+						if($ref_str[0] == '/'){
+							$ref_str = substr($ref_str, 1);
+						}
+						$ref_split = explode('/', $ref_str, 2);
+						$field->table = $ref_split[0];
+						$field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
+
+						if($field->field == 'id'){
+							// all id fields in our system should be unsigned integers
+							$field->schema = (object)array( 'type' => 'integer', 'minValue' => 0);
+						}
+						else{
+							// look up the referenced field schema so we can use it for first-level valiation
+							if($table_schema = $this->getSchema($field->table)){
+								if($field_schema = $this->getSchemaField($table_schema, $field->field)){
+									$field->schema = $field_schema;
+								}
+							}
+						}
+					}
+				}
+				else{
+					// other fields type don't need any extra processing, add them as is
+				}
+
+				if($field){
+					$flat_tables[$name][$field_id] = $field;
+				}
+			}
+		}
+
+		return $flat_tables;
+	}
+
+	public function getTableDefs($type){
+		if(isset($this->tables[$type])){
+			return $this->tables[$type];
+		}
+		// get an array of tables which each are a flat array of their field schema definitions
+		// objects will turn into flat field lists
+		// arrays will turn into many-to-one tables (with $refs set on the child table to link back to parent table)
+		// $refs will be resolved into ('type' => 'ref', 'table' => 'table_name', 'field' => 'field_name', 'schema' => 'field_schema_def')
+		// all field schema definitions that are returned should be of primitive JSON types (ref, boolean, integer, number, null, string)
+		if($schema = $this->getSchema($type)){
+			$tables = NULL;
+			if(!empty($schema->properties)){
+				$tables = $this->flattenToTables($type, $schema->properties);
+				if(!empty($tables)){
+					$this->tables[$type] = $tables;
+				}
+			}
+			return $tables;
+		}
+		return NULL;
+	}
+
+	protected function getObjectFields($field_id, $table){
+		$object_fields = array();
+		foreach($table as $object_field_id => $object_field){
+			if($object_field_id == $field_id || strpos($object_field_id, $field_id.'_') === 0){
+				$object_fields[$object_field_id] = $object_field;
+			}
+		}
+		return count($object_fields)?$object_fields:NULL;
+	}
+
+	protected function getObjectTables($field_id, $tables){
+		$object_tables = array();
+		foreach($tables as $table_id => $table){
+			if($table_id == $field_id || strpos($table_id, $field_id.'_') === 0 || (strpos($table_id, '_') !== FALSE && strpos($field_id, $table_id) !== FALSE)){
+				$object_tables[$table_id] = $table;
+			}
+		}
+		return count($object_tables)?$object_tables:NULL;
+	}
+
+	protected function getFilteredFields($type, $fields, $structure=false){
+		$field_ids = $structure?array_keys($fields):$fields;
+
+		// TODO: overwriting object definition currently not supported
+		// fields is array OR object of { $field_id => TRUE | $field_def }
+		// this lets us overwrite the object definition in the config
+
+		if($tables = $this->getTableDefs($type)){
+			$result = array();
+
+			//print "FILTERING $type ".print_r($field_ids, TRUE)." tables: ".print_r($tables, TRUE)."\n";
+
+			foreach($field_ids as $field_id){
+				$table_name = $type;
+				$field_name = str_replace('.', '_', $field_id);
+				
+				$field = NULL;
+				$objectFields = NULL;
+				$objectTables = NULL;
+
+				// straight field
+				if(!empty($tables[$table_name][$field_name])){
+					$field = $tables[$table_name][$field_name];
+				}
+
+				// object fields (in root table)
+				if(!$field && !empty($tables[$table_name])){
+					$objectFields = $this->getObjectFields($field_name, $tables[$table_name]);
+				}
+
+				// related field tables (array tables)
+				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
+
+//				print "\ncheck field: $field_id\n";
+//				print "    ".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
+
+				// check if it's a reference field
+				$ref_field = NULL;
+				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
+					$field_split = explode('.', $field_id, 2);
+
+					//print "ref field $field_id:".print_r($field_split, TRUE)."...\n";
+
+					$ref_field = count($field_split)?$field_split[0]:$field_name;
+					if(!empty($tables[$table_name][$ref_field])){
+						$field_name = $ref_field;
+						$field = $tables[$table_name][$ref_field];
+					}
+
+					if(!$structure){
+						$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
+
+						if($field_id == $ref_field){
+							$field_name = $field->table;
+						}
+						else if(count($field_split) > 1){
+							// prepend the table name to referenced fields
+							$field_name = $field->table.".".str_replace('.', '_', $field_split[1]);
+						}
+						else{
+							// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
+						}
+					}
+					else if(!isset($result["$$ref_field"])){
+						if($field->field == 'id'){
+							$field_name = $field->table."_id";
+						}
+						$result["$$ref_field"] = $field->table;
+					}
+				}
+
+
+				// do we have any matching fields or field tables?
+				if($field || !empty($objectFields) || !empty($objectTables)){
+					$table_prefix = empty($ref_field)?$table_name.'.':'';
+
+					if(!isset($result[$table_name])){
+						$result[$table_name] = array();
+					}
+
+					// simple field
+					if($field){
+						if($structure){
+							$result[$table_name][$field_name] = $field;
+						}
+						else{
+							$result[$table_name][] = $table_prefix.$field_name;
+						}
+					}
+
+					// object children
+					if(!empty($objectFields)){
+						//print "[$field_id] fields:".print_r($objectFields, TRUE)."\n";
+						foreach($objectFields as $object_field_id => $object_field){
+							if($structure){
+								$result[$table_name][$object_field_id] = $object_field;
+							}
+							else{
+								$result[$table_name][] = $table_prefix.$object_field_id;
+							}
+						}
+					}
+
+					// array tables
+					if(!empty($objectTables)){
+						//print "[$field_id] tables:".print_r($objectTables, TRUE)."\n";
+						foreach($objectTables as $object_table_name => $object_table){
+							$object_table_prefix = empty($ref_field)?$object_table_name.'.':'';
+							$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
+							$object_table_fields = $this->getObjectFields($object_field_prefix, $object_table);
+							if(!empty($object_table_fields)){
+								if(!isset($result[$object_table_name])){
+									$result[$object_table_name] = array();
+								}
+
+								$object_name = str_replace($type."_", '', $object_table_name);
+								$object_name = substr($object_name, 0, strrpos($object_name, '_'));
+								$object_name = str_replace('_', '.', $object_name);
+								foreach($object_table_fields as $object_field_id => $object_field){
+									if($structure){
+										$result[$object_table_name][$object_field_id] = $object_field;
+									}
+									else{
+										$object_field_id_norm = str_replace('_', '.', $object_field_id);
+										$use_field = in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
+										if(!$use_field){
+											$matching_fields = array_filter($field_ids, function($field_id) use ($object_name, $object_field_id_norm){
+												return (strpos($object_name.'.'.$object_field_id_norm, $field_id) !== FALSE);
+
+											});
+											$use_field = !empty($matching_fields);
+										}
+										if($use_field){
+											$result[$object_table_name][] = $object_table_prefix.$object_field_id;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			// force id fields and many-to-one id fields on all resulting tables (these are required for properly relating the datas)
+			foreach($result as $table_name => $table_fields){
+				if(!empty($tables[$table_name])){
+					$table_prefix = (!$structure && empty($ref_field))?$table_name.'.':'';
+					$id_fields = array();
+					if(!empty($tables[$table_name]['id'])){
+						$id_fields[$table_prefix.'id'] = $tables[$table_name]['id'];
+					}
+					// filter for id ref fields and append the table prefix to the field name
+					foreach($tables[$table_name] as $table_field_id => $table_field){
+						if(isset($table_field->type) && $table_field->type == 'ref' && isset($table_field->field) && $table_field->field == 'id' && isset($table_field->table) && strpos($table_field->table, $type) === 0){
+							$id_fields[$table_prefix.$table_field_id] = $table_field;
+						}
+					}
+
+					if(!empty($id_fields)){
+						if($structure){
+							$result[$table_name] = array_merge($id_fields, $result[$table_name]);
+						}
+						else{
+							$result[$table_name] = array_merge(array_keys($id_fields), $result[$table_name]);
+						}
+					}
+				}
+			}
+
+			return $result;
+		}
+
+		return NULL;
+	}
+
+	protected function getFilteredSchema($type, $fields){
+		// fields is object of { $field_id => TRUE | $field_def }
+		// this lets us overwrite the object definition in the config
+
+		if($schema = $this->getSchema($type)){
+			$filtered_schema = new stdClass;
+			$filtered_schema->id = !empty($schema->id)?$schema->id:"/$type";
+			$filtered_schema->type = "object";
+			$filtered_schema->properties = new stdClass;
+
+			foreach($fields as $field_id => $field){
+				if($field === TRUE){
+					$field = $this->getNodeChild($schema->properties, $field_id);
+					if(!$field){
+						// not found, check dot-notation
+						$field_id_split = explode('.', $field_id, 2);
+
+						if($ref_field = $this->getNodeChild($schema->properties, $field_id_split[0])){
+							if($ref_str = $ref_field->{'$ref'}){
+								// found it as a $ref field in the schema
+
+								// parse the $ref_str into a table and referenced field
+								unset($ref_field->{'$ref'});
+								if($ref_str[0] == '/'){
+									$ref_str = substr($ref_str, 1);
+								}
+								$ref_split = explode('/', $ref_str, 2);
+								$ref_field->table = $ref_split[0];
+
+								// use the field requested by dot-notation if there is one
+								$ref_field->field = (count($field_id_split) > 1)?$field_id_split[1]:'';
+								if(empty($ref_field->field)){
+									// otherwise use the referenced field
+									$ref_field->field = (count($ref_split) > 1)?str_replace('/', '_', $ref_split[1]):'id';
+								}
+								if($ref_field->table && $ref_field->field){
+									// look up the requested field in the referenced schema
+									if($ref_schema = $this->getSchema($ref_field->table)){
+										if(!empty($ref_schema->properties)){
+											$field = $this->getNodeChild($ref_schema->properties, $ref_field->field);
+										}
+									}
+								}
+							}
+
+						}
+
+					}
+				}
+				if($field){
+					$filtered_schema->properties->{$field_id} = $field;
+				}
+			}
+			return $filtered_schema;
+		}
+
+		return NULL;
+	}
+
+	public function getFields($type, $mode){
+//		print "*** GET FIELDS $type [$mode]\n";
+		// here is where we filter the fields down based on the input mode configuration
+
+		// how we use these fields in lookups is important:
+		// 	read operations:
+		//				1. retrieve fields from primary table ($data->{$table}()->select($fields[$table]))
+		//				2. foreach ($field->type == ref) (use array_filter for that)
+		//					a) assert the ref table
+		//					b) retrieve fields from the referenced table (parse out field names starting with {$ref_table.'.'.$field_name})
+		//				3. any additional entries are array tables
+		//					a) assert the array table
+		//					b) retrieve as $primaryRow->{$array_table}->select($fields[$array_table])
+
+		// write operations:
+		//				1. handle any reference updates first
+		//					- foreach ($field->type == ref) (use array_filter for that)
+		//				2. then update the primary table
+		//				3. then update the array tables
+		//					- foreach ($tables as $table where $table != $primary_table)
+
+		/** USE CASES
+			- input: return schema, filtered by fields
+			- list: return field list sorted into tables
+			- load: return field list sorted into tables
+			- save: return field schemas sorted into tables
+		*/
+
+		// readModes:  getFieldsFromTables() // use for retrieving data
+		// writeModes: getFieldsFromTables() // use for saving data
+		// inputModes: getSchemaFields()	 // use for input forms & validating data
+
+		// allow for caching
+		if(!empty($this->fields[$type][$mode])){
+			return $this->fields[$type][$mode];
+		}
+
+		// work with the field lists loaded from the module config
+		if(!empty($this->field_configs[$type][$mode])){
+			$config_fields = $this->field_configs[$type][$mode];
+
+			$tables = NULL;
+
+			// handle wildcarding
+			if(isset($config_fields[0]) && $config_fields[0] == "*"){
+				unset($config_fields[0]);
+				if(!$tables){
+					$tables = $this->getTableDefs($type);
+				}
+				if($tables){
+					foreach($tables as $table_name => $table){
+						foreach($table as $field_id => $field){
+							$config_fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
+						}
+					}
+				}
+				if(in_array($mode, $this->readModes)){
+					$config_fields = array_keys($config_fields);
+				}
+			}
+
+			// filter the fields/schema depending on the configuration
+			$fields = NULL;
+			if($mode == 'input'){
+				$fields = $this->getFilteredSchema($type, $config_fields);
+			}
+			else{
+				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
+
+				$ref_table_names = array_filter(array_keys($fields), function ($table_name){ return ($table_name && $table_name[0] === '$'); });
+				$ref_table_names = array_flip($ref_table_names);
+				$ref_tables = array_intersect_key($fields, $ref_table_names);
+				$fields = array_diff_key($fields, $ref_table_names); // remove ref tables from the fields
+
+				foreach($ref_tables as $ref_table_name => $ref_table_fields){
+					if(is_array($ref_table_fields)){
+						$first_field = $ref_table_fields[0];
+						$first_field_split = explode('.', $first_field, 2);
+						$ref_table_name = (count($first_field_split) > 1)?$first_field_split[0]:$first_field;
+					}
+					else{
+						$ref_table_name = $ref_table_fields;
+					}
+
+					// assert the referenced table exists (otherwise we've got a problem)
+					try{
+						$this->assert($ref_table_name);
+					}
+					catch(Exception $e){ throw $e; }
+
+					// load the fields for the referenced type
+					if(in_array($mode, $this->readModes)){
+						$ref_fields = $this->getFields($ref_table_name, $mode);
+
+						if(count($ref_fields)){
+							if(count($ref_fields[$ref_table_name]) && is_array($ref_table_fields) && !in_array($ref_table_name, $ref_table_fields)){
+								// filter the ref_table_fields to only the ones requested
+								$ref_fields[$ref_table_name] = array_filter($ref_fields[$ref_table_name], function($ref_field) use ($ref_table_name, $ref_table_fields){
+									return ($ref_field == $ref_table_name.'.id' || in_array($ref_field, $ref_table_fields) || in_array(str_replace('_', '.', "$ref_field"), $ref_table_fields) || count(array_filter($ref_table_fields, function($ref_table_field) use ($ref_field){ return (strpos($ref_field, $ref_table_field) === 0); } )));
+								});
+							}
+
+							// add the referenced fields to the root table
+							foreach($ref_fields as $ref_field_table_name => $ref_field_table_fields){
+								if($ref_field_table_name == $ref_table_name){
+									// root referenced table, append as simple list
+									// use the "as `$ref_field_table_field`" to preserve table name-spacing (since they are selected in same query as root $type)
+									foreach($ref_field_table_fields as $ref_field_table_field){
+										$fields[$type][] = "$ref_field_table_field as `$ref_field_table_field`";
+									}
+								}
+								else{
+									// referenced array table, append the table if it is named in $ref_table_fields
+									foreach($ref_table_fields as $ref_field_table_field){
+										$ref_field_table_field_name = str_replace('.', '_', $ref_field_table_field);
+										if($ref_field_table_field == $ref_table_name || strpos($ref_field_table_name, $ref_field_table_field_name) === 0 || strpos($ref_field_table_name, $ref_table_name.'_'.$ref_field_table_field_name) === 0){
+											$fields[$ref_field_table_name] = $ref_field_table_fields;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+		}
+
+		if($fields){
+			//print "\n*** FINALLY $type [$mode]: ".print_r($fields, TRUE)."\n";
+			$this->fields[$type][$mode] = $fields;
+			return $this->fields[$type][$mode];
+		}
+
+		return NULL;
+	}
+
+	public function getSchema($type, $mode=''){
+		if(empty($type)){ return NULL; }
+		if($mode=='input'){
+			return $this->getFields($type, $mode);
+		}
+		if($type[0] != '/'){ $type = '/'.$type; }
+		return $this->schemas->get($type);
+	}
+
+	private function getNodeChild($node, $child_path){
+		if($node && $child_path){
+			$child_id = '';
+			$child_path = str_replace('.', '_', $child_path);
+			do{
+				if(isset($node->{$child_path})){
+					if($child_id){
+						if(!empty($node->{$child_path}->properties)){
+							return $this->getNodeChild($node->{$child_path}->properties, $child_id);
+						}
+						else{
+							return NULL;
+						}
+					}
+					return $node->{$child_path};
+				}
+				else{
+					$last_dot = strrpos($child_path, '_');
+					$child_id = substr($child_path, $last_dot+1).($child_id?'_':'')."$child_id";
+					$child_path = ($last_dot !== -1)?substr($child_path, 0, $last_dot):'';
+				}
+			} while($child_path);
+
+
+		}
+		return NULL;
+	}
+
+	protected function getSchemaField($schema, $field_id){
+		if($field_id && !empty($schema->properties)){
+			return $this->getNodeChild($schema->properties, $field_id);
+		}
+		return NULL;
 	}
 
 	public function assert($table){
@@ -85,8 +889,10 @@ class Data extends NotORM {
 		return FALSE;
 	}
 
+	/** Sql specific functions **/
 	public function exists($table){
 		try {
+			// we can check against $this->connection_type (== 'mysql') for different db providers
 			$result = $this->connection->query("SELECT 1 FROM $table LIMIT 1");
 		} catch (Exception $e) {
 			return FALSE;
@@ -96,18 +902,23 @@ class Data extends NotORM {
 
 	public function create($table){
 		try {
-			if($tableSchema = $this->getTableSchema($table)){
+			if($fields = $this->getFields($table, 'save')){
+				//print "create $table avec: ".print_r($fields, TRUE)."\n";
 				// we can check against $this->connection_type (== 'mysql') for different db providers
-				if($sql_cols = $this->sql_column_defs($tableSchema, $table)){
-					if(!empty($sql_cols['definition'])){
-						$sql = "CREATE TABLE `$table`(".$sql_cols['definition'].")";
-						$this->connection->exec($sql);
-						if(!empty($sql_cols['relations'])){
-							foreach($sql_cols['relations'] as $relTable => $relTable_def){
-								$sql = "CREATE TABLE `$relTable`(".$relTable_def.")";
-								$this->connection->exec($sql);
-							}
+				if($sql_defs = $this->sql_column_defs($fields)){
+					//print "Got SQL defs for $table:".print_r($sql_defs, TRUE)."\n";
+
+					// we need at least a definition for the requested table
+					if(!empty($sql_defs[$table])){
+
+						foreach($sql_defs as $table_name => $table_def){
+							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
+							//print "\n$sql\n";
+							$this->connection->exec($sql);
+							//print "created $table_name!\n";
 						}
+
+						// the only way it can fail now is by an exception thrown by the connection
 						return TRUE;
 					}
 				}
@@ -120,87 +931,8 @@ class Data extends NotORM {
 		return FALSE;
 	}
 
-	protected function get_pdo_mysql($config){
-		return new PDO('mysql:host='.$config->host.';dbname='.$config->database, $config->username, $config->password, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-	}
-
-	private function flatten_schema($schema, $basename=''){
-		$result = new stdClass();
-		if($schema && isset($schema->type) && $schema->type == 'object'){
-			if(!empty($schema->properties)){
-				foreach($schema->properties as $field_id => $field){
-					if(isset($field->type) && $field->type == 'object'){
-						$result = (object)array_merge((array)$result, (array)$this->flatten_schema($field, ($basename?$basename.'_':'').$field_id));
-					}
-					else{
-						$result->{($basename?$basename.'_':'').$field_id} = $field;
-					}
-				}
-			}
-		}
-		else if($schema && (isset($schema->{'$ref'}) || (isset($schema->type) && $schema->type != 'object') ) ){
-			$result->{($basename?$basename:'value')} = $schema;
-		}
-		return $result;
-	}
-
-	private function buildTableSchema($schema, $fields="*"){
-		if($fields && $schema){
-			// we can only work with tables for objects with properties
-			if($schema->type == 'object' && !empty($schema->properties)){
-				$flat_schema = $this->flatten_schema($schema);
-
-				$table_schema = array();
-
-				// handle the wildcard * for all fields
-				if($fields === '*'){
-					$fields = array();
-					foreach($flat_schema as $field_id => $field_def){
-						$fields[$field_id] = TRUE;
-					}
-				}
-				else if(is_object($fields)){
-					$fields = (array)$fields;
-				}
-				else if(is_array($fields)){
-					$fields_map = array();
-					foreach($fields as $field_id){
-						$fields_map[$field_id] = TRUE;
-					}
-					$fields = $fields_map;
-				}
-
-				// force an id field and force it to be first
-				if(empty($fields['id']) || array_keys($fields)[0] != 'id'){
-					if(isset($fields['id'])){
-						unset($fields['id']);
-					}
-					$fields = array_reverse($fields, true);
-					$fields['id'] = TRUE;
-					$fields = array_reverse($fields, true);
-				}
-				if(!isset($flat_schema->id)){
-					$flat_schema->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
-				}
-
-				foreach($fields as $field_id => $use_field){
-					if(empty($use_field) || !isset($flat_schema->{$field_id})){
-						continue;
-					}
-					$table_schema[$field_id] = $flat_schema->{$field_id};
-				}
-
-				return $table_schema;
-			}
-		}
-
-		return NULL;
-	}
-
-	private function sql_column_def($field_id, $field){
-		$col_def = '';
-		$key_def = NULL;
-
+	protected function sql_column_def($field_id, $field){
+		// transforms a JSON field definition into a SQL column definition
 		/** JSON types:
 				array - A JSON array.
 				boolean - A JSON boolean.
@@ -211,23 +943,18 @@ class Data extends NotORM {
 				string - A JSON string.
 		*/
 
+		$col_def = '';
+		$key_def = '';
+
+		// force unsigned integer for id fields
 		if($field_id == 'id' && !isset($field->minValue)){
 			$field->minValue = 0;
 		}
 
-		if(isset($field->{'$ref'})){
-			$col_def = "`$field_id` INT UNSIGNED";
-			$ref_path = $field->{'$ref'};
-			if($ref_path[0] == '/'){
-				$ref_path = substr($ref_path, 1);
-			}
-			$ref_split = explode('/', $ref_path);
-			if(count($ref_split)){
-				$ref_table = $ref_split[0];
-				$key_def = "FOREIGN KEY (`$field_id`) REFERENCES `$ref_table`(`id`) ON DELETE SET NULL";
-			}
-		}
-		else if(isset($field->type)){
+		if(!empty($field->type)){
+			// create the column definition depending on what type of field it is
+			// array and object field types should be already handled by flattenToTables
+
 			if($field->type == 'boolean'){
 				$col_def = "`$field_id` TINYINT(1)";
 			}
@@ -255,65 +982,64 @@ class Data extends NotORM {
 					$col_def .= " TEXT";
 				}
 			}
-		}
-
-		if($field_id == 'id' && isset($field->type) && $field->type == 'integer'){
-			$col_def .= " AUTO_INCREMENT PRIMARY KEY";
+			else if($field->type == 'ref'){
+				if(!empty($field->schema) && !empty($field->table) && !empty($field->field)){
+					$ref_def = $this->sql_column_def($field_id, $field->schema);
+					if(!empty($ref_def['col'])){
+						$col_def = $ref_def['col'];
+						$key_def = "FOREIGN KEY (`".$field_id."`) REFERENCES `".$field->table."`(`".$field->field."`) ON DELETE ".(!empty($field->required)?"CASCADE":"SET NULL");
+					}
+				}
+			}
 		}
 
 		if(isset($field->required) && $field->required){
 			$col_def .= " NOT NULL";
 		}
 
-		return (($col_def || $key_def)?array('column' => $col_def, 'keys' => $key_def):NULL);
+		if($col_def && $field_id == 'id' && isset($field->type) && $field->type == 'integer'){
+			$col_def .= " AUTO_INCREMENT PRIMARY KEY";
+		}
+
+		return array('col' => $col_def, 'key' => $key_def);
 	}
 
-	private function sql_column_defs($fields, $basename=''){
-		$sql_cols = "";
-		$sql_keys = "";
-		$rel_tables = array();
+	protected function sql_column_defs($fields){
+		// transform field definitions into SQL columns
+		$table_defs = array();
 
-		foreach($fields as $field_id => $field){
-			if($col_def = $this->sql_column_def($field_id, $field)){
-				if(!empty($col_def['column'])){
-					$sql_cols .= ($sql_cols?", ":"").$col_def['column'];
+		foreach($fields as $table => $table_fields){
+			$table_cols = '';
+			$table_keys = '';
+
+			foreach($table_fields as $field_id => $field){
+				$field_def = $this->sql_column_def($field_id, $field);
+				if(!empty($field_def['col'])){
+					$table_cols .= ($table_cols?', ':'').$field_def['col'];
 				}
-				if(!empty($col_def['keys'])){
-					$sql_keys .= ($sql_keys?", ":"").$col_def['keys'];
+				if(!empty($field_def['key'])){
+					$table_keys .= ($table_keys?', ':'').$field_def['key'];
 				}
 			}
-			else if(isset($field->type) && $field->type == 'array' && isset($field->items)){
-				// create a one-to-many table
-				$relTable = ($basename?$basename.'_':'').$field_id;
-				$relTable_flat_schema = $this->flatten_schema($field->items, $field_id);
 
-				
-				$rel_props = new stdClass();
-				$rel_props->id = (object)array( 'type' => 'integer', 'minValue' => 0 );
-				$rel_props->{$basename.'_id'} = (object)array( 'type' => 'integer', 'minValue' => 0 );
-				$rel_props = (object)array_merge((array)$rel_props, (array)$relTable_flat_schema);
-
-				$rel_schema = new stdClass();
-				$rel_schema->id = "/$relTable";
-				$rel_schema->type = 'object';
-				$rel_schema->properties = $rel_props;
-
-				$relTable_schema = $this->buildTableSchema($rel_schema);
-
-				$relTable_cols = $this->sql_column_defs($relTable_schema, $relTable);
-
-				if(!empty($relTable_cols['definition'])){
-					// we add our own FK instead of settings $basename_id as a $ref because we want the ON DELETE CASCADE
-					$rel_tables[$relTable] = $relTable_cols['definition'].", FOREIGN KEY (`".$basename."_id`) REFERENCES `$basename`(`id`) ON DELETE CASCADE";
+			if($table_cols){
+				$table_defs[$table] = $table_cols;
+				if($table_keys){
+					$table_defs[$table] .= ', '.$table_keys;
 				}
 			}
 		}
 
-		// add any key constraints to the end of the column definition list
-		if($sql_keys){
-			$sql_cols .= ($sql_cols?", ":"").$sql_keys;
-		}
-		return array('definition' => $sql_cols, 'relations' => $rel_tables);
+		return !empty($table_defs)?$table_defs:NULL;
 	}
+
+	
+
+	/** MySql specific functions **/
+	protected function get_pdo_mysql($config){
+		return new PDO('mysql:host='.$config->host.';dbname='.$config->database, $config->username, $config->password, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+	}
+
 }
+
 ?>

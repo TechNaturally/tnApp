@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html ng-app="tnApp">
+	<head>
+		<title>Welcome Home</title>
+
+		<base href="/">
+
+		<!-- bower:css -->
+		<!-- endbower -->
+
+		<link rel="stylesheet" href="theme/demo.css" type="text/css" />
+
+	</head>
+	<body>
+		<div class="container">
+			<a ng-href="/"><h1>Hello World</h1></a>
+
+			<div ng-view></div>
+		</div>
+
+		<!-- build:js scripts/vendor.js -->
+		<!-- bower:js -->
+		<!-- endbower -->
+		<!-- endbuild -->
+		<!-- build:js scripts/app.js -->
+		<!-- include: "type":"js", "files":["tnApp/**/*.mdl.js", "tnApp/**/*.js", "!tnApp/app.js", "tnApp/app.js"] -->
+		<!-- endbuild -->
+	</body>
+</html>

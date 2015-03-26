@@ -50,13 +50,25 @@ class App {
 	}
 
 	protected function init_data($config){
+		// initialize data manager
 		$this->data = new \TN\Data($config);
+
+		// add a route for requesting the schema
 		$this->app->get('/schema/:id', function($id){
-			$schema = $this->data->getSchema('/'.$id);
+			// we generally (can't think of exceptions) only want to be telling the clients about the data they can input
+			$schema = $this->data->getSchema($id, 'input');
+			if(!$schema){
+				// make an empty schema
+				$schema = new stdClass;
+				$schema->id = "/$id";
+				$schema->type = "object";
+				$schema->properties = new stdClass;
+			}
 			if($schema){
 				$this->deliver_schema($schema);
 			}
 			else{
+				// could not find the schema
 				$this->app->pass();
 			}
 		});
@@ -110,6 +122,7 @@ class App {
 				$module_id = $module->id;
 			}
 
+/**
 			// set the database fields
 			if(!empty($module->database)){
 				$this->data->addTableFields($module_id, $module->database);
@@ -119,6 +132,13 @@ class App {
 			if(!empty($module->schema)){
 				$this->data->addSchema('/'.$module_id, $module->schema);
 			}
+
+			*/
+			if(!empty($module->data)){
+				$this->data->addType($module_id, $module->data);
+			}
+
+
 
 			// load the routes
 			if(!empty($module->routes)){

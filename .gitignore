@@ -2,3 +2,6 @@
 app/composer.lock
 app/vendor/
 www/bower_components/
+www/node_modules/
+www/dist/
+www/index.html
