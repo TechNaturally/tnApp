@@ -3,7 +3,7 @@
 	"data": {
 		"input": {"auth": true, "name": true, "email": true},
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "name", "email", "role", "abc", "def", "testArRf", "testArObRf", "testObRf"],
+		"load": ["auth", "name", "email", "role", "abc", "def.username", "testArRf.username", "testArObRf.two.email", "testObRf"],
 		"save": {"auth": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
 		"schema": {
 			"id": "/user",
@@ -65,7 +65,7 @@
 				"testObRf": {
 					"type": "object",
 					"properties": {
-						"rfz": { "$ref": "/auth/id" },
+						"rfz": { "title": "RFZ", "$ref": "/auth/id" },
 						"thing": { "type": "integer" }
 					}
 				}
