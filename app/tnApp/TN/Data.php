@@ -543,6 +543,7 @@ class Data extends NotORM {
 					// object children
 					if(!empty($objectFields)){
 						//print "[$field_id] fields:".print_r($objectFields, TRUE)."\n";
+						// TODO: resolve object table references into $field_name$ref_table.ref_field
 						foreach($objectFields as $object_field_id => $object_field){
 							if($structure){
 								$result[$table_name][$object_field_id] = $object_field;
@@ -555,7 +556,6 @@ class Data extends NotORM {
 
 					// array tables
 					if(!empty($objectTables)){
-						//print "[$field_id] tables:".print_r($objectTables, TRUE)."\n";
 						foreach($objectTables as $object_table_name => $object_table){
 							$object_table_prefix = empty($ref_field)?$object_table_name.'.':'';
 							$object_field_prefix = substr($object_table_name, strrpos($object_table_name, '_')+1);							
@@ -577,13 +577,20 @@ class Data extends NotORM {
 										$use_field = in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
 										if(!$use_field){
 											$matching_fields = array_filter($field_ids, function($field_id) use ($object_name, $object_field_id_norm){
-												return (strpos($object_name.'.'.$object_field_id_norm, $field_id) !== FALSE);
-
+												return (strpos(($object_name?"$object_name.":'').$object_field_id_norm, $field_id) !== FALSE || strpos($field_id, ($object_name?"$object_name.":'').$object_field_id_norm) !== FALSE);
 											});
-											$use_field = !empty($matching_fields);
+											$use_field = !empty($matching_fields);											
 										}
-										if($use_field){
-											$result[$object_table_name][] = $object_table_prefix.$object_field_id;
+										if(!empty($use_field)){
+											if(!empty($object_field->type) && $object_field->type == 'ref'){
+												$field_split = explode('.', $field_id, 2);
+												$result[$object_table_name][] = "$$type".'_'."$object_field_id$$object_field->table".((count($field_split) > 1)?'.'.$field_split[1]:'');
+											}
+											else{
+												$result[$object_table_name][] = $object_table_prefix.$object_field_id;
+											}
+											
+											
 										}
 									}
 								}
@@ -752,7 +759,7 @@ class Data extends NotORM {
 			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
 
-				//print "$type [$mode] filtered: ".print_r($fields, TRUE)."\n";
+				print "$type [$mode] filtered: ".print_r($fields, TRUE)."\n";
 
 				$ref_tables = array();
 
@@ -790,12 +797,15 @@ class Data extends NotORM {
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
 										foreach($ref_field[$ref_table] as $ref_join_field){
-											$ref_join_fields[] = "$ref_join_field AS `$ref_field_name.".str_replace("$ref_table.", '', $ref_join_field)."`";;
+											$ref_join_fields[] = "$ref_join_field AS `$ref_field_name.".str_replace("$ref_table.", '', $ref_join_field)."`";
 										}
+										// TODO: add in the other tables (as $fields[$ref_field_name.$ref_table_name])
 									}
+									// TODO: extend NotORM_Structure_Convention::getReferencedTable for $table_name and $ref_field_name
 									if(!empty($ref_join_fields)){
 										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
 										array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
+										$fields[$table_name] = array_unique($fields[$table_name]);
 									}
 								}
 							}
