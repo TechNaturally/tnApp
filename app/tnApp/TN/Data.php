@@ -490,7 +490,7 @@ class Data extends NotORM {
 				// do we have any matching fields or field tables?
 				if($field || !empty($objectFields) || !empty($objectTables)){
 					$ref_field = ($field && !empty($field->type) && $field->type == 'ref');
-					if($ref_field){
+					if($ref_field && !$structure){
 						// if it's a reference field
 						$field_name = "$$field_name$$field->table";
 						$table_prefix = '';
@@ -558,7 +558,7 @@ class Data extends NotORM {
 											$matching_fields = array_filter($field_ids, function($field_id) use ($object_name, $object_field_id_norm){
 												return (strpos(($object_name?"$object_name.":'').$object_field_id_norm, $field_id) !== FALSE || strpos($field_id, ($object_name?"$object_name.":'').$object_field_id_norm) !== FALSE);
 											});
-											$use_field = !empty($matching_fields);											
+											$use_field = !empty($matching_fields);
 										}
 										if(!empty($use_field)){
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
