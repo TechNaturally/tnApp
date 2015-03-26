@@ -433,7 +433,7 @@ class Data extends NotORM {
 	protected function getObjectFields($field_id, $table){
 		$object_fields = array();
 		foreach($table as $object_field_id => $object_field){
-			if($object_field_id == $field_id || strpos($object_field_id, $field_id.'_') === 0){
+			if($object_field_id == $field_id || strpos($object_field_id, $field_id.'_') === 0 || strpos($field_id, $object_field_id.'_') === 0){
 				$object_fields[$object_field_id] = $object_field;
 			}
 		}
@@ -484,48 +484,23 @@ class Data extends NotORM {
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
 
 //				print "\ncheck field: $field_id\n";
-//				print "    A:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
-
-				// check if it's a reference field
-				$ref_field = NULL;
-				if(!$field && empty($objectFields) && empty($objectTables) || (isset($field->type) && $field->type == 'ref')){
-					$field_split = explode('.', $field_id, 2);
-
-					$ref_field = count($field_split)?$field_split[0]:$field_name;
-					if(!empty($tables[$table_name][$ref_field])){
-						$field_name = $ref_field;
-						$field = $tables[$table_name][$ref_field];
-					}
-
-					if($field){
-						if(!$structure){
-							//$table_name = "$$ref_field"; // prepend $ on ref tables in listed fields so we can detect them
-
-							if($field_id == $ref_field){
-								$field_name = "$$ref_field$$field->table";
-							}
-							else if(count($field_split) > 1){
-								// prepend the table name to referenced fields
-								$field_name = "$$ref_field$$field->table.".str_replace('.', '_', $field_split[1]);
-							}
-							else{
-								// $field = NULL; // ? not sure about this... an error because $field_id is not the ref'd table and doesn't have a . to say which table
-							}
-						}
-						else if(!isset($result["$$ref_field"])){
-							if($field->field == 'id'){
-								//$field_name = $field->table."_id";
-							}
-							//$result["$$ref_field"] = $field->table;
-						}
-					}
-				}
+//				print "    A:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";				
 				//print "    B:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
 
 				// do we have any matching fields or field tables?
 				if($field || !empty($objectFields) || !empty($objectTables)){
-					$table_prefix = empty($ref_field)?$table_name.'.':'';
-
+					$ref_field = ($field && !empty($field->type) && $field->type == 'ref');
+					if($ref_field){
+						// if it's a reference field
+						$field_name = "$$field_name$$field->table";
+						$table_prefix = '';
+					}
+					else{
+						// not a reference field
+						$table_prefix = "$table_name.";
+					}
+					
+					// ensure the $table_name exists in the $result set
 					if(!isset($result[$table_name])){
 						$result[$table_name] = array();
 					}
@@ -542,14 +517,18 @@ class Data extends NotORM {
 
 					// object children
 					if(!empty($objectFields)){
-						//print "[$field_id] fields:".print_r($objectFields, TRUE)."\n";
-						// TODO: resolve object table references into $field_name$ref_table.ref_field
 						foreach($objectFields as $object_field_id => $object_field){
 							if($structure){
 								$result[$table_name][$object_field_id] = $object_field;
 							}
 							else{
-								$result[$table_name][] = $table_prefix.$object_field_id;
+								if(!empty($object_field->type) && $object_field->type == 'ref'){
+									$ref_field_field = substr($field_id, strlen($object_field_id)+1);
+									$result[$table_name][] = "$$object_field_id$$object_field->table".($ref_field_field?".$ref_field_field":''); ////$table_prefix.$object_field_id."$";
+								}
+								else{
+									$result[$table_name][] = $table_prefix.$object_field_id;
+								}
 							}
 						}
 					}
