@@ -199,7 +199,9 @@ class Data extends NotORM {
 			}
 			else if($table_name == "$$row_type" || strpos("$$row_type", $table_name) === 0){
 				// check for ref array tables for this row_type
+				//print "\nref arrays for $row_type $table_name ".print_r(array_keys($row_data), TRUE)."\n";
 				$ref_array_fields = array_filter(array_keys($table_fields), function($ref_table_id) use ($row_data) {
+					//print "who is $ref_table_id ?\n";
 					return (array_key_exists($ref_table_id.".id", $row_data));
 				});
 
@@ -208,9 +210,11 @@ class Data extends NotORM {
 						if(!empty($table_fields[$ref_array_table]['$type'])){
 							$ref_type = $table_fields[$ref_array_table]['$type'];
 							unset($table_fields[$ref_array_table]['$type']);
+//							print "\nloading [$ref_type] array for $ref_array_table\n";
 							$ref_arrays = $this->loadRefArray($ref_type, $table_fields[$ref_array_table], $ref_type.".id", $row[$ref_array_table.".id"]);
 							if(!empty($ref_arrays)){
 								if(count($ref_arrays) > 1){
+									// TODO: not sure about this... should refArray only ever return one result?
 									print "  * loaded [$ref_array_table]:".print_r($ref_arrays, TRUE)."\n";
 								}
 								else{
@@ -839,7 +843,7 @@ class Data extends NotORM {
 									$ref_field_object_id = $ref_table.'_'.str_replace('.', '_', $ref_field);
 									if(!isset($ref_field_object_tables[$ref_field_object_id])){
 										if(!isset($ref_field_tables[$ref_table])){
-											$ref_field_tables[$ref_table] = $this->getTableDefs($ref_table);
+											$ref_field_tables[$ref_table] = $this->getFields($ref_table, $mode); //$this->getTableDefs($ref_table);
 										}
 										$ref_field_object_tables[$ref_field_object_id] = $this->getObjectTables($ref_field_object_id, $ref_field_tables[$ref_table]);
 									}
@@ -850,10 +854,10 @@ class Data extends NotORM {
 									if(is_string($ref_field)){
 										print "\n*** single ref field ($type) $ref_field_def [$ref_table] [$ref_field] [$ref_field_name]\n";
 										// a single reference field
+										$this->relations->add($table_name, $ref_field_name, $ref_table);
+										$ref_table_alias = $ref_field_name;
+										$ref_join_fields[] = "$ref_table_alias.id AS `$ref_field_name.id`";
 										if(!$ref_field_object_id || count($ref_field_object_tables[$ref_field_object_id]) <= 1){
-											$this->relations->add($table_name, $ref_field_name, $ref_table);
-											$ref_table_alias = $ref_field_name;
-											$ref_join_fields[] = "$ref_table_alias.id AS `$ref_field_name.id`";
 											$ref_join_fields[] = "$ref_table_alias.$ref_field AS `$ref_field_name.$ref_field`";
 										}
 										else{
