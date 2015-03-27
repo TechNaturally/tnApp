@@ -1,7 +1,7 @@
 <?php
 
 namespace TN;
-use PDO, NotORM, NotORM_Row, SchemaStore, Exception, stdClass, Jsv4;
+use PDO, NotORM, NotORM_Row, NotORM_Structure_Convention, SchemaStore, Exception, stdClass, Jsv4;
 
 class DataException extends Exception{}
 
@@ -11,10 +11,40 @@ class DataRow extends NotORM_Row {
 	}
 }
 
+class DataRelation extends NotORM_Structure_Convention {
+	public $relations = array();
+
+	function add($table, $field, $reference_table){
+		if(!isset($this->relations[$table])){
+			$this->relations[$table] = array();
+		}
+		if(!array_key_exists($field, $this->relations[$table])){
+			$this->relations[$table][$field] = $reference_table;
+		}
+	}
+
+	function getReferencedColumn($name, $table){
+		//print "getReferencedColumn $table [$name] = `...`\n";
+		if(!empty($this->relations[$table]) && !empty($this->relations[$table][$name])){
+			return $name;
+		}		
+		return parent::getReferencedColumn($name, $table);
+	}
+
+	function getReferencedTable($name, $table) {
+		if(!empty($this->relations[$table]) && !empty($this->relations[$table][$name])){
+			//print "getReferencedTable $table [$name] = `".$this->relations[$table][$name]."`\n";
+			return $this->relations[$table][$name];
+		}
+		return parent::getReferencedTable($name, $table);
+	}
+}
+
 class Data extends NotORM {
 	protected $schemas;
 	protected $tables;
 	protected $fields;
+	protected $relations;
 	protected $connection_type;
 	private $field_configs = array();
 	private $table_exists = array();
@@ -25,6 +55,7 @@ class Data extends NotORM {
 		$this->schemas = new SchemaStore();
 		$this->tables = array();
 		$this->fields = array();
+		$this->relations = new DataRelation();
 
 		$connection = NULL;
 		foreach($config as $type => $settings){
@@ -37,7 +68,7 @@ class Data extends NotORM {
 
 		// initialize NotORM with our pdo $connection
 		if($connection){
-			parent::__construct($connection);
+			parent::__construct($connection, $this->relations);
 		}
 		$this->rowClass = '\TN\DataRow';
 	}
@@ -120,6 +151,7 @@ class Data extends NotORM {
 				}
 
 				print "\nloading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
+				print "relations: ".print_r($this->relations->relations, TRUE)."\n";
 				//print "<pre>".print_r($query, true)."</pre>\n";
 
 				$result = NULL;
@@ -151,7 +183,7 @@ class Data extends NotORM {
 	public function loadRowArrays($row_type, $row, $fields){
 		$row_arrays = array();
 		//print "LOAD ARRAYS FOR $row_type:".print_r($row, TRUE)."\n";
-		//print "load arrays for $row_type:".print_r($row->getRow(), TRUE)."\n";
+		//print "\nload arrays for $row_type:".print_r($row->getRow(), TRUE)."\n";
 		foreach($fields as $table_name => $table_fields){
 			//print "ok...:".$table_name.":".print_r($table_fields, TRUE)."\n";
 			if($table_name !== $row_type && strpos($table_name, '_') !== FALSE){
@@ -162,6 +194,7 @@ class Data extends NotORM {
 				else{
 					if($ref_name = substr($table_name, 0, strpos($table_name, '_'))){
 						if(array_key_exists($ref_name.".id", $row->getRow())){
+							print "load ref [$row_type] arrays $table_name\n";
 							$child_array = $this->loadRefArray($table_name, $table_fields, $ref_name."_id", $row[$ref_name.".id"]);
 						}
 					}
@@ -255,13 +288,11 @@ class Data extends NotORM {
 		else{
 			$new_value = array();
 			foreach($value as $key => $child_value){
-				if(strpos($key, $simple_name.'_') === 0){
+				if(strpos($key, $simple_name) === 0){
 					$new_value[str_replace($simple_name.'_', '', $key)] = $child_value;
 				}
 			}
 			$value = $new_value;
-			//print "how about $simple_name in :".print_r($value, TRUE)."\n";
-			//$value = $this->compileObject($value);
 		}
 
 		return $value;
@@ -563,7 +594,8 @@ class Data extends NotORM {
 										if(!empty($use_field)){
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
 												$object_field_ref_field = substr($field_id, strlen($object_field_id)+1);
-												$result[$object_table_name][] = "$$type".'_'."$object_field_id$$object_field->table".($object_field_ref_field?".$object_field_ref_field":'');
+												//$type".'_'."
+												$result[$object_table_name][] = "$$object_field_id$$object_field->table".($object_field_ref_field?".$object_field_ref_field":'');
 											}
 											else{
 												$result[$object_table_name][] = $object_table_prefix.$object_field_id;
@@ -736,12 +768,11 @@ class Data extends NotORM {
 			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
 
-				print "$type [$mode] filtered: ".print_r($fields, TRUE)."\n";
+//				print "$type [$mode] filtered: ".print_r($fields, TRUE)."\n";
 
 				$ref_tables = array();
 
 				foreach($fields as $table_name => $table_fields){
-//					print "$table_name\n";
 					$ref_fields = array_filter($table_fields, function($field){
 						return ( (is_object($field) && !empty($field->type) && $field->type == 'ref')
 								|| (is_string($field) && $field[0] == '$') );
@@ -769,16 +800,19 @@ class Data extends NotORM {
 								if($ref_field){
 									$ref_join_fields = array();
 									if(is_string($ref_field)){
-										$ref_join_fields[] = "$ref_table.id AS `$ref_field_name.id`";
-										$ref_join_fields[] = "$ref_table.$ref_field AS `$ref_field_name.$ref_field`";
+										$this->relations->add($table_name, $ref_field_name, $ref_table);
+										$ref_table_alias = $ref_field_name;
+										$ref_join_fields[] = "$ref_table_alias.id AS `$ref_field_name.id`";
+										$ref_join_fields[] = "$ref_table_alias.$ref_field AS `$ref_field_name.$ref_field`";
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
 										foreach($ref_field[$ref_table] as $ref_join_field){
-											$ref_join_fields[] = "$ref_join_field AS `$ref_field_name.".str_replace("$ref_table.", '', $ref_join_field)."`";
+											$this->relations->add($table_name, $ref_field_name, $ref_table);
+											$ref_table_alias = str_replace("$ref_table.", "$ref_field_name.", $ref_join_field);
+											$ref_join_fields[] = "$ref_table_alias AS `$ref_field_name.".str_replace("$ref_table.", '', $ref_join_field)."`";
 										}
 										// TODO: add in the other tables (as $fields[$ref_field_name.$ref_table_name])
 									}
-									// TODO: extend NotORM_Structure_Convention::getReferencedTable for $table_name and $ref_field_name
 									if(!empty($ref_join_fields)){
 										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
 										array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
@@ -973,8 +1007,8 @@ class Data extends NotORM {
 
 						foreach($sql_defs as $table_name => $table_def){
 							$sql = "CREATE TABLE `$table_name`(".$table_def.")";
-							print "\n$sql\n";
-							//$this->connection->exec($sql);
+							//print "\n$sql\n";
+							$this->connection->exec($sql);
 							//print "created $table_name!\n";
 						}
 
