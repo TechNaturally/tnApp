@@ -626,13 +626,7 @@ class Data extends NotORM {
 									}
 									else{
 										$object_field_id_norm = str_replace('_', '.', $object_field_id);
-										$use_field = in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
-										if(!$use_field){
-											$matching_fields = array_filter($field_ids, function($field_id) use ($object_name, $object_field_id_norm){
-												return (strpos(($object_name?"$object_name.":'').$object_field_id_norm, $field_id) !== FALSE || strpos($field_id, ($object_name?"$object_name.":'').$object_field_id_norm) !== FALSE);
-											});
-											$use_field = !empty($matching_fields);
-										}
+										$use_field = strpos($field_id, $object_field_id_norm) === 0 || strpos($object_field_id_norm, $field_id) === 0 || in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
 										if(!empty($use_field)){
 											$ref_field_str = NULL;
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
@@ -812,6 +806,7 @@ class Data extends NotORM {
 			}
 			else{
 				$fields = $this->getFilteredFields($type, $config_fields, in_array($mode, $this->writeModes));
+				print "$type filtered: ".print_r($fields, TRUE)."\n";
 
 				$ref_tables = array();
 				$ref_field_tables = array();
@@ -853,7 +848,7 @@ class Data extends NotORM {
 								if($ref_field){
 									$ref_join_fields = array();
 									if(is_string($ref_field)){
-										//print "single ref field ($type) $ref_field_def [$ref_table] [$ref_field] [$ref_field_name]\n";
+										print "\n*** single ref field ($type) $ref_field_def [$ref_table] [$ref_field] [$ref_field_name]\n";
 										// a single reference field
 										if(!$ref_field_object_id || count($ref_field_object_tables[$ref_field_object_id]) <= 1){
 											$this->relations->add($table_name, $ref_field_name, $ref_table);
@@ -871,7 +866,7 @@ class Data extends NotORM {
 										
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
-										//print "full ref field $ref_field_def [$ref_table]: \n";
+										print "\n*** full ref field $ref_field_def [$ref_table]: \n";
 										// a full reference object
 										foreach($ref_field[$ref_table] as $ref_join_field){
 											$this->relations->add($table_name, $ref_field_name, $ref_table);
