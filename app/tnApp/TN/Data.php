@@ -171,6 +171,8 @@ class Data extends NotORM {
 					$data = $this->compileObject($data);
 				}
 
+				print "LOADED $type: ".print_r($data, TRUE)."\n";
+
 
 
 				return $data;
@@ -215,6 +217,8 @@ class Data extends NotORM {
 
 		$array_query->where($ref_field, $ref_value);
 
+		print "load ref array $table_name [$ref_field]\n";
+
 		// process the results
 		$array_data = array();
 		while($array_row = $array_query->fetch()){
@@ -228,6 +232,8 @@ class Data extends NotORM {
 	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
 		if(!empty($fields[$table_name])){
 			$table_fields = $fields[$table_name];
+
+			print "load child array $parent_name [$table_name] array\n";
 
 			$array_query = $parent_row->{$table_name}();
 
@@ -243,6 +249,15 @@ class Data extends NotORM {
 				$row_arrays = $this->loadRowArrays($table_name, $array_row, $fields);
 				if(!empty($row_arrays)){
 					$row_value = array_merge($row_value, $row_arrays);
+				}
+
+				if(is_array($row_value)){
+					$row_value = $this->compileObject($row_value);
+
+					$row_field = str_replace($parent_name.'_', '', $table_name);
+					if(isset($row_value[$row_field])){
+						$row_value = $row_value[$row_field];
+					}
 				}
 
 				$array_data[] = $row_value;
@@ -321,7 +336,7 @@ class Data extends NotORM {
 				$object[$field] = $value;
 			}
 		}
-		print "\nOBJECT: ".print_r($object, true)."\n";
+//		print "\nOBJECT: ".print_r($object, true)."\n";
 		return $object;
 	}
 
