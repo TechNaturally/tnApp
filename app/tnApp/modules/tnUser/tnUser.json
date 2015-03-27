@@ -3,8 +3,8 @@
 	"data": {
 		"input": {"auth": true, "name": true, "email": true},
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "name", "email", "role", "abc", "def.username", "testArRf.username", "testArObRf.two.email", "testObRf"],
-		"save": {"auth": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
+		"load": ["auth", "role", "name", "email", "abc", "def.username", "testArObRf.two.thArOb", "testArObRf.one", "testArRf", "testObRf"],
+		"save": {"auth": true, "role": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
 		"schema": {
 			"id": "/user",
 			"type": "object",

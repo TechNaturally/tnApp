@@ -26,6 +26,9 @@ function user_profile_get($tn, $id){
 	try{
 		print "\n";
 
+//		$tn->data->assert('user');
+
+/**
 		if($fields = $tn->data->getFields('user', 'save')){
 			print "user save fields:".print_r($fields,true)."\n";
 		}
@@ -38,8 +41,9 @@ function user_profile_get($tn, $id){
 		else{
 			print "no user load fields :(\n\n";
 		}
+		*/
 
-/**
+
 		if($user = user_get_user($tn, array('user.id' => $id))){
 			$res['user'] = $user;
 		}
@@ -47,7 +51,6 @@ function user_profile_get($tn, $id){
 			//$res['error'] = TRUE;
 			$res['msg'] = 'User not found.';
 		}
-		*/
 
 	}catch(Exception $e){
 		// EXAMPLE OF ERROR BUBBLING
