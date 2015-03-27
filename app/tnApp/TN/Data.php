@@ -250,7 +250,8 @@ class Data extends NotORM {
 		// process the results
 		$array_data = array();
 		while($array_row = $array_query->fetch()){
-			$array_data[] = $this->loadRowArrays($table_name, $array_row, $table_fields);
+			$row_value = $this->loadRowArrays($table_name, $array_row, $table_fields);
+			$array_data[] = $this->compileObject($row_value);
 		}
 
 		return $array_data;
