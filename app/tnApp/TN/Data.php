@@ -858,18 +858,14 @@ class Data extends NotORM {
 										}
 										$ref_field_table_fields = $this->getObjectTables($ref_field_object_id, $ref_field_tables[$ref_table]);
 										if(!empty($ref_field_table_fields)){
-											//print "\nok... [$ref_field_def] ($ref_field_name) $ref_field_object_id:".print_r($config_fields, TRUE)." with:\n".print_r($ref_field_table_fields, TRUE);
-											
 											foreach($ref_field_table_fields as $ref_field_table_field_table => $ref_field_table_field_fields){
 												if($ref_field_table_field_table === $ref_field_object_id || strpos($ref_field_table_field_table, $ref_field_object_id.'_') === 0){
 													continue;
 												}
 												$ref_field_table_fields[$ref_field_table_field_table] = array_filter($ref_field_table_field_fields, function($field_id) use ($ref_field_name, $config_fields, $ref_field_table_field_table){
 													return ($field_id == "$ref_field_table_field_table.id" || strrpos($field_id, '_id') == (strlen($field_id)-3) || in_array(str_replace('_', '.', str_replace("$ref_field_table_field_table.", "$ref_field_name.", $field_id)), $config_fields));
-
 												});
 											}
-											//print "  NOW with:".print_r($ref_field_table_fields, TRUE)."\n";
 										}
 										$ref_field_object_tables[$ref_field_object_id] = $ref_field_table_fields;
 									}
@@ -878,32 +874,42 @@ class Data extends NotORM {
 								if($ref_field){
 									$ref_join_fields = array();
 									if(is_string($ref_field)){
-										print "\n*** single ref field ($type) $ref_field_def [$ref_table] [$ref_field] [$ref_field_name]\n";
+										//print "\n*** single ref field ($type) $ref_field_def [$ref_table] [$ref_field] [$ref_field_name]\n";
 										// a single reference field
 										$this->relations->add($table_name, $ref_field_name, $ref_table);
 										$ref_table_alias = $ref_field_name;
-										$ref_join_fields[] = "$ref_table_alias.id AS `$ref_field_name.id`";
+										$ref_join_field_str = "$ref_table_alias.id AS `$ref_field_name.id`";
+										if(!in_array($ref_join_field_str, $ref_join_fields)){
+											$ref_join_fields[] = $ref_join_field_str;
+										}
 										if(!$ref_field_object_id || count($ref_field_object_tables[$ref_field_object_id]) <= 1){
-											$ref_join_fields[] = "$ref_table_alias.$ref_field AS `$ref_field_name.$ref_field`";
+											$ref_join_field_str = "$ref_table_alias.$ref_field AS `$ref_field_name.$ref_field`";
+											if(!in_array($ref_join_field_str, $ref_join_fields)){
+												$ref_join_fields[] = $ref_join_field_str;
+											}
 										}
 										else{
 											if(!isset($fields["$$type"])){
 												$fields["$$type"] = array();
 											}
-/**											if(isset($fields["$$type"][$ref_field_name]) && is_array($fields["$$type"][$ref_field_name])){
-												$fields["$$type"][$ref_field_name] = array_merge($fields["$$type"][$ref_field_name], $ref_field_object_tables[$ref_field_object_id]);
+											if(!isset($fields["$$type"][$ref_field_name])){
+												$fields["$$type"][$ref_field_name] = $ref_field_object_tables[$ref_field_object_id];
+												$fields["$$type"][$ref_field_name]['$type'] = $ref_table;												
 											}
 											else{
-												*/
-												$fields["$$type"][$ref_field_name] = $ref_field_object_tables[$ref_field_object_id];
-											//}
-											
-											$fields["$$type"][$ref_field_name]['$type'] = $ref_table;
+												foreach($ref_field_object_tables[$ref_field_object_id] as $ref_field_table_name => $ref_field_table_fields){
+													if(isset($fields["$$type"][$ref_field_name][$ref_field_table_name]) && is_array($fields["$$type"][$ref_field_name][$ref_field_table_name])){
+														$fields["$$type"][$ref_field_name][$ref_field_table_name] = array_unique(array_merge($fields["$$type"][$ref_field_name][$ref_field_table_name], $ref_field_table_fields));
+													}
+													else{
+														$fields["$$type"][$ref_field_name][$ref_field_table_name] = $ref_field_table_fields;
+													}
+												}
+											}
 										}
-										
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
-										print "\n*** full ref field $ref_field_def [$ref_table]: \n";
+										//print "\n*** full ref field $ref_field_def [$ref_table]: \n";
 										// a full reference object
 										foreach($ref_field[$ref_table] as $ref_join_field){
 											$this->relations->add($table_name, $ref_field_name, $ref_table);
@@ -913,25 +919,29 @@ class Data extends NotORM {
 										if(!isset($fields["$$type"])){
 											$fields["$$type"] = array();
 										}
-										/** TODO: blend these table arrays together
-										if(isset($fields["$$type"][$ref_field_name]) && is_array($fields["$$type"][$ref_field_name])){
-											$fields["$$type"][$ref_field_name] = array_merge($fields["$$type"][$ref_field_name], $ref_field);
+										if(!isset($fields["$$type"][$ref_field_name])){
+											$fields["$$type"][$ref_field_name] = $ref_field;
+											$fields["$$type"][$ref_field_name]['$type'] = $ref_table;												
 										}
 										else{
-											*/
-											$fields["$$type"][$ref_field_name] = $ref_field;
-										//}
-										$fields["$$type"][$ref_field_name]['$type'] = $ref_table;
+											foreach($ref_field as $ref_field_table_name => $ref_field_table_fields){
+												if(isset($fields["$$type"][$ref_field_name][$ref_field_table_name]) && is_array($fields["$$type"][$ref_field_name][$ref_field_table_name])){
+													$fields["$$type"][$ref_field_name][$ref_field_table_name] = array_unique(array_merge($fields["$$type"][$ref_field_name][$ref_field_table_name], $ref_field_table_fields));
+												}
+												else{
+													$fields["$$type"][$ref_field_name][$ref_field_table_name] = $ref_field_table_fields;
+												}
+											}
+										}
 									}
 									if(!empty($ref_join_fields)){
 										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
 										array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
 										$fields[$table_name] = array_unique($fields[$table_name]);
 									}
-									else{
-										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
-										array_splice($fields[$table_name], $ref_field_idx, 1);
-									}
+									$fields[$table_name] = array_filter($fields[$table_name], function($ref_field_id) use($ref_field_def){
+										return ($ref_field_id != $ref_field_def);
+									});
 								}
 							}
 						}
