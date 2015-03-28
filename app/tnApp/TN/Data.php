@@ -159,12 +159,14 @@ class Data extends NotORM {
 				if($result){
 					$data = $this->rowToArray($result);
 
+					$data = $this->compileObject($data);
+
 					//print "*** DATA FOR $type:".print_r($data, true)."\n";
 
 					// load any array data for this row
 					$row_arrays = $this->loadRowArrays($type, $result, $fields);
 					if(!empty($row_arrays)){
-						$data = array_merge($data, $row_arrays);
+						$data = array_merge_recursive($data, $row_arrays);
 					}
 
 					// compile the data array into the object structure
@@ -251,7 +253,10 @@ class Data extends NotORM {
 		$array_data = array();
 		while($array_row = $array_query->fetch()){
 			$row_value = $this->loadRowArrays($table_name, $array_row, $table_fields);
-			$array_data[] = $this->compileObject($row_value);
+			if(is_array($row_value)){
+				$row_value = $this->compileObject($row_value);
+			}
+			$array_data[] = $row_value;
 		}
 
 		return $array_data;
@@ -270,15 +275,20 @@ class Data extends NotORM {
 			$array_data = array();
 			while($array_row = $array_query->fetch()){
 				$row_value= $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id", "$parent_name"."_id", "$table_name.$parent_name"."_id"));
+				//$row_value = $this->compileObject()
+				if(is_array($row_value)){
+					$row_value = $this->compileObject($row_value);
+					//print "don't compile $table_name $row_value\n";
+				}
 
 				// load any array data for this row
 				$row_arrays = $this->loadRowArrays($table_name, $array_row, $fields);
 				if(!empty($row_arrays)){
-					$row_value = array_merge($row_value, $row_arrays);
+					$row_value = array_merge_recursive($row_value, $row_arrays);
 				}
 
 				if(is_array($row_value)){
-					$row_value = $this->compileObject($row_value);
+					//$row_value = $this->compileObject($row_value);
 					$row_field = str_replace($parent_name.'_', '', $table_name);
 					if(isset($row_value[$row_field])){
 						$row_value = $row_value[$row_field];
@@ -844,9 +854,24 @@ class Data extends NotORM {
 									$ref_field_object_id = $ref_table.'_'.str_replace('.', '_', $ref_field);
 									if(!isset($ref_field_object_tables[$ref_field_object_id])){
 										if(!isset($ref_field_tables[$ref_table])){
-											$ref_field_tables[$ref_table] = $this->getFields($ref_table, $mode); //$this->getTableDefs($ref_table);
+											$ref_field_tables[$ref_table] = $this->getFields($ref_table, $mode); //$this->getTableDefs($ref_table); if($structure) ?
 										}
-										$ref_field_object_tables[$ref_field_object_id] = $this->getObjectTables($ref_field_object_id, $ref_field_tables[$ref_table]);
+										$ref_field_table_fields = $this->getObjectTables($ref_field_object_id, $ref_field_tables[$ref_table]);
+										if(!empty($ref_field_table_fields)){
+											//print "\nok... [$ref_field_def] ($ref_field_name) $ref_field_object_id:".print_r($config_fields, TRUE)." with:\n".print_r($ref_field_table_fields, TRUE);
+											
+											foreach($ref_field_table_fields as $ref_field_table_field_table => $ref_field_table_field_fields){
+												if($ref_field_table_field_table === $ref_field_object_id || strpos($ref_field_table_field_table, $ref_field_object_id.'_') === 0){
+													continue;
+												}
+												$ref_field_table_fields[$ref_field_table_field_table] = array_filter($ref_field_table_field_fields, function($field_id) use ($ref_field_name, $config_fields, $ref_field_table_field_table){
+													return ($field_id == "$ref_field_table_field_table.id" || strrpos($field_id, '_id') == (strlen($field_id)-3) || in_array(str_replace('_', '.', str_replace("$ref_field_table_field_table.", "$ref_field_name.", $field_id)), $config_fields));
+
+												});
+											}
+											//print "  NOW with:".print_r($ref_field_table_fields, TRUE)."\n";
+										}
+										$ref_field_object_tables[$ref_field_object_id] = $ref_field_table_fields;
 									}
 								}
 
@@ -865,7 +890,14 @@ class Data extends NotORM {
 											if(!isset($fields["$$type"])){
 												$fields["$$type"] = array();
 											}
-											$fields["$$type"][$ref_field_name] = $ref_field_object_tables[$ref_field_object_id];
+/**											if(isset($fields["$$type"][$ref_field_name]) && is_array($fields["$$type"][$ref_field_name])){
+												$fields["$$type"][$ref_field_name] = array_merge($fields["$$type"][$ref_field_name], $ref_field_object_tables[$ref_field_object_id]);
+											}
+											else{
+												*/
+												$fields["$$type"][$ref_field_name] = $ref_field_object_tables[$ref_field_object_id];
+											//}
+											
 											$fields["$$type"][$ref_field_name]['$type'] = $ref_table;
 										}
 										
@@ -881,7 +913,14 @@ class Data extends NotORM {
 										if(!isset($fields["$$type"])){
 											$fields["$$type"] = array();
 										}
-										$fields["$$type"][$ref_field_name] = $ref_field;
+										/** TODO: blend these table arrays together
+										if(isset($fields["$$type"][$ref_field_name]) && is_array($fields["$$type"][$ref_field_name])){
+											$fields["$$type"][$ref_field_name] = array_merge($fields["$$type"][$ref_field_name], $ref_field);
+										}
+										else{
+											*/
+											$fields["$$type"][$ref_field_name] = $ref_field;
+										//}
 										$fields["$$type"][$ref_field_name]['$type'] = $ref_table;
 									}
 									if(!empty($ref_join_fields)){
