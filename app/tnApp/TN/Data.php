@@ -207,12 +207,13 @@ class Data extends NotORM {
 					return (array_key_exists($ref_table_id.".id", $row_data));
 				});
 
+				//print "checkin [$row_type] $table_name ".print_r($ref_array_fields, TRUE)."\n";
+
 				if(!empty($ref_array_fields)){
 					foreach($ref_array_fields as $ref_array_table){
 						if(!empty($table_fields[$ref_array_table]['$type'])){
 							$ref_type = $table_fields[$ref_array_table]['$type'];
 							unset($table_fields[$ref_array_table]['$type']);
-//							print "\nloading [$ref_type] array for $ref_array_table\n";
 							$ref_arrays = $this->loadRefArray($ref_type, $table_fields[$ref_array_table], $ref_type.".id", $row[$ref_array_table.".id"]);
 							if(!empty($ref_arrays)){
 								if(count($ref_arrays) > 1){
@@ -230,11 +231,8 @@ class Data extends NotORM {
 						}
 						
 					}
-
 				}
 			}
-
-			
 		}
 		return !empty($row_arrays)?$row_arrays:NULL;
 	}
@@ -253,13 +251,15 @@ class Data extends NotORM {
 		$array_data = array();
 		while($array_row = $array_query->fetch()){
 			$row_value = $this->loadRowArrays($table_name, $array_row, $table_fields);
-			if(is_array($row_value)){
-				$row_value = $this->compileObject($row_value);
+			if(!empty($row_value)){
+				if(is_array($row_value)){
+					$row_value = $this->compileObject($row_value);
+				}
+				$array_data[] = $row_value;
 			}
-			$array_data[] = $row_value;
 		}
 
-		return $array_data;
+		return !empty($array_data)?$array_data:NULL;
 	}
 
 	private function loadChildArray($parent_name, $parent_row, $table_name, $fields){
@@ -275,10 +275,11 @@ class Data extends NotORM {
 			$array_data = array();
 			while($array_row = $array_query->fetch()){
 				$row_value= $this->getArrayRowValue($array_row, $table_name, array("id", "$table_name.id", "$parent_name"."_id", "$table_name.$parent_name"."_id"));
+
+//				print "$table_name row: ".print_r($row_value, TRUE)."\n";
 				//$row_value = $this->compileObject()
 				if(is_array($row_value)){
 					$row_value = $this->compileObject($row_value);
-					//print "don't compile $table_name $row_value\n";
 				}
 
 				// load any array data for this row
@@ -294,7 +295,6 @@ class Data extends NotORM {
 						$row_value = $row_value[$row_field];
 					}
 				}
-
 				$array_data[] = $row_value;
 			}
 
@@ -851,7 +851,21 @@ print "GET FIELDS $type [$mode]\n";
 								$ref_field_object_id = NULL;
 
 								if($ref_table == $type){
-									// TODO: how to handle self-referencing fields
+									// it is a reference to the same requested type (for hierarchal structures)
+									if(!isset($fields["$$type"])){
+										$fields["$$type"] = array();
+									}
+									if(!isset($fields["$$type"][$ref_field_name])){
+										$fields["$$type"][$ref_field_name] = array('$type' => $type, 'fields' => array());
+									}
+									$ref_self_field = $ref_field?$ref_field:"$$type";
+									if(!in_array($ref_self_field, $fields["$$type"][$ref_field_name]['fields'])){
+										$fields["$$type"][$ref_field_name]['fields'][] = $ref_self_field;
+									}
+
+									$fields[$table_name] = array_filter($fields[$table_name], function($ref_field_id) use($ref_field_def){
+										return ($ref_field_id != $ref_field_def);
+									});
 									continue;
 								}
 								if(!$ref_field){
@@ -917,7 +931,7 @@ print "GET FIELDS $type [$mode]\n";
 										}
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
-										print "\n*** full ref field $ref_field_def [$ref_table]: ".print_r($ref_field[$ref_table], TRUE)." \n";
+										//print "\n*** full ref field $ref_field_def [$ref_table]: ".print_r($ref_field[$ref_table], TRUE)." \n";
 										// a full reference object
 										foreach($ref_field[$ref_table] as $ref_join_field){
 											$this->relations->add($table_name, $ref_field_name, $ref_table);
@@ -944,7 +958,9 @@ print "GET FIELDS $type [$mode]\n";
 									}
 									if(!empty($ref_join_fields)){
 										$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
-										array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
+										if($ref_field_idx !== FALSE){
+											array_splice($fields[$table_name], $ref_field_idx, 1, $ref_join_fields);
+										}
 										$fields[$table_name] = array_unique($fields[$table_name]);
 									}
 									$fields[$table_name] = array_filter($fields[$table_name], function($ref_field_id) use($ref_field_def){
@@ -957,6 +973,7 @@ print "GET FIELDS $type [$mode]\n";
 							$ref_tables[] = $ref_table;
 						}
 					}
+					//print "what then $table_name:".print_r($fields[$table_name], TRUE)."\n";
 
 					// assert the referenced tables exist (otherwise we've got a problem)
 					foreach($ref_tables as $ref_table_name){
