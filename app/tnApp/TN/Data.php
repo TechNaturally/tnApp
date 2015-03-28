@@ -671,10 +671,12 @@ class Data extends NotORM {
 					if(!empty($tables[$table_name]['id'])){
 						$id_fields[$table_prefix.'id'] = $tables[$table_name]['id'];
 					}
-					// filter for id ref fields and append the table prefix to the field name
-					foreach($tables[$table_name] as $table_field_id => $table_field){
-						if(isset($table_field->type) && $table_field->type == 'ref' && isset($table_field->field) && $table_field->field == 'id' && isset($table_field->table) && strpos($table_field->table, $type) === 0){
-							$id_fields[$table_prefix.$table_field_id] = $table_field;
+					if($table_name != $type){
+						// filter for id ref fields and append the table prefix to the field name
+						foreach($tables[$table_name] as $table_field_id => $table_field){
+							if(isset($table_field->type) && $table_field->type == 'ref' && isset($table_field->field) && $table_field->field == 'id' && isset($table_field->table) && strpos($table_field->table, $type) === 0){
+								$id_fields[$table_prefix.$table_field_id] = $table_field;
+							}
 						}
 					}
 
@@ -786,6 +788,7 @@ class Data extends NotORM {
 		// writeModes: getFieldsFromTables() // use for saving data
 		// inputModes: getSchemaFields()	 // use for input forms & validating data
 
+print "GET FIELDS $type [$mode]\n";
 		// allow for caching
 		if(!empty($this->fields[$type][$mode])){
 			return $this->fields[$type][$mode];
@@ -846,6 +849,11 @@ class Data extends NotORM {
 								$ref_table = $ref_split_field[0];
 								$ref_field = (count($ref_split_field) > 1)?$ref_split_field[1]:'';
 								$ref_field_object_id = NULL;
+
+								if($ref_table == $type){
+									// TODO: how to handle self-referencing fields
+									continue;
+								}
 								if(!$ref_field){
 									$ref_field = $this->getFields($ref_table, $mode);
 								}
@@ -909,7 +917,7 @@ class Data extends NotORM {
 										}
 									}
 									else if(is_array($ref_field) && !empty($ref_field[$ref_table])){
-										//print "\n*** full ref field $ref_field_def [$ref_table]: \n";
+										print "\n*** full ref field $ref_field_def [$ref_table]: ".print_r($ref_field[$ref_table], TRUE)." \n";
 										// a full reference object
 										foreach($ref_field[$ref_table] as $ref_join_field){
 											$this->relations->add($table_name, $ref_field_name, $ref_table);
@@ -953,7 +961,9 @@ class Data extends NotORM {
 					// assert the referenced tables exist (otherwise we've got a problem)
 					foreach($ref_tables as $ref_table_name){
 						try{
-							$this->assert($ref_table_name);
+							if($ref_table_name != $type){
+								$this->assert($ref_table_name);
+							}
 						}
 						catch(Exception $e){ throw $e; }
 					}

@@ -3,8 +3,8 @@
 	"data": {
 		"input": {"auth": true, "name": true, "email": true},
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "role", "name", "email", "abc", "def.username", "testArRf", "testArObRf.one", "testArObRf.two.thArOb.first", "testArObRf.two.thArOb.third"],
-		"save": {"auth": true, "role": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
+		"load": ["auth", "role", "name", "email", "abc", "def.username", "testArRf", "testArObRf.one", "testArObRf.two.thArOb.first", "testArObRf.two.thArOb.second", "testArObRf.two.thArOb.third"],
+		"save": {"auth": true, "role": true, "bro": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
 		"schema": {
 			"id": "/user",
 			"type": "object",
@@ -17,6 +17,10 @@
 					"title": "Roles",
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50, "required": true }
+				},
+				"bro": {
+					"title": "Brother",
+					"$ref": "/user/id"
 				},
 				"name": {
 					"title": "Name",

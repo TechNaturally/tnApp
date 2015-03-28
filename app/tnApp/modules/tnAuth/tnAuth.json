@@ -3,8 +3,8 @@
 	"data": {
 		"input": ["email", "username", "password"],
 		"list": ["username", "email", "check"],
-		"load": ["email", "username", "check", "thAr", "thArOb", "thObAr"],
-		"save": ["username", "email", "hash", "check", "thAr", "thArOb", "thArObOb", "thObAr"],
+		"load": ["email", "username", "thBro", "check", "thAr", "thArOb", "thObAr"],
+		"save": ["username", "email", "hash", "check", "thBro", "thAr", "thArOb", "thArObOb", "thObAr"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -33,6 +33,10 @@
 					"minLength": 101,
 					"maxLength": 101,
 					"required": true
+				},
+				"thBro": {
+					"title": "Auth Bro",
+					"$ref": "/auth/id"
 				},
 				"thAr": {
 					"type": "array",
