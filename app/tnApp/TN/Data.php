@@ -202,9 +202,14 @@ class Data extends NotORM {
 			else if($table_name == "$$row_type" || strpos("$$row_type", $table_name) === 0){
 				// check for ref array tables for this row_type
 				//print "\nref arrays for $row_type $table_name ".print_r(array_keys($row_data), TRUE)."\n";
-				$ref_array_fields = array_filter(array_keys($table_fields), function($ref_table_id) use ($row_data) {
-					//print "who is $ref_table_id ?\n";
+/**				$ref_array_fields = array_filter(array_keys($table_fields), function($ref_table_id) use ($row_data) {
+					print "who is $ref_table_id ?\n";
 					return (array_key_exists($ref_table_id.".id", $row_data));
+				});
+				*/
+				$ref_array_fields = array_filter(array_keys($table_fields), function($ref_table_id) use ($row_data, $table_fields, $row_type) {
+					//print "  who is $ref_table_id ?\n";
+					return ( array_key_exists($ref_table_id.".id", $row_data) || (!empty($table_fields[$ref_table_id]['$type']) && $table_fields[$ref_table_id]['$type'] == $row_type) );
 				});
 
 				//print "checkin [$row_type] $table_name ".print_r($ref_array_fields, TRUE)."\n";
@@ -214,10 +219,14 @@ class Data extends NotORM {
 						if(!empty($table_fields[$ref_array_table]['$type'])){
 							$ref_type = $table_fields[$ref_array_table]['$type'];
 
+
 							if($ref_type == $row_type){
 								print "SELF REFERENCE: $ref_array_table "."\n";
-								print_r($row_data);
+								//print_r($row_data);
 								// TODO: add in the self-reference field AS $field_name.id ;)
+								if(!empty($row_data[$ref_array_table])){
+									print "ok load the [$row_type] WHERE id=".$row_data[$ref_array_table]." FIELDS:".print_r($table_fields[$ref_array_table], TRUE)."\n";
+								}
 
 							}
 							else{
