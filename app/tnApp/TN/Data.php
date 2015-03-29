@@ -213,21 +213,29 @@ class Data extends NotORM {
 					foreach($ref_array_fields as $ref_array_table){
 						if(!empty($table_fields[$ref_array_table]['$type'])){
 							$ref_type = $table_fields[$ref_array_table]['$type'];
-							unset($table_fields[$ref_array_table]['$type']);
-							$ref_arrays = $this->loadRefArray($ref_type, $table_fields[$ref_array_table], $ref_type.".id", $row[$ref_array_table.".id"]);
-							if(!empty($ref_arrays)){
-								if(count($ref_arrays) > 1){
-									// TODO: not sure about this... should refArray only ever return one result?
-									print "  * loaded [$ref_array_table]:".print_r($ref_arrays, TRUE)."\n";
-								}
-								else{
-									$ref_array_table_split = explode('_', $ref_array_table, 2);
-									$ref_array_name = (count($ref_array_table_split) > 1)?$ref_array_table_split[1]:$ref_array_table;
-									$row_arrays[$ref_array_name] = $ref_arrays[0];
-								}
-								
-							}
 
+							if($ref_type == $row_type){
+								print "SELF REFERENCE: $ref_array_table "."\n";
+								print_r($row_data);
+								// TODO: add in the self-reference field AS $field_name.id ;)
+
+							}
+							else{
+								unset($table_fields[$ref_array_table]['$type']);
+								$ref_arrays = $this->loadRefArray($ref_type, $table_fields[$ref_array_table], $ref_type.".id", $row[$ref_array_table.".id"]);
+								if(!empty($ref_arrays)){
+									if(count($ref_arrays) > 1){
+										// TODO: not sure about this... should refArray only ever return one result?
+										print "  * loaded [$ref_array_table]:".print_r($ref_arrays, TRUE)."\n";
+									}
+									else{
+										$ref_array_table_split = explode('_', $ref_array_table, 2);
+										$ref_array_name = (count($ref_array_table_split) > 1)?$ref_array_table_split[1]:$ref_array_table;
+										$row_arrays[$ref_array_name] = $ref_arrays[0];
+									}
+									
+								}
+							}
 						}
 						
 					}
@@ -863,11 +871,18 @@ print "GET FIELDS $type [$mode]\n";
 										$fields["$$type"][$ref_field_name]['fields'][] = $ref_self_field;
 									}
 
+									$ref_field_idx = array_search($ref_field_def, $fields[$table_name]);
+									if($ref_field_idx !== FALSE){
+										print "ok ... ($ref_table) ($ref_field_name) \n";
+										$fields[$table_name][$ref_field_idx] = "$ref_table.$ref_field_name";
+									}
+
 									$fields[$table_name] = array_filter($fields[$table_name], function($ref_field_id) use($ref_field_def){
 										return ($ref_field_id != $ref_field_def);
 									});
 									continue;
 								}
+
 								if(!$ref_field){
 									$ref_field = $this->getFields($ref_table, $mode);
 								}
