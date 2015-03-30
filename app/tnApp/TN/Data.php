@@ -90,7 +90,7 @@ class Data extends NotORM {
 		$this->field_configs[$type] = array();
 		foreach($this->writeModes as $mode){
 			// save fields will always be stored as objects, but allow config as an array
-			if(is_array($config->{$mode}) && !empty($config->{$mode})){
+			if(!empty($config->{$mode}) && is_array($config->{$mode})){
 				$config->{$mode} = array_flip($config->{$mode});
 				$config->{$mode} = array_fill_keys(array_keys($config->{$mode}), TRUE);
 			}
@@ -773,7 +773,7 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function getFields($type, $mode){
+	public function getFields($type, $mode, $field_list=NULL){
 //		print "*** GET FIELDS $type [$mode]\n";
 		// here is where we filter the fields down based on the input mode configuration
 
@@ -804,6 +804,72 @@ class Data extends NotORM {
 		// readModes:  getFieldsFromTables() // use for retrieving data
 		// writeModes: getFieldsFromTables() // use for saving data
 		// inputModes: getSchemaFields()	 // use for input forms & validating data
+
+		$field_key = NULL; // field key is for caching the filtered list
+
+		// no custom field_list, use the module-configured list of fields
+		if(empty($field_list) && (in_array($mode, $this->readModes) || in_array($mode, $this->writeModes))){
+			
+			$field_key = $mode;
+			if(in_array($field_key, $this->readModes)){
+				$mode = "read";
+			}
+			else{
+				$mode = ($mode == "input")?"input":"write";
+			}
+			if(!empty($this->field_configs[$type][$field_key])){
+				$field_list = $this->field_configs[$type][$field_key];
+			}
+		}
+
+		// we should have a field list now (if we don't, something is wrong)
+		if(!empty($field_list) && ($mode == "read" || $mode == "write" || $mode == "input")){
+
+			// make sure $field_list is an array
+			if(!is_array($field_list)){
+				if(is_object($field_list)){
+					$field_list = (array)$field_list;
+				}
+				else{
+					// a string specifying a certain field (or a * for wildcard)
+					$field_list_new = array();
+					if($mode == "read"){
+						// read modes have simple numerically-indexed arrays
+						$field_list_new[] = $field_list;
+					}
+					else{
+						// write and input modes have name-keyed arrays to allow for field definitions
+						$field_list_new[$field_list] = TRUE;
+					}
+					$field_list = $field_list_new;
+				}
+			}
+
+			// is it defining fields as a simple list, or a name-keyed list (object)
+			$field_list_defs = !is_numeric(array_keys($field_list)[0]);
+
+			print "what we got: ".($field_list_defs?"defs":"list").":".print_r($field_list, TRUE)."\n";
+
+			$field_key = "$type:$mode:".json_encode($field_list); //implode(',', $field_list_defs?array_keys($field_list):$field_list);
+			$field_key = md5($field_key);
+		}
+		
+		if(!$field_key || empty($field_list)){
+			return NULL;
+		}
+
+		// $mode will now be one of read, write, or input
+		// $field_key will now contain a unique identifier for this list of fields (a hash of the type, mode, and field list)
+		// $field_list will now be an array of field names for read-modes, and a named-key array for input/write modes
+
+		// allow for caching
+		if(!empty($this->fields[$type][$field_key])){
+			return $this->fields[$type][$field_key];
+		}
+
+
+
+		return array("key" => $field_key);
 
 print "GET FIELDS $type [$mode]\n";
 		// allow for caching
