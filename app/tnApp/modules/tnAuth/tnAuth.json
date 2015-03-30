@@ -3,7 +3,7 @@
 	"data": {
 		"input": ["email", "username", "password"],
 		"list": ["username", "email", "check"],
-		"load": ["email", "username", "thBro", "check", "thAr", "thArOb", "thObAr"],
+		"load": ["email", "username", "thBro.username", "check", "thAr", "thArOb", "thObAr"],
 		"save": ["username", "email", "hash", "check", "thBro", "thAr", "thArOb", "thArObOb", "thObAr"],
 		"schema": {
 			"id": "/auth",
