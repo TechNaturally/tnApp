@@ -702,7 +702,7 @@ class Data extends NotORM {
 							$result[$table_name] = array_merge($id_fields, $result[$table_name]);
 						}
 						else{
-							$result[$table_name] = array_merge(array_keys($id_fields), $result[$table_name]);
+							$result[$table_name] = array_unique(array_merge(array_keys($id_fields), $result[$table_name]));
 						}
 					}
 				}
@@ -844,12 +844,6 @@ class Data extends NotORM {
 					$field_list = $field_list_new;
 				}
 			}
-
-			// is it defining fields as a simple list, or a name-keyed list (object)
-			$field_list_defs = !is_numeric(array_keys($field_list)[0]);
-
-			print "what we got: ".($field_list_defs?"defs":"list").":".print_r($field_list, TRUE)."\n";
-
 			$field_key = "$type:$mode:".json_encode($field_list); //implode(',', $field_list_defs?array_keys($field_list):$field_list);
 			$field_key = md5($field_key);
 		}
@@ -867,9 +861,43 @@ class Data extends NotORM {
 			return $this->fields[$type][$field_key];
 		}
 
+		$tables = NULL;
+
+		// handle wildcarding
+		if(isset($field_list[0]) && $field_list[0] == "*" || isset($field_list["*"])){
+			unset($field_list[0]);
+			unset($field_list["*"]);
+			if(!$tables){
+				$tables = $this->getTableDefs($type);
+			}
+			if($tables){
+				foreach($tables as $table_name => $table){
+					foreach($table as $field_id => $field){
+						$field_list[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
+					}
+				}
+			}
+			if($mode == "read"){
+				$field_list = array_keys($field_list);
+			}
+		}
+
+		$fields = NULL;
+
+		if($mode == "input"){
+			$fields = $this->getFilteredSchema($type, $field_list);
+		}
+		else{
+			$fields = $field_list;
+
+			$fields = $this->getFilteredFields($type, $field_list, ($mode == "write"));
 
 
-		return array("key" => $field_key);
+		}
+
+
+
+		return array("key" => $field_key, "fields" => $fields);
 
 print "GET FIELDS $type [$mode]\n";
 		// allow for caching
@@ -882,23 +910,7 @@ print "GET FIELDS $type [$mode]\n";
 
 			$tables = NULL;
 
-			// handle wildcarding
-			if(isset($config_fields[0]) && $config_fields[0] == "*"){
-				unset($config_fields[0]);
-				if(!$tables){
-					$tables = $this->getTableDefs($type);
-				}
-				if($tables){
-					foreach($tables as $table_name => $table){
-						foreach($table as $field_id => $field){
-							$config_fields[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
-						}
-					}
-				}
-				if(in_array($mode, $this->readModes)){
-					$config_fields = array_keys($config_fields);
-				}
-			}
+			
 
 			// filter the fields/schema depending on the configuration
 			$fields = NULL;
