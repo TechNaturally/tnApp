@@ -554,7 +554,12 @@ class Data extends NotORM {
 		return count($object_tables)?$object_tables:NULL;
 	}
 
+	// TODO: Nuke this.
 	protected function getFilteredFields($type, $fields, $structure=false){
+		return $this->getFilteredTables($type, $fields, $structure);
+	}
+
+	protected function getFilteredTables($type, $fields, $structure=false){
 		$field_ids = $structure?array_keys($fields):$fields;
 
 		// TODO: overwriting object definition currently not supported
@@ -809,7 +814,6 @@ class Data extends NotORM {
 
 		// no custom field_list, use the module-configured list of fields
 		if(empty($field_list) && (in_array($mode, $this->readModes) || in_array($mode, $this->writeModes))){
-			
 			$field_key = $mode;
 			if(in_array($field_key, $this->readModes)){
 				$mode = "read";
@@ -887,26 +891,117 @@ class Data extends NotORM {
 			}
 		}
 
+		// at this point we have our field list - either from the module config, from function parameters, and with wildcarding resolved
 		$fields = NULL;
-
 		if($mode == "input"){
 			$fields = $this->getFilteredSchema($type, $field_list);
 		}
 		else{
-			$fields = $field_list;
-			//print "listed fields [$type] [$mode]:".print_r($fields, TRUE)."\n";
-			$fields = $this->getFilteredFields($type, $field_list, ($mode == "write"));
+			// getFilteredTables is going to take our field list and return a filtered array of tables+fields
+			$tables = $this->getFilteredTables($type, $field_list, ($mode == "write"));
 
-			// now we've got the requested fields listed and defined
-			// for read mode, we translate them into SQL-field names "table.field AS `table.field`"
-			// we also resolve references by loading their field lists
+			// now we've got the requested fields listed and defined, let's resolve the references
+
+			$fields = array();
+			$ref_types = array(); // a list of referenced module-types
+
+			// check each table for reference fields
+			foreach($tables as $table_name => $table_fields){
+				// get any ref fields from the table
+				$ref_field_defs = array_filter($table_fields, function($field){
+						return ( (is_object($field) && !empty($field->type) && $field->type == 'ref')
+								|| (is_string($field) && $field[0] == '$') );
+					});
+
+				$fields[$table_name] = $table_fields;
+
+//				print "$table_name has ref fields:".print_r($ref_field_defs, TRUE)."\n";
+
+				$ref_fields = array();
+
+				// process each reference field
+				foreach($ref_field_defs as $ref_field_def){
+					$ref_type = NULL;
+
+					if(is_object($ref_field_def) && !empty($ref_field_def->table)){
+						// structured lists are easy
+						$ref_type = $ref_field_def->table;
+					}
+					else if(is_string($ref_field_def)){
+						// if it's a string defining the reference, we need to parse it
+						$ref_splits = explode('$', $ref_field_def);
+						if(count($ref_splits) > 2){
+							$ref_field_name = $ref_splits[1]; // the name of the referencing field
+
+							// $ref_splits[2] is going to contain the referenced type and (optionally) the referenced field
+							$ref_split_field = explode('.', $ref_splits[2], 2);
+							$ref_type = $ref_split_field[0];
+							$ref_field = (count($ref_split_field) > 1)?$ref_split_field[1]:'';
+
+							if(!$ref_field){
+								// no referenced field means get the whole thing
+								$ref_fields[$ref_field_name] = array('type' => $ref_type, 'fields' => "*"); //"full $ref_type"; //array();
+
+								// TODO: need to list the ref'd type's fields into $ref_fields[$ref_field_name]['fields']
+								// TODO: write the function that will list the ref'd type's fields for a certain mode
+
+								//$ref_fields = $this->getFields()
+							}
+							else{
+								if(!isset($ref_fields[$ref_field_name])){
+									$ref_fields[$ref_field_name] = array('type' => $ref_type, 'fields' => array());
+								}
+								$ref_fields[$ref_field_name]['fields'][] = $ref_field;
+							}
+						}
+
+						// splice the root $ref_type ref_fields into $fields[$table_name]
+
+						// remove that ref_field def from the table fields
+						$fields[$table_name] = array_filter($fields[$table_name], function($field_id) use ($ref_field_def){
+							return ($field_id != $ref_field_def);
+						});
+					}
+
+					
+				}
+
+				if(!empty($ref_fields)){
+					print "\n[$type] [$mode] $table_name has ref fields:".print_r($ref_fields, TRUE)."\n";
+					foreach($ref_fields as $ref_field_name => $ref_field_def){
+						if(!in_array($ref_field_def['type'], $ref_types)){
+							$ref_types[] = $ref_field_def['type'];
+						}
+
+						$this->relations->add($table_name, $ref_field_name, $ref_field_def['type']);
+						$fields[$table_name][] = "$ref_field_name.id AS `$ref_field_name.id`";
+
+						if(is_array($ref_field_def['fields']) && !empty($ref_field_def['fields'])){
+							// TODO: add the selected fields to the $fields[$table_name]
+							foreach($ref_field_def['fields'] as $ref_field){
+								$fields[$table_name][] = "$ref_field_name.$ref_field AS `$ref_field_name.$ref_field`";
+							}
+
+						}
+					}
+				}
 
 
+			} // end of foreach ($tables)
+
+			foreach($ref_types as $ref_type){
+				// TODO: assert those
+				print "[$type] ASSERT ($ref_type)\n";
+			}
+
+			//$fields = $tables;
 		}
 
+		print "haz relations:".print_r($this->relations->relations, TRUE)."\n";
 
+		return $fields;
 
-		return array("key" => $field_key, "fields" => $fields);
+		// TODO: NUKE the stuff below....
 
 print "GET FIELDS $type [$mode]\n";
 		// allow for caching
