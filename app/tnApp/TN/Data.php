@@ -587,8 +587,8 @@ class Data extends NotORM {
 				// related field tables (array tables)
 				$objectTables = $this->getObjectTables($table_name.'_'.$field_name, $tables);
 
-//				print "\ncheck field: $field_id\n";
-//				print "    A:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";				
+				//print "\ncheck field: $field_id\n";
+				//print "    A:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";				
 				//print "    B:".($field?'FIELD':'NOFIELD')." ".count($objectFields)." ".count($objectTables)."\n";
 
 				// do we have any matching fields or field tables?
@@ -865,15 +865,20 @@ class Data extends NotORM {
 
 		// handle wildcarding
 		if(isset($field_list[0]) && $field_list[0] == "*" || isset($field_list["*"])){
-			unset($field_list[0]);
-			unset($field_list["*"]);
+			$field_list = array();
 			if(!$tables){
 				$tables = $this->getTableDefs($type);
 			}
 			if($tables){
 				foreach($tables as $table_name => $table){
-					foreach($table as $field_id => $field){
-						$field_list[(($table_name != $type)?$table_name.'.':'').$field_id] = TRUE;
+					if($table_name == $type){
+						foreach($table as $field_id => $field){
+							$field_list[$field_id] = TRUE;
+						}
+					}
+					else{
+						// it's an array table for $type, just list the name of the array field
+						$field_list[substr($table_name, strlen($type.'_'))] = TRUE;
 					}
 				}
 			}
@@ -889,8 +894,12 @@ class Data extends NotORM {
 		}
 		else{
 			$fields = $field_list;
-
+			//print "listed fields [$type] [$mode]:".print_r($fields, TRUE)."\n";
 			$fields = $this->getFilteredFields($type, $field_list, ($mode == "write"));
+
+			// now we've got the requested fields listed and defined
+			// for read mode, we translate them into SQL-field names "table.field AS `table.field`"
+			// we also resolve references by loading their field lists
 
 
 		}
