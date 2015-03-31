@@ -164,13 +164,14 @@ class Data extends NotORM {
 					//print "*** DATA FOR $type:".print_r($data, true)."\n";
 
 					// load any array data for this row
-					$row_arrays = $this->loadRowArrays($type, $result, $fields);
+/**					$row_arrays = $this->loadRowArrays($type, $result, $fields);
 					if(!empty($row_arrays)){
 						$data = array_merge_recursive($data, $row_arrays);
 					}
+					*/
 
 					// compile the data array into the object structure
-					$data = $this->compileObject($data);
+					//$data = $this->compileObject($data);
 				}
 
 				print "LOADED $type: ".print_r($data, TRUE)."\n";
