@@ -139,7 +139,7 @@ class Data extends NotORM {
 				$tables = $this->getFields($type, 'load');
 			}
 			if(!empty($args) && !empty($tables)){
-				print "\nloading $type with tables: ".print_r($tables,true)."\n";
+				//print "\nloading $type with tables: ".print_r($tables,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -210,7 +210,8 @@ class Data extends NotORM {
 							$ref_fields = $table_fields['fields'];							
 							$ref_tables = $this->getFields($ref_type, 'load');
 							if($ref_fields != "*"){
-								$ref_tables = $this->getFilteredTables($ref_type, $ref_fields);
+								//$ref_tables = $this->getFilteredTables($ref_type, $ref_fields);
+								$ref_tables = $this->getFields($ref_type, "read", $ref_fields);
 							}
 							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables);
 						}
@@ -779,7 +780,7 @@ class Data extends NotORM {
 			// force id fields and many-to-one id fields on all resulting tables (these are required for properly relating the datas)
 			foreach($result as $table_name => $table_fields){
 				if(!empty($tables[$table_name])){
-					$table_prefix = (!$structure && empty($ref_field))?$table_name.'.':'';
+					$table_prefix = (!$structure)?$table_name.'.':'';
 					$id_fields = array();
 					if(!empty($tables[$table_name]['id'])){
 						$id_fields[$table_prefix.'id'] = $tables[$table_name]['id'];
@@ -1035,26 +1036,9 @@ class Data extends NotORM {
 							if(!$ref_field){
 								// no referenced field means get the whole thing
 								$ref_fields[$ref_field_name] = array('type' => $ref_type, 'fields' => "*"); //"full $ref_type"; //array();
-
-								// TODO: need to list the ref'd type's fields into $ref_fields[$ref_field_name]['fields']
-								// TODO: write the function that will list the ref'd type's fields for a certain mode
-								// or do we wait and let the loader getFields for the referenced type...  might be much simpler
-
-								//print "get ref fields FOR [$type] $ref_field_name [$ref_type]\n...\n";
-
-								if($ref_type != $type){
-//									$ref_field_fields = $this->getFields($ref_type, 'load');
-
-									//print "ok [$type] $ref_field_name [$ref_type]:".print_r($ref_field_fields, TRUE)."\n";
-									//print "... done $ref_field_name [$ref_type] ref_fields\n";
-								}
-								else{
-
-								}
-
-								//$ref_fields = $this->getFields()
 							}
 							else{
+								// a certain ref field was named
 								if(!isset($ref_fields[$ref_field_name])){
 									$ref_fields[$ref_field_name] = array('type' => $ref_type, 'fields' => array());
 								}
@@ -1099,13 +1083,6 @@ class Data extends NotORM {
 
 
 			} // end of foreach ($tables)
-
-			foreach($ref_types as $ref_type){
-				if($ref_type != $type){
-					// TODO: $this->assert($ref_type);
-					print "[$type] ASSERT ($ref_type)\n";
-				}
-			}
 
 			//$fields = $tables;
 		}
