@@ -60,14 +60,14 @@ function user_profile_get($tn, $id){
 			print "no user save fields :(\n\n";
 		}
 		*/
-
+/**
 		if($fields = $tn->data->getFields('user', 'load')){
 			print "user load fields:".print_r($fields,true)."\n";
 		}
 		else{
 			print "no user load fields :(\n\n";
 		}
-
+*/
 /**
 		if($fields = $tn->data->getFields('user', 'read', array("name", "role"))){
 			print "custom user [read] fields #1:".print_r($fields,true)."\n";
@@ -86,12 +86,14 @@ function user_profile_get($tn, $id){
 		}
 		*/
 
+/**
 		if($fields = $tn->data->getFields('user', 'read', "*")){
 			print "wildcard read user fields:".print_r($fields,true)."\n";
 		}
 		else{
 			print "no wildcard read user fields :(\n\n";
 		}
+		*/
 
 		/**
 		if($fields = $tn->data->getFields('user', 'write', "*")){
@@ -123,6 +125,7 @@ function user_profile_get($tn, $id){
 
 		
 		if($user = user_get_user($tn, array('user.id' => $id))){
+			print "LOADED USER:".print_r($user, TRUE)."\n";
 			$res['user'] = $user;
 		}
 		else{

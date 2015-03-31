@@ -133,23 +133,26 @@ class Data extends NotORM {
 		return array();
 	}
 
-	public function load($type, $args){
+	public function load($type, $args, $tables=NULL){
 		try{
-			if(!empty($args) && $fields = $this->getFields($type, 'load')){
+			if(empty($tables)){
+				$tables = $this->getFields($type, 'load');
+			}
+			if(!empty($args) && !empty($tables)){
 				//print "\nloading $type with fields: ".print_r($fields,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
 				$query = $this->{$type}();
-				$query = call_user_func_array(array($query, 'select'), $fields[$type]);
+				$query = call_user_func_array(array($query, 'select'), $tables[$type]);
 
 				// add WHERE arguments
 				foreach($args as $field_id => $field_value){
 					$query->where($field_id, $field_value);
 				}
 
-				print "\nloading $type ".print_r($fields, true)." where ".print_r($args,true)."\n";
-				print "relations: ".print_r($this->relations->relations, TRUE)."\n";
+				//print "\nloading $type ".print_r($tables, true)." where ".print_r($args,true)."\n";
+				//print "relations: ".print_r($this->relations->relations, TRUE)."\n";
 				//print "<pre>".print_r($query, true)."</pre>\n";
 
 				$result = NULL;
@@ -161,6 +164,13 @@ class Data extends NotORM {
 
 					$data = $this->compileObject($data);
 
+					$row_data = $this->loadRowData($type, $result, $tables);
+
+					if(!empty($row_data)){
+					//	print "GOT $type data:".print_r($row_data, TRUE)."\n";
+						$data = array_merge($data, $row_data);
+					}
+
 					//print "*** DATA FOR $type:".print_r($data, true)."\n";
 
 					// load any array data for this row
@@ -171,16 +181,101 @@ class Data extends NotORM {
 					*/
 
 					// compile the data array into the object structure
-					//$data = $this->compileObject($data);
+					$data = $this->compileObject($data);
 				}
 
-				print "LOADED $type: ".print_r($data, TRUE)."\n";
+				//print "LOADED $type: ".print_r($data, TRUE)."\n";
 
 				return $data;
 			}
 		}
 		catch(Exception $e){ throw $e; }
 		return NULL;
+	}
+
+	public function loadRowData($row_type, $row, $tables){
+		$row_array = $this->rowToArray($row);
+		//print "load row data ".print_r($row_array, TRUE)."\n";
+
+		$row_data = array();
+
+		foreach($tables as $table_name => $table_fields){
+			if($table_name == "$$row_type" || strpos($table_name, "$$row_type".'_') === 0){
+				// it's a reference field				
+				if($field_name = substr($table_name, strpos($table_name, '_')+1)){
+					if(isset($row_array["$field_name.id"])){
+						$ref_data = NULL;
+						if(!empty($table_fields['type'])){
+							$ref_type = $table_fields['type'];
+							$ref_fields = $table_fields['fields'];							
+							$ref_tables = $this->getFields($ref_type, 'load');
+							if($ref_fields != "*"){
+								$ref_tables = $this->getFilteredTables($ref_type, $ref_fields);
+							}
+							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables);
+						}
+						$row_data[$field_name] = $ref_data;
+					}					
+				}
+			}
+			else if($table_name != $row_type && strpos($table_name, $row_type.'_') === 0){
+				if(in_array("$table_name.$row_type".'_id', $table_fields) && $field_name = substr($table_name, strlen($row_type.'_'))){
+					$array_data = array();
+
+					if(!empty($row_array["id"])){
+						$query = $this->{$table_name}();
+						$query = call_user_func_array(array($query, 'select'), $table_fields);
+						$query->where("$table_name.$row_type".'_id', $row_array["id"]);
+
+						while($array_row = $query->fetch()){
+							$array_row_data = $this->rowToArray($array_row);
+							//print "ok:".print_r($array_row_data, TRUE)."\n";
+							unset($array_row_data['id']);
+							unset($array_row_data[$row_type.'_id']);
+
+							$array_row_datas = $this->loadRowData($table_name, $array_row, $tables);
+
+							if(!empty($array_row_datas)){
+								$array_row_data = array_merge($array_row_data, $array_row_datas);
+							}
+
+							if(is_array($array_row_data)){
+								$array_row_data = $this->compileObject($array_row_data);
+
+								print "[$row_type] [$field_name] ($table_name)\n".print_r($array_row_data, TRUE)."\n";
+
+								
+
+								if(array_key_exists($field_name, $array_row_data)){
+									$array_row_data = $array_row_data[$field_name];
+								}
+								else{
+									if($table_name == 'user_testArObRf'){
+										print "watch out ($table_name) [$field_name]!\n".print_r($array_row_data, TRUE)."\n";
+									}
+
+//									$array_field_name = substr($field_name, strrpos($field_name, '_')+1);
+//									if(array_key_exists($array_field_name, $array_row_data)){
+//										$array_row_data = $array_row_data[$array_field_name];
+//									}
+
+								}
+							}
+							
+							if(is_array($array_row_data)){
+								$array_row_data = $this->compileObject($array_row_data);
+							}
+
+							$array_data[] = $array_row_data;
+						}
+					}
+
+					$row_data[$field_name.'s'] = $array_data;
+				}
+			}
+		}
+
+		return $row_data;
 	}
 
 	public function loadRowArrays($row_type, $row, $fields){
@@ -828,7 +923,10 @@ class Data extends NotORM {
 		}
 
 		// we should have a field list now (if we don't, something is wrong)
-		if(!empty($field_list) && ($mode == "read" || $mode == "write" || $mode == "input")){
+		if($mode == "read" || $mode == "write" || $mode == "input"){
+			if(empty($field_list)){
+				$field_lst = "*";
+			}
 
 			// make sure $field_list is an array
 			if(!is_array($field_list)){
@@ -945,6 +1043,19 @@ class Data extends NotORM {
 
 								// TODO: need to list the ref'd type's fields into $ref_fields[$ref_field_name]['fields']
 								// TODO: write the function that will list the ref'd type's fields for a certain mode
+								// or do we wait and let the loader getFields for the referenced type...  might be much simpler
+
+								//print "get ref fields FOR [$type] $ref_field_name [$ref_type]\n...\n";
+
+								if($ref_type != $type){
+//									$ref_field_fields = $this->getFields($ref_type, 'load');
+
+									//print "ok [$type] $ref_field_name [$ref_type]:".print_r($ref_field_fields, TRUE)."\n";
+									//print "... done $ref_field_name [$ref_type] ref_fields\n";
+								}
+								else{
+
+								}
 
 								//$ref_fields = $this->getFields()
 							}
@@ -968,22 +1079,26 @@ class Data extends NotORM {
 				}
 
 				if(!empty($ref_fields)){
-					print "\n[$type] [$mode] $table_name has ref fields:".print_r($ref_fields, TRUE)."\n";
+					//print "\n[$type] [$mode] $table_name has ref fields:".print_r($ref_fields, TRUE)."\n";
 					foreach($ref_fields as $ref_field_name => $ref_field_def){
 						if(!in_array($ref_field_def['type'], $ref_types)){
 							$ref_types[] = $ref_field_def['type'];
 						}
 
+						// create the NotORM relationship for this reference field
 						$this->relations->add($table_name, $ref_field_name, $ref_field_def['type']);
 						$fields[$table_name][] = "$ref_field_name.id AS `$ref_field_name.id`";
 
-						if(is_array($ref_field_def['fields']) && !empty($ref_field_def['fields'])){
+						$fields["$$type"."_$ref_field_name"] = $ref_field_def;
+
+/**						if(is_array($ref_field_def['fields']) && !empty($ref_field_def['fields'])){
 							// TODO: add the selected fields to the $fields[$table_name]
 							foreach($ref_field_def['fields'] as $ref_field){
 								$fields[$table_name][] = "$ref_field_name.$ref_field AS `$ref_field_name.$ref_field`";
 							}
 
 						}
+						*/
 					}
 				}
 
@@ -991,14 +1106,14 @@ class Data extends NotORM {
 			} // end of foreach ($tables)
 
 			foreach($ref_types as $ref_type){
-				// TODO: assert those
-				print "[$type] ASSERT ($ref_type)\n";
+				if($ref_type != $type){
+					// TODO: $this->assert($ref_type);
+					print "[$type] ASSERT ($ref_type)\n";
+				}
 			}
 
 			//$fields = $tables;
 		}
-
-		print "haz relations:".print_r($this->relations->relations, TRUE)."\n";
 
 		return $fields;
 
