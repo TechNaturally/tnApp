@@ -139,7 +139,7 @@ class Data extends NotORM {
 				$tables = $this->getFields($type, 'load');
 			}
 			if(!empty($args) && !empty($tables)){
-				//print "\nloading $type with fields: ".print_r($fields,true)."\n";
+				print "\nloading $type with tables: ".print_r($tables,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -229,41 +229,34 @@ class Data extends NotORM {
 
 						while($array_row = $query->fetch()){
 							$array_row_data = $this->rowToArray($array_row);
-							//print "ok:".print_r($array_row_data, TRUE)."\n";
+							
 							unset($array_row_data['id']);
 							unset($array_row_data[$row_type.'_id']);
 
-							$array_row_datas = $this->loadRowData($table_name, $array_row, $tables);
+							$array_row_data = $this->compileObject($array_row_data);
 
+							$array_row_datas = $this->loadRowData($table_name, $array_row, $tables);
+							
 							if(!empty($array_row_datas)){
-								$array_row_data = array_merge($array_row_data, $array_row_datas);
+								$array_row_datas = $this->compileObject($array_row_datas);
+								if(is_array($array_row_datas) && array_key_exists($field_name, $array_row_datas)){
+									$array_row_datas = $array_row_datas[$field_name];
+								}
+								$array_row_data[$field_name] = array_merge($array_row_data[$field_name], $array_row_datas);
 							}
 
 							if(is_array($array_row_data)){
-								$array_row_data = $this->compileObject($array_row_data);
-
-								print "[$row_type] [$field_name] ($table_name)\n".print_r($array_row_data, TRUE)."\n";
-
-								
-
 								if(array_key_exists($field_name, $array_row_data)){
 									$array_row_data = $array_row_data[$field_name];
 								}
-								else{
-									if($table_name == 'user_testArObRf'){
-										print "watch out ($table_name) [$field_name]!\n".print_r($array_row_data, TRUE)."\n";
+								else if(count($array_row_data) == 1){
+									$single_key = array_keys($array_row_data)[0];
+									
+									// this if for objects with arrays of single values
+									if(($temp = strlen($field_name) - strlen($single_key)) >= 0 && strpos($field_name, $single_key, $temp) !== FALSE){
+										$array_row_data = $array_row_data[$single_key];
 									}
-
-//									$array_field_name = substr($field_name, strrpos($field_name, '_')+1);
-//									if(array_key_exists($array_field_name, $array_row_data)){
-//										$array_row_data = $array_row_data[$array_field_name];
-//									}
-
 								}
-							}
-							
-							if(is_array($array_row_data)){
-								$array_row_data = $this->compileObject($array_row_data);
 							}
 
 							$array_data[] = $array_row_data;
@@ -274,6 +267,8 @@ class Data extends NotORM {
 				}
 			}
 		}
+
+		//print "haz ".print_r($row_data, TRUE);
 
 		return $row_data;
 	}
