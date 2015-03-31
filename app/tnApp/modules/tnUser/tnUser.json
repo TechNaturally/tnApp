@@ -1,9 +1,9 @@
 {
 	"id": "user",
 	"data": {
-		"input": {"auth": true, "name": true, "email": true},
+		"input": {"auth": true, "name": { "type": "number" }, "email": true},
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "role", "name", "email", "bro", "abc", "def.username", "testArRf", "testArObRf.one", "testArObRf.two.thArOb.first", "testArObRf.two.thArOb.second", "testArObRf.two.thArOb.third"],
+		"load": ["auth", "role", "name", "email", "bro", "abc", "def.username", "testArRf.thBro", "testArObRf.one", "testArObRf.two"],
 		"save": {"auth": true, "role": true, "bro": true, "name": true, "email": true, "abc": true, "def": true, "testArRf": true, "testArObRf": true, "testObRf": true},
 		"schema": {
 			"id": "/user",
