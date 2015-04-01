@@ -26,106 +26,8 @@ function user_profile_get($tn, $id){
 	try{
 		print "\n";
 
-//		$tn->data->assert('user');
-
-/**
-		if($fields = $tn->data->getFields('user', 'save')){
-			print "user save fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user save fields :(\n\n";
-		}
-		if($fields = $tn->data->getFields('user', 'load')){
-			print "user load fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user load fields :(\n\n";
-		}
-		*/
-
-/**
-		if($fields = $tn->data->getFields('user', 'input')){
-			print "user input fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user input fields :(\n\n";
-		}
-		*/
-
-/**
-		if($fields = $tn->data->getFields('user', 'save')){
-			print "user save fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user save fields :(\n\n";
-		}
-		*/
-/**
-		if($fields = $tn->data->getFields('user', 'load')){
-			print "user load fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user load fields :(\n\n";
-		}
-*/
-/**
-		if($fields = $tn->data->getFields('user', 'read', array("name", "role"))){
-			print "custom user [read] fields #1:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no custom user [read] fields #1 :(\n\n";
-		}
-*/
-
-/**
-		if($fields = $tn->data->getFields('user', 'input', array("name" => array("type" => "integer"), "role" => TRUE))){
-			print "custom user [input] fields #2:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no custom user [input] fields #2 :(\n\n";
-		}
-		*/
-
-/**
-		if($fields = $tn->data->getFields('user', 'read', "*")){
-			print "wildcard read user fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no wildcard read user fields :(\n\n";
-		}
-		*/
-
-		/**
-		if($fields = $tn->data->getFields('user', 'write', "*")){
-			print "wildcard write user fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no wildcard write user fields :(\n\n";
-		}
-		*/
-
-		/**
-		if($fields = $tn->data->getFields('user', 'input', "*")){
-			print "wildcard input user fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no wildcard input user fields :(\n\n";
-		}
-		*/
-
-/**
-		$test_fields = $tn->data->getFields('user', 'load');
-		$query = $tn->data->user();
-		$query = call_user_func_array(array($query, 'select'), $test_fields['user']);
-		$query->where("user.id", 1);
-		$test_row = $query->fetch();
-		print "hmmm:".print_r($test_row->getRow(), TRUE)."\n";
-		*/
-
-
-		
 		if($user = user_get_user($tn, array('user.id' => $id))){
-			print "LOADED USER:".print_r($user, TRUE)."\n";
+//			print "LOADED USER:".print_r($user, TRUE)."\n";
 			$res['user'] = $user;
 		}
 		else{
@@ -168,24 +70,9 @@ function user_profile_put($tn, $id){
 
 function user_get_user($tn, $args){
 	try{
-		//$tn->data->assert('user');
-
-
-
 		if($user = $tn->data->load('user', $args)){
 			return $user;
 		}
-
-/**		if($user = $tn->data->user()->where($field, $id)->fetch()){
-			$user = $tn->data->rowToArray($user);
-			//$tn->data->assert('user.role');
-			if($roles = $tn->data->{'user.role'}()->where('user.id', $user['id'])->fetchPairs('role', TRUE)){
-				$user['roles'] = array_keys($roles);
-			}
-			return $user;
-		}
-		*/
-
 	} catch (Exception $e) { throw $e; }
 	return NULL;
 }
