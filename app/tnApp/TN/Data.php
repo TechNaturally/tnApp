@@ -275,18 +275,93 @@ class Data extends NotORM {
 	}
 
 	public function save($type, $data){
-		if($fields = $this->getFields($type, 'save')){
-			// validate $data against $fields
-			// if $data->id do as update
-			// else do as insert
-			// return rowToArray (newRow)
+		print "\n";
+		if($this->validate($type, $data)){
+			if($table_data = $this->dataToTables($type, $data)){
+				try {
+					$this->assert($type);
+				}
+				catch (Exception $e){ throw $e; }
+
+				print "saving $type ".print_r($table_data, TRUE)."\n";
+
+				if(!empty($data['id'])){
+					print " *** Update\n";
+				}
+				else{
+					print " *** Insert\n";
+				}
+			}
+			
 		}
+		else{
+			throw new DataException("Invalid $type data!");
+		}
+		
 		return NULL;
 	}
 
-	public function validate($type, $data, $field_id){
-
+	public function validate($type, $data){
+		if($fields = $this->getFields($type, 'save')){
+			return Jsv4::validate($data, $fields);
+		}
 		return TRUE;
+	}
+
+	public function flattenData($prefix, $data){
+		$flat_data = array();
+		$flat_data[$prefix] = array();
+		foreach($data as $key => $value){
+			$flat_key = $key;
+			print "what [$key]=".print_r($value, TRUE)."\n";
+			if(is_array($value)){
+				print "array $key...\n";
+				$flat_data[$prefix.'_'.$key] = $value;
+				// TODO: handle arrays and objects
+				//$flat_value = $this->flattenData($data);
+				// each of this value's children must be flattened
+			}
+			else if(is_object($value)){
+				print "object $key...\n";
+				foreach($value as $obj_key => $obj_value){
+					print "  child $obj_key ...\n";
+					if(is_array($obj_value)){
+						print "    * array\n";
+						$flat_data[$prefix.'_'.$key.'_'.$obj_key] = $obj_value;
+					}
+//					else if(is_object($value)){
+						//print "    * object\n";
+						// flatten it
+//					}
+					else{
+						print "    * value\n";
+						$flat_data[$prefix][$key.'_'.$obj_key] = $obj_value;
+					}
+				}
+				//$flat_value = $this->flattenData($key, $value);
+				//$flat_data[$key] = $flat_value;
+			}
+			else{
+				$flat_data[$prefix][$flat_key] = $value;
+			}
+			
+		}
+		print "flat object [$prefix]:".print_r($flat_data, TRUE)."\n";
+		return $flat_data;
+	}
+
+	public function dataToTables($type, $data){
+		if($fields = $this->getFields($type, 'save')){
+			$data = $this->flattenData($type, $data);
+			//print "convert [$type] ".print_r($data, TRUE)." into tables using ".print_r($fields, TRUE)."...\n";
+			//$table_data = array();
+			//foreach($fields as )
+
+			return $data;
+
+			//return $table_data;
+		}
+		return NULL;
 	}
 
 	public function rowToArray($row){
@@ -395,7 +470,6 @@ class Data extends NotORM {
 									// it's a different table (ie. an array table)
 									$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
 								}
-								
 							}
 						}
 					}
