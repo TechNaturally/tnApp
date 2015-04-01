@@ -1,10 +1,10 @@
 {
 	"id": "auth",
 	"data": {
-		"input": ["email", "username", "password"],
+		"input": ["email", "username", "password", "t1", "t2"],
 		"list": ["username", "email"],
 		"load": ["email", "username"],
-		"save": ["username", "email", "hash"],
+		"save": ["username", "email", "hash", "t1", "t2"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -33,6 +33,26 @@
 					"minLength": 101,
 					"maxLength": 101,
 					"required": true
+				},
+				"t1": {
+					"title": "Test #1",
+					"type": "object",
+					"properties": {
+						"f1": { "title": "Field #1", "type": "string" },
+						"f2": { "title": "Field #2", "type": "array", "items": { "title": "Field 2", "type": "string"}}
+					}
+				},
+				"t2": {
+					"title": "Test #2",
+					"type": "array",
+					"items": {
+						"title": "Testing 2",
+						"type": "object",
+						"properties": {
+							"p1": { "title": "Property 1", "type": "string" },
+							"p2": { "title": "Property 2", "type": "integer" }
+						}
+					}
 				}
 			}
 		}
@@ -66,6 +86,8 @@
 				{ "key": "username", "type": "new-username", "placeholder": "Username or Email address", "required": true },
 				{ "key": "password", "type": "password", "title": "Password" },
 				{ "key": "password_confirm", "type": "password-confirm", "title": "Confirm Password", "condition": "model.password" },
+				{ "key": "t1" },
+				{ "key": "t2" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 					{ "type": "submit", "style": "btn-primary", "title": "Register" },
 					{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }

@@ -102,23 +102,26 @@ angular.module('tnApp.auth')
 			}
 			return false;
 		},
-		register: function(username, password, password_confirm){
+		register: function(username, password, password_confirm, t1, t2){
 			var defer = $q.defer();
 			if(username && password && password_confirm == password){
 				var req = {
 					username: username,
 					password: hash_password(password, username),
-					start_session: true
-				};
+					start_session: true,
+					t1: t1,
+					t2: t2
+				};				
 				API.post('/auth/register', {data: req}).then(function(res){
 					if(!res.error && res.user){
-						setActiveUser(res.user);
+						//setActiveUser(res.user);
 						defer.resolve(true);
 					}
 					else{
 						defer.reject(res.msg);
 					}
 				}, function(reason){ defer.reject(reason); });
+
 			}
 			else{
 				// TODO: set a Status?

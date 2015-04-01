@@ -32,7 +32,8 @@ function auth_user_assert_profile($tn, $user){
 				$profile = user_save_user($tn, array(
 					'auth' => array('id' => $user['id']),
 					'email' => $user['email'],
-					'name' => $user['username']
+					'name' => $user['username'],
+					'roles' => array('admin', 'test')
 					));
 			}
 			// TODO: what about default roles? - should be in app's config.json - do we check in user_save_user for new users?
@@ -61,10 +62,12 @@ function auth_login_post($tn){
 	$res_code = 200;
 
 	try {
+		/**
 		$tn->data->assert('auth');
 
 		$req = json_decode($tn->app->request->getBody());
 		if($req->username && $req->password){
+
 			$user = $tn->data->auth("username", $req->username)->fetch();
 			if($user && !empty($user['hash'])){
 				if(auth_password_check($req->password, $user['hash'])){
@@ -97,6 +100,8 @@ function auth_login_post($tn){
 		if(!empty($res['error'])){
 			$res['msg'] = 'Invalid username or password!';
 		}
+		*/
+		$res['msg'] = "Testing...";
 	} catch (Exception $e) {
 		$res['error'] = TRUE; // something went wrong
 		$res['msg'] = $e->getMessage();
@@ -126,6 +131,44 @@ function auth_register_post($tn){
 	$res_code = 200;
 
 	try {
+
+		$req = json_decode($tn->app->request->getBody());
+
+		$res['msg'] = "REQ:".print_r($req, TRUE);
+
+		$username = !empty($req->username)?$req->username:'';
+		$email = auth_valid_email($username)?$username:'';
+		$t1 = !empty($req->t1)?$req->t1:NULL;
+		$t2 = !empty($req->t2)?$req->t2:NULL;
+
+		$auth = array(
+			"username" => $username,
+			"hash" => auth_password_hash($req->password),
+			"email" => $email,
+			"t1" => $t1,
+			"t2" => $t2
+			);
+		$auth = $tn->data->save('auth', $auth);
+
+
+/**
+		$username = $req->username;
+		$email = '';
+
+		if(auth_valid_email($username)){
+			$email = $username;
+		}
+
+		$auth = array(
+			"username" => $username,
+			"hash" => auth_password_hash($req->password),
+			"email" => $email
+			);
+		$auth = $tn->data->save('auth', $auth);
+		$res['msg'] = 'Registration successful!';
+*/
+
+		/**
 		$tn->data->assert('auth');
 
 		$req = json_decode($tn->app->request->getBody());
@@ -162,6 +205,7 @@ function auth_register_post($tn){
 				$res['msg'] = 'Could not load user profile.';
 			}
 		}
+		*/
 	} catch (Exception $e) {
 		$res_code = 500;
 		$res['msg'] = "Error: ".$e->getMessage();
@@ -217,16 +261,16 @@ function auth_available_get($tn){
 
 function auth_username_exists($tn, $username){
 	if($username){
-		$user = $tn->data->auth()->where('username', $username)->fetch();
-		return !empty($user);
+		$auth = $tn->data->auth()->where('username', $username)->fetch();
+		return !empty($auth);
 	}
 	return FALSE;
 }
 
 function auth_email_exists($tn, $email){
 	if($email){
-		$user = $tn->data->auth()->where('email', $email)->fetch();
-		return !empty($user);
+		$auth = $tn->data->auth()->where('email', $email)->fetch();
+		return !empty($auth);
 	}
 	return FALSE;
 }
