@@ -1,10 +1,10 @@
 {
 	"id": "user",
 	"data": {
-		"input": {"auth": true, "name": true, "email": true, "test.t2": { "type": "integer" }},
-		"list": ["name", "email", "auth.username", "auth.email", "test", "tast"],
-		"load": ["auth", "name", "email", "role", "test.t1", "test.t2.tD"],
-		"save": {"auth": true, "name": true, "email": true, "tast": true, "test": true, "tost": true, "role": true, "test.t2": true},
+		"input": ["auth", "name", "email"],
+		"list": ["name", "email", "auth.username", "auth.email"],
+		"load": ["auth", "role", "name", "email", "bro", "abc", "def.username", "testArRf.thBro", "testArObRf.one", "testArObRf.two"],
+		"save": ["auth", "role", "bro", "name", "email", "abc", "def", "testArRf", "testArObRf", "testObRf"],
 		"schema": {
 			"id": "/user",
 			"type": "object",
@@ -17,6 +17,10 @@
 					"title": "Roles",
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50, "required": true }
+				},
+				"bro": {
+					"title": "Brother",
+					"$ref": "/user/id"
 				},
 				"name": {
 					"title": "Name",
@@ -37,52 +41,36 @@
 					"minLength": 0,
 					"maxLength": 25
 				},
-				"tast": {
+				"abc": {
+					"title": "ABC",
+					"$ref": "/auth/id"
+				},
+				"def": {
+					"title": "DEF",
+					"$ref": "/auth/id"
+				},
+				"testArRf": {
+					"type": "array",
+					"items": {
+						"$ref": "/auth/id"
+					}
+				},
+				"testArObRf": {
 					"type": "array",
 					"items": {
 						"type": "object",
 						"properties": {
-							"auth": { "$ref": "/auth/id" },
-							"a2": { "type": "string" }
+							"one": { "type": "string" },
+							"two": { "$ref": "/auth/id" },
+							"three": { "type": "number" }
 						}
 					}
 				},
-				"tost": {
+				"testObRf": {
 					"type": "object",
 					"properties": {
-						"c1": { "type": "string" },
-						"c2": { "type": "string" },
-						"c3": { "type": "array", "items": { "type": "integer" } }
-
-					}
-				},
-				"test": {
-					"type": "object",
-					"properties":{
-						"t1": {"type": "string" },
-						"t2": {
-							"type": "object",
-							"properties": {
-								"tA": { "type": "string" },
-								"tB": { "type": "string" },
-								"tC": {
-									"type": "array",
-									"items": { "type": "integer" }
-								},
-								"tD": {
-									"type": "array",
-									"items": {
-										"type": "object",
-										"properties": {
-											"d1": { "type": "string" },
-											"d2": { "type": "array", "items": { "type": "string" }},
-											"d3": { "type": "string" }
-
-										}
-									}
-								}
-							}
-						}
+						"rfz": { "title": "RFZ", "$ref": "/auth/id" },
+						"thing": { "type": "integer" }
 					}
 				}
 			}

@@ -24,101 +24,10 @@ function user_profile_get($tn, $id){
 	$res_code = 200;
 
 	try{
-		/**$table_def = $tn->data->getTableDefs('user'); // table defs working
-		if($table_def){
-			print "user table def:".print_r($table_def,true)."\n";
-		}
-		else{
-			print "bad news bears up in there!\n";
-		}
-		*/
-
-/**
-		if($fields = $tn->data->getFields('auth', 'input')){
-			print "auth input fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no auth input fields :(\n";
-		}
-
-		if($fields = $tn->data->getFields('auth', 'save')){
-			print "auth save fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no auth save fields :(\n";
-		}
-
-		if($fields = $tn->data->getFields('auth', 'list')){
-			print "auth list fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no auth list fields :(\n";
-		}
-		if($fields = $tn->data->getFields('auth', 'load')){
-			print "auth load fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no auth load fields :(\n";
-		}
-		*/
-
-		//$tn->data->assert('user');
-
-/**
-		if($fields = $tn->data->getFields('user', 'input')){
-			print "user input fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user input fields :(\n\n";
-		}
-
-		if($fields = $tn->data->getFields('user', 'save')){
-			print "user save fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user save fields :(\n\n";
-		}
-
-		if($fields = $tn->data->getFields('user', 'list')){
-			print "user list fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user list fields :(\n\n";
-		}
-		if($fields = $tn->data->getFields('user', 'load')){
-			print "user load fields:".print_r($fields,true)."\n";
-		}
-		else{
-			print "no user load fields :(\n\n";
-		}
-*/
-
-		// TODO: filter tableDefs by field list
-		// - getTableDef('input')
-		// - getTableDef('save')
-		// - getTableDef('list')
-		// - getTableDef('load')
-
-		//$tn->data->assert('user');
-		/**
-		$row = $tn->data->user()->select("user.id", "user.name", "auth.username")->where('user.id', $id)->fetch();
-		$data = $tn->data->rowToArray($row);
-		$rows = $row->user_test_t2_tD()->select("user_test_t2_tD.tD_d1")->fetchPairs('id');
-		$array_rows = array();
-		foreach($rows as $c_id => $c_row){
-			$c_a_rows = $c_row->user_test_t2_tD_d2()->fetchPairs('id');
-			$array_rows[$c_id] = array();
-			foreach($c_a_rows as $c_a_id => $c_a_row){
-				$array_rows[$c_id][$c_a_id] = $tn->data->getArrayRowValue($c_a_row, 'user_test_t2_tD_d2');
-			}
-		}
-		print "\nDATA:".print_r($array_rows,TRUE)."\n";
-*/
-		
-		
-
+		print "\n";
 
 		if($user = user_get_user($tn, array('user.id' => $id))){
+//			print "LOADED USER:".print_r($user, TRUE)."\n";
 			$res['user'] = $user;
 		}
 		else{
@@ -161,24 +70,9 @@ function user_profile_put($tn, $id){
 
 function user_get_user($tn, $args){
 	try{
-		//$tn->data->assert('user');
-
-
-
 		if($user = $tn->data->load('user', $args)){
 			return $user;
 		}
-
-/**		if($user = $tn->data->user()->where($field, $id)->fetch()){
-			$user = $tn->data->rowToArray($user);
-			//$tn->data->assert('user.role');
-			if($roles = $tn->data->{'user.role'}()->where('user.id', $user['id'])->fetchPairs('role', TRUE)){
-				$user['roles'] = array_keys($roles);
-			}
-			return $user;
-		}
-		*/
-
 	} catch (Exception $e) { throw $e; }
 	return NULL;
 }
