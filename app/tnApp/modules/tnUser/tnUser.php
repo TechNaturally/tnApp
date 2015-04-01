@@ -79,6 +79,8 @@ function user_get_user($tn, $args){
 
 function user_save_user($tn, $user){
 	try{
+		$tn->data->save('user', $user);
+		/**
 		$tn->data->assert('user');
 
 		$roles = NULL;
@@ -113,6 +115,8 @@ function user_save_user($tn, $user){
 			}
 			return $user;
 		}
+		*/
+
 	} catch (Exception $e) { throw $e; }
 	throw new Exception('Error saving user.');
 	return NULL;

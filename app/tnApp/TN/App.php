@@ -3,13 +3,11 @@ namespace TN;
 use Exception;
 
 require_once "Data.php";
-require_once "Screen.php";
 require_once "Security.php";
 
 class App {
 	public $app;
 	public $data;
-	public $screens;
 	public $security;
 
 	protected $module_path;
@@ -37,8 +35,6 @@ class App {
 		}
 
 		$this->init_security();
-
-		$this->init_screens();
 
 		if(!empty($config['data'])){
 			$this->init_data($config['data']);
@@ -72,10 +68,6 @@ class App {
 				$this->app->pass();
 			}
 		});
-	}
-
-	protected function init_screens(){
-		$this->screens = new \TN\ScreenManager($this);
 	}
 
 	protected function init_security(){
@@ -118,43 +110,19 @@ class App {
 
 		// if module config loaded
 		if($module){
-			if($module->id){
+			if(!empty($module->id)){
 				$module_id = $module->id;
 			}
 
-/**
-			// set the database fields
-			if(!empty($module->database)){
-				$this->data->addTableFields($module_id, $module->database);
-			}
-
-			// load the schema
-			if(!empty($module->schema)){
-				$this->data->addSchema('/'.$module_id, $module->schema);
-			}
-
-			*/
+			// load the data config
 			if(!empty($module->data)){
 				$this->data->addType($module_id, $module->data);
 			}
-
-
 
 			// load the routes
 			if(!empty($module->routes)){
 				$this->load_module_routes($module_id, $module->routes);
 			}
-
-			// load the screens
-			if(!empty($module->screens)){
-				$this->load_module_screens($module_id, $module->screens);
-			}
-		}
-	}
-
-	private function load_module_screens($module_id, $screens){
-		foreach($screens as $path => $content){
-			$this->screens->add_screen($path, $content);
 		}
 	}
 

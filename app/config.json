@@ -1,6 +1,6 @@
 {
 	"name": "tnApp Demo",
-	"modules": ["tnScreen", "tnAuth", "tnUser", "tnEmail"],
+	"modules": ["tnAuth", "tnUser", "tnEmail"],
 	"data": {
 		"mysql": {
 			"host": "localhost",

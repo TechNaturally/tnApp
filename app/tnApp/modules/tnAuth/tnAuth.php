@@ -30,7 +30,7 @@ function auth_user_assert_profile($tn, $user){
 
 			if(!$profile && function_exists('user_save_user')){
 				$profile = user_save_user($tn, array(
-					'auth_id' => $user['id'],
+					'auth' => array('id' => $user['id']),
 					'email' => $user['email'],
 					'name' => $user['username']
 					));

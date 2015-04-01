@@ -1,9 +1,0 @@
-{
-	"id": "screen",
-	"routes": {
-		"/": {
-			"callback": "load",
-			"methods": { "GET": true }
-		}
-	}
-}
