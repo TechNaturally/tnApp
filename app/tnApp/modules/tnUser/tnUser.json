@@ -18,10 +18,6 @@
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50, "required": true }
 				},
-				"bro": {
-					"title": "Brother",
-					"$ref": "/user/id"
-				},
 				"name": {
 					"title": "Name",
 					"type": "string",
@@ -40,38 +36,6 @@
 					"type": "string",
 					"minLength": 0,
 					"maxLength": 25
-				},
-				"abc": {
-					"title": "ABC",
-					"$ref": "/auth/id"
-				},
-				"def": {
-					"title": "DEF",
-					"$ref": "/auth/id"
-				},
-				"testArRf": {
-					"type": "array",
-					"items": {
-						"$ref": "/auth/id"
-					}
-				},
-				"testArObRf": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"one": { "type": "string" },
-							"two": { "$ref": "/auth/id" },
-							"three": { "type": "number" }
-						}
-					}
-				},
-				"testObRf": {
-					"type": "object",
-					"properties": {
-						"rfz": { "title": "RFZ", "$ref": "/auth/id" },
-						"thing": { "type": "integer" }
-					}
 				}
 			}
 		}

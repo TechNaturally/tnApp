@@ -2,9 +2,9 @@
 	"id": "auth",
 	"data": {
 		"input": ["email", "username", "password"],
-		"list": ["username", "email", "check"],
-		"load": ["email", "username", "thBro.username", "check", "thAr", "thArOb", "thObAr"],
-		"save": ["username", "email", "hash", "check", "thBro", "thAr", "thArOb", "thArObOb", "thObAr"],
+		"list": ["username", "email"],
+		"load": ["email", "username"],
+		"save": ["username", "email", "hash"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -33,52 +33,6 @@
 					"minLength": 101,
 					"maxLength": 101,
 					"required": true
-				},
-				"thBro": {
-					"title": "Auth Bro",
-					"$ref": "/auth/id"
-				},
-				"thAr": {
-					"type": "array",
-					"items": { "type": "string" }
-				},
-				"thArOb": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"first": { "type": "string" },
-							"second": { "type": "integer" },
-							"third": {
-								"type": "array",
-								"items": { "type": "number" }
-							}
-						}
-					}
-				},
-				"thArObOb": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"me": { "type": "string" },
-							"what": {
-								"type": "object",
-								"properties": {
-									"ever": { "type": "string" },
-									"it": { "type": "string" }
-								}
-							}
-						}
-					}
-
-				},
-				"thObAr": {
-					"type": "object",
-					"properties": {
-						"zing": { "type": "string" },
-						"zray": { "type": "array", "items": {"type":"number"} }
-					}
 				}
 			}
 		}
