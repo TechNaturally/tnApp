@@ -1008,6 +1008,25 @@ class Data extends NotORM {
 		try {
 			if($fields = $this->getFields($table, 'save')){
 				//print "create $table avec: ".print_r($fields, TRUE)."\n";
+
+				// check for any referenced types
+				$ref_types = array();
+				foreach($fields as $table_name => $table_fields){
+					$ref_fields = array_filter($table_fields, function($field){
+						return (!empty($field->type) && $field->type == 'ref');
+					});
+					foreach($ref_fields as $ref_field_id => $ref_field){
+						if(!empty($ref_field->table) && $ref_field->table != $table && !in_array($ref_field->table, $ref_types) && array_key_exists($ref_field->table, $this->field_configs)){
+							$ref_types[] = $ref_field->table;
+						}
+					}
+				}
+				// assert all reference types
+				if(!empty($ref_types)){
+					foreach($ref_types as $ref_type){
+						$this->assert($ref_type);
+					}
+				}
 				// we can check against $this->connection_type (== 'mysql') for different db providers
 				if($sql_defs = $this->sql_column_defs($fields)){
 					//print "Got SQL defs for $table:".print_r($sql_defs, TRUE)."\n";
