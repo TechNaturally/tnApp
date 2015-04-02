@@ -283,14 +283,13 @@ class Data extends NotORM {
 				}
 				catch (Exception $e){ throw $e; }
 
-				print "saving $type ".print_r($table_data, TRUE)."\n";
+				if(!empty($table_data[$type])){
+					print "saving $type ".print_r($table_data, TRUE)."\n";
+					$this->insertToTable($type, $table_data[$type]);
+				}
+				
 
-				if(!empty($data['id'])){
-					print " *** Update\n";
-				}
-				else{
-					print " *** Insert\n";
-				}
+				
 			}
 			
 		}
@@ -299,6 +298,52 @@ class Data extends NotORM {
 		}
 		
 		return NULL;
+	}
+
+	public function insertToTable($table, $values){
+		$child_tables = array();
+		$data = array();
+
+		if(!array_key_exists('@values', $values)){
+			// sort out which values are tables and which go into this table
+			foreach($values as $key => $value){
+				if(strpos($key, $table.'_') === 0){
+					$child_tables[$key] = $value;
+				}
+				else{
+					$data[$key] = $value;
+				}
+			}
+
+			// first we need to insert the root data so we have the id for child tables to reference
+			$row = NULL;
+			if(!empty($data['id'])){
+				$row = $this->{$table}()->where('id', $data['id'])->update($data);
+			}
+			else{
+				$row = $this->{$table}()->insert($data);
+			}
+
+			if($row){
+				$row = $row->getRow();
+				if(!empty($row['id'])){
+					foreach($child_tables as $child_table => $child_values){
+						$child_values[$table.'_id'] = $row['id'];
+						$this->insertToTable($child_table, $child_values);
+					}
+				}			
+			}
+		}
+		else{
+			$parent_id = array_filter(array_keys($values), function($key){ return ($key != '@values'); });
+			if(!empty($parent_id)){
+				$parent_id = array_shift($parent_id);
+			}
+			foreach($values['@values'] as $value){
+				$value[$parent_id] = $values[$parent_id];
+				$this->insertToTable($table, $value);
+			}
+		}
 	}
 
 	public function validate($type, $data){
@@ -353,7 +398,7 @@ class Data extends NotORM {
 						$array_data[] = $array_data_val;
 					}
 				}
-				$flat[$prefix][$prefix.'_'.$key] = $array_data;
+				$flat[$prefix][$prefix.'_'.$key] = array('@values' => $array_data);
 			}
 			else{
 				$flat[$prefix][$key] = $value;
