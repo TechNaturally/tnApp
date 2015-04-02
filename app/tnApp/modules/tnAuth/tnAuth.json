@@ -59,7 +59,18 @@
 						"properties": {
 							"p1": { "title": "Property 1", "type": "string" },
 							"p2": { "title": "Property 2", "type": "integer" },
-							"p3": { "title": "Property 3", "type": "array", "items": { "title" : "#3 Entry", "type": "string" } }
+							"p3": {
+								"title": "Property 3",
+								"type": "array",
+								"items": {
+									"title" : "#3 Entry",
+									"type": "object",
+									"properties": {
+										"p3a": { "title": "Prop #3.A)", "type": "string" },
+										"p3b": { "title": "Prop #3.B)", "type": "string" }
+									}
+								}
+							}
 						}
 					}
 				}
