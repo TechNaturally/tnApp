@@ -45,6 +45,32 @@ function auth_user_assert_profile($tn, $user){
 	return NULL;
 }
 
+function auth_load_get($tn, $id){
+	$res = array();
+	$res_code = 200;
+
+	try{
+		print "\n";
+
+		$auth = $tn->data->load('auth', array('auth.id' => $id));
+		if($auth){
+			print "*** GOT AUTH #$id:".print_r($auth, TRUE)."\n";
+
+		}
+		else{
+			$res['msg'] = 'Auth not found.';
+		}
+
+	}catch(Exception $e){
+		// EXAMPLE OF ERROR BUBBLING
+		$res_code = 500;
+		$res['msg'] = $e->getMessage();
+		$res['error'] = TRUE;	
+	}
+
+	$tn->app->render($res_code, $res);
+}
+
 function auth_ping_post($tn){
 	$res = array();
 	$res_code = 200;

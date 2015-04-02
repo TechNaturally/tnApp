@@ -3,7 +3,7 @@
 	"data": {
 		"input": ["email", "username", "password", "t1", "t2"],
 		"list": ["username", "email"],
-		"load": ["email", "username"],
+		"load": ["email", "username", "t1.f2", "t2"],
 		"save": ["username", "email", "hash", "t1", "t2"],
 		"schema": {
 			"id": "/auth",
@@ -78,6 +78,10 @@
 		}
 	},
 	"routes": {
+		"/:id": {
+			"callback": "load",
+			"methods": { "GET": true }
+		},
 		"/ping": {
 			"callback": "ping",
 			"methods": { "POST": true }
