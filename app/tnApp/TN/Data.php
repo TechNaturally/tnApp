@@ -308,34 +308,29 @@ class Data extends NotORM {
 		return TRUE;
 	}
 
-	public function flattenData($prefix, $data){
+	public function dataToTables($prefix, $data){
 		$flat = array();
 		$flat[$prefix] = array();
 		foreach($data as $key => $value){
 			if(is_object($value)){
-				$flat_obj = $this->flattenData($key, $value);
-				//print "object [$prefix][$key]\n";
+				$flat_obj = $this->dataToTables($key, $value);
 				foreach($flat_obj as $flat_table => $flat_values){
-					//print "   table:[$flat_table]\n";
 					foreach($flat_values as $flat_key => $flat_value){
-						//print "      key:[$flat_key]=".print_r($flat_value, TRUE)."\n";
 						if(is_array($flat_value)){
 							$flat[$prefix][$prefix.'_'.$flat_key] = $flat_value;
 						}
 						else{
 							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
 						}
-						
 					}
 				}
-
 			}
 			else if(is_array($value)){
 				$array_data = array();
 				foreach($value as $array_value){
 					if(is_object($array_value)){
 						$array_data_val = array();
-						$flat_obj = $this->flattenData($key, $array_value);
+						$flat_obj = $this->dataToTables($key, $array_value);
 						foreach($flat_obj as $flat_table => $flat_values){
 							foreach($flat_values as $flat_key => $flat_value){
 								if(is_array($flat_value)){
@@ -365,21 +360,6 @@ class Data extends NotORM {
 			}
 		}
 		return $flat;
-	}
-
-	public function dataToTables($type, $data){
-		if($fields = $this->getFields($type, 'save')){
-			//print "what kind is [$type]:".gettype($data).":".print_r($data, TRUE)."\n";
-			$data = $this->flattenData($type, (object)$data);
-			//print "convert [$type] ".print_r($data, TRUE)." into tables using ".print_r($fields, TRUE)."...\n";
-			//$table_data = array();
-			//foreach($fields as )
-
-			return $data;
-
-			//return $table_data;
-		}
-		return NULL;
 	}
 
 	public function rowToArray($row){
