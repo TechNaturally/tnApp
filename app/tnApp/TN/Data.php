@@ -312,199 +312,59 @@ class Data extends NotORM {
 		$flat = array();
 		$flat[$prefix] = array();
 		foreach($data as $key => $value){
-			if(is_array($value)){
-				$flat_array = array();
+			if(is_object($value)){
+				$flat_obj = $this->flattenData($key, $value);
+				foreach($flat_obj as $flat_table => $flat_values){
+					if($flat_table == $key){
+						foreach($flat_values as $flat_key => $flat_value){
+							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
+						}
+					}
+					else{
+						$flat[$prefix.'_'.$flat_table] = $flat_values;
+					}
+				}
+
+			}
+			else if(is_array($value)){
+				$array_data = array();
 				foreach($value as $array_value){
-					$flat_array_value = NULL;
-
 					if(is_object($array_value)){
-						$array_flat_value = $this->flattenData($key, $array_value);
-						print "[$prefix][$key] array object child\n";
-						print_r($array_flat_value);
-
-						$flat_array_value = array();
-
-						foreach($array_flat_value as $array_flat_key => $array_flat_object){
-							if($array_flat_key == $key){
-								foreach($array_flat_object as $flat_prop_key => $flat_prop){
-									$flat_array_value[$key.'_'.$flat_prop_key] = $flat_prop;
+						$flat_obj = $this->flattenData($key, $array_value);
+						foreach($flat_obj as $flat_table => $flat_values){
+							if($flat_table == $key){
+								$array_data_val = array();
+								foreach($flat_values as $flat_key => $flat_value){
+									$array_data_val[$key.'_'.$flat_key] = $flat_value;
 								}
+								$array_data[] = $array_data_val;
 							}
 							else{
-								// array of arrays?
-								$flat[$prefix.'_'.$flat_key] = $flat_object;
+								// some extra tables from flattening
+								$flat[$prefix.'_'.$flat_table] = $flat_values;
 							}
 						}
+						
 					}
 					else if(is_array($array_value)){
-						print "[$prefix][$key] array array child\n";
+						// we should never have an array of array
+						// child arrays should always be embedded as object properties
+					}
+					else{
+						$array_data_val = array();
+						$array_data_val[$key] = $array_value;
+						$array_data[] = $array_data_val;
+					}
 
-					}
-					else{
-						$flat_array_value = array();
-						$flat_array_value[$key] = $array_value;
-					//	$flat_array[] = $array_value;
-					}
-					if($flat_array_value){
-						$flat_array[] = $flat_array_value;
-					}
-					
-					//print "[$prefix][$key] haz:".print_r($array_value, TRUE)."\n";
 				}
-				$flat[$prefix.'_'.$key] = $flat_array;
-			}
-			else if(is_object($value)){
-				$flat_value = $this->flattenData($key, $value);
-				foreach($flat_value as $flat_key => $flat_object){
-					if($flat_key == $key){
-						foreach($flat_object as $flat_prop_key => $flat_prop){
-							$flat[$prefix][$key.'_'.$flat_prop_key] = $flat_prop;
-						}
-					}
-					else{
-						$flat[$prefix.'_'.$flat_key] = $flat_object;
-					}
-				}
-				//print "[$prefix][$key] flat:".print_r($flat_value, TRUE)."\n";
-				//$flat[$prefix][$key] = $this->flattenData($key, $value);
-				//$flat[$prefix][$key] = gettype($value);
+				$flat[$prefix.'_'.$key] = $array_data;
+
 			}
 			else{
 				$flat[$prefix][$key] = $value;
 			}
 		}
-
-/**		if(is_array($data)){
-		}
-		else if(is_object($data)){
-
-
-		}
-		else{
-			return $data;
-		}
-*/
-		
-
 		return $flat;
-
-		/**
-		if(is_array($data)){
-			$flat_array = array();
-			//print "[$prefix] array ".print_r($data, TRUE)."...\n";
-			foreach($data as $value){
-				$flat_data = $this->flattenData($prefix, $value);
-
-				if(array_key_exists($prefix, $flat_data)){
-					$flat_array[] = $flat_data[$prefix];
-				}
-				else{
-					print "janky array: $prefix";
-			//		print "what flat fata:".print_r($flat_data, TRUE)."\n";
-			//		$flat_object = array_merge($flat_object, $flat_data);
-				}
-			}
-
-			$flat_data = array();
-			$flat_data[$prefix] = $flat_array;
-			return $flat_data;
-		}
-		else if(is_object($data)){
-			$flat_object = array();
-			$flat_object[$prefix] = array();
-			print "*** [$prefix] flattening object ...\n";
-			foreach($data as $key => $value){
-				
-				$flat_data = $this->flattenData($key, $value);
-				print " [$prefix][$key] :".print_r($flat_data, TRUE)." \n";
-				if(array_key_exists($key, $flat_data)){
-					print "   straight goods\n";
-					$flat_object[$prefix][$key] = $flat_data[$key];
-				}
-				else{
-					print "   what flat fata\n"; //.print_r($flat_data, TRUE)."\n";
-					$flat_object = array_merge($flat_object, $flat_data);
-				}
-				
-
-				//$flat_object[$prefix.'_'.$key] = $this->flattenData($key, $value);
-			}
-
-			return $flat_object;
-		}
-		else{
-			print "[$prefix] straight data...\n";
-			$flat_data = array();
-			$flat_data[$prefix] = $data;
-			return $flat_data;
-		}
-
-		return NULL;
-
-		if(!is_array($data) && !is_object($data)){
-			return $data;
-		}
-		*/
-
-		$flat_data = array();
-		$flat_data[$prefix] = array();
-		foreach($data as $key => $value){
-//			$flat_key = $key;
-			//print "what [$key]=".print_r($value, TRUE)."\n";
-			if(is_array($value)){
-				print " * array $key...\n";
-				//$flat_data[$prefix.'_'.$key] = $value;
-
-				$flat_array = array();
-				foreach($value as $index => $ar_value){
-					$flat_array[] = $this->flattenData($prefix.'_'.$key, $ar_value);
-				}
-				$flat_data[$key] = $flat_array;
-
-				print " [$key] flat array:".print_r($flat_array, TRUE)."\n";
-				// TODO: handle arrays and objects
-				//$flat_value = $this->flattenData($data);
-				// each of this value's children must be flattened
-			}
-			else if(is_object($value)){
-				print "object $key...\n";
-
-				$flat_object = $this->flattenData($key, $value);
-				$flat_data[$prefix][$key] = $flat_object;
-
-				print " [$key] flat object:".print_r($flat_object, TRUE)."\n";
-
-
-/**				foreach($value as $obj_key => $obj_value){
-					print "  child $obj_key ...\n";
-					if(is_array($obj_value)){
-						print "    * array\n";
-						$flat_data[$prefix.'_'.$key.'_'.$obj_key] = $obj_value;
-					}
-					else if(is_object($value)){
-						print "    * object [$key]:".gettype($value).":".get_class($value).":\n";
-						$flat_value = $this->flattenData($key, $value);
-						print "    ** flat:".print_r($flat_value, TRUE)."\n";
-						// flatten it
-					}
-					else{
-						print "    * value\n";
-						$flat_data[$prefix][$key.'_'.$obj_key] = $obj_value;
-					}
-
-				}
-				*/
-				//$flat_value = $this->flattenData($key, $value);
-				//$flat_data[$key] = $flat_value;
-			}
-			else{
-				//print " * value $key [$flat_key]...\n";
-				$flat_data[$prefix][$key] = $value;
-			}
-			
-		}
-		print "flat object [$prefix]:".print_r($flat_data, TRUE)."\n";
-		return $flat_data;
 	}
 
 	public function dataToTables($type, $data){
