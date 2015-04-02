@@ -39,7 +39,15 @@
 					"type": "object",
 					"properties": {
 						"f1": { "title": "Field #1", "type": "string" },
-						"f2": { "title": "Field #2", "type": "array", "items": { "title": "Field 2", "type": "string"}}
+						"f2": { "title": "Field #2", "type": "array", "items": { "title": "Field 2", "type": "string"}},
+						"f3": {
+							"title": "Field #3",
+							"type": "object",
+							"properties": {
+								"f3a": { "title": "Three A", "type": "string" },
+								"f3b": { "title": "Three B", "type": "string" }
+							}
+						}
 					}
 				},
 				"t2": {
@@ -50,7 +58,8 @@
 						"type": "object",
 						"properties": {
 							"p1": { "title": "Property 1", "type": "string" },
-							"p2": { "title": "Property 2", "type": "integer" }
+							"p2": { "title": "Property 2", "type": "integer" },
+							"p3": { "title": "Property 3", "type": "array", "items": { "title" : "#3 Entry", "type": "string" } }
 						}
 					}
 				}
