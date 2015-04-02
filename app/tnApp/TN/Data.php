@@ -314,14 +314,18 @@ class Data extends NotORM {
 		foreach($data as $key => $value){
 			if(is_object($value)){
 				$flat_obj = $this->flattenData($key, $value);
+				//print "object [$prefix][$key]\n";
 				foreach($flat_obj as $flat_table => $flat_values){
-					if($flat_table == $key){
-						foreach($flat_values as $flat_key => $flat_value){
+					//print "   table:[$flat_table]\n";
+					foreach($flat_values as $flat_key => $flat_value){
+						//print "      key:[$flat_key]=".print_r($flat_value, TRUE)."\n";
+						if(is_array($flat_value)){
+							$flat[$prefix][$prefix.'_'.$flat_key] = $flat_value;
+						}
+						else{
 							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
 						}
-					}
-					else{
-						$flat[$prefix.'_'.$flat_table] = $flat_values;
+						
 					}
 				}
 
@@ -330,21 +334,19 @@ class Data extends NotORM {
 				$array_data = array();
 				foreach($value as $array_value){
 					if(is_object($array_value)){
+						$array_data_val = array();
 						$flat_obj = $this->flattenData($key, $array_value);
 						foreach($flat_obj as $flat_table => $flat_values){
-							if($flat_table == $key){
-								$array_data_val = array();
-								foreach($flat_values as $flat_key => $flat_value){
+							foreach($flat_values as $flat_key => $flat_value){
+								if(is_array($flat_value)){
+									$array_data_val[$prefix.'_'.$flat_key] = $flat_value;
+								}
+								else{
 									$array_data_val[$key.'_'.$flat_key] = $flat_value;
 								}
-								$array_data[] = $array_data_val;
-							}
-							else{
-								// some extra tables from flattening
-								$flat[$prefix.'_'.$flat_table] = $flat_values;
 							}
 						}
-						
+						$array_data[] = $array_data_val;
 					}
 					else if(is_array($array_value)){
 						// we should never have an array of array
@@ -355,10 +357,8 @@ class Data extends NotORM {
 						$array_data_val[$key] = $array_value;
 						$array_data[] = $array_data_val;
 					}
-
 				}
-				$flat[$prefix.'_'.$key] = $array_data;
-
+				$flat[$prefix][$prefix.'_'.$key] = $array_data;
 			}
 			else{
 				$flat[$prefix][$key] = $value;
