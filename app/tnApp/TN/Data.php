@@ -135,6 +135,17 @@ class Data extends NotORM {
 		return array();
 	}
 
+	public function loadFields($type, $args, $fields){
+		try{
+			if(!empty($fields)){
+				$tables = $this->getFields($type, 'read', $fields);
+				return $this->load($type, $args, $tables);
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		return NULL;
+	}
+
 	public function load($type, $args, $tables=NULL){
 		try{
 			if(empty($tables)){
