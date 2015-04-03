@@ -14,18 +14,27 @@ angular.module('tnApp.auth')
 			data.user = null;
 		}
 		else if (user && user.id){
-			// TOOD: what if user already is loaded... (best way)
-			// TODO: we also need to track in Auth.data the auth_id, username, etc
-/**			User.api.loadUser(user.id).then(function(user){
-				data.user = user;
-			});
-*/
 			data.user = user;
 			console.log('User active! '+angular.toJson(data.user, true));
 		}
 	}
 
 	var api = {
+		passes: function(rules){
+			console.log('checking security for '+angular.toJson(rules));
+			if(rules === true){
+				return true;
+			}
+			else if(angular.isString(rules)){
+
+			}
+			else if(angular.isArray(rules)){
+
+			}
+			console.log ('failed :(');
+
+			return false;
+		},
 		loadSchema: function(){
 			var defer = $q.defer();
 			if(data.schema){
