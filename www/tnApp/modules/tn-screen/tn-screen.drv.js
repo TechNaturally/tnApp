@@ -30,7 +30,6 @@ angular.module('tnApp.screen')
 				}
 				angular.forEach(content, function(contents, area){
 					if(angular.isUndefined(areas[area])){
-						console.log('add area '+area);
 						areas[area] = angular.element('<div class="'+area+'"></div>');
 						elem.append(areas[area]);
 					}
