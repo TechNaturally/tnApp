@@ -140,7 +140,7 @@ angular.module('tnApp.screen')
 												}
 
 												if(arg_value == '!auth_id'){
-													data_arg = (!Auth.data.user || angular.isUndefined(Auth.data.user.id))?'':Auth.data.user.id;
+													data_arg = (!Auth.data.user || angular.isUndefined(Auth.data.user.id))?0:Auth.data.user.id;
 												}
 												
 												// store it for the content
