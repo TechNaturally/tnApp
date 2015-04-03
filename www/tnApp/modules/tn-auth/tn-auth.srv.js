@@ -19,20 +19,41 @@ angular.module('tnApp.auth')
 		}
 	}
 
+	function userMatches(rule){
+		if(rule === true || rule === false){
+			return rule;
+		}
+		else if(rule == 'user' && data.user){
+			return true;
+		}
+		else if(rule == '^user' && data.user){
+			return false;
+		}
+		else if(rule.charAt(0) == '^'){
+			if(data.user && data.user.roles){
+				// if there are roles, return true if this rule is not one of them
+				return (data.user.roles.indexOf(rule.substr(1)) == -1);
+			}
+			return true; // if no user roles, then it definitely doesn't have this
+		}
+		else if(data.user && data.user.roles){
+			return (data.user.roles.indexOf(rule) != -1);
+		}
+		return false;
+	}
+
 	var api = {
 		passes: function(rules){
-			console.log('checking security for '+angular.toJson(rules));
-			if(rules === true){
-				return true;
+			if(angular.isArray(rules)){
+				for(var i=0; i < rules.length; i++){
+					if(userMatches(rules[i])){
+						return true;
+					}
+				}
 			}
-			else if(angular.isString(rules)){
-
+			else{
+				return userMatches(rules);
 			}
-			else if(angular.isArray(rules)){
-
-			}
-			console.log ('failed :(');
-
 			return false;
 		},
 		loadSchema: function(){
