@@ -4,6 +4,8 @@ namespace TN;
 use PDO, NotORM, NotORM_Row, NotORM_Structure_Convention, SchemaStore, Exception, stdClass, Jsv4;
 
 class DataException extends Exception{}
+class DataInvalidException extends DataException{}
+class DataMissingException extends DataException{}
 
 class DataRow extends NotORM_Row {
 	public function getRow(){
@@ -271,7 +273,7 @@ class Data extends NotORM {
 					}
 
 					// resulting array
-					$row_data[$field_name.'s'] = $array_data;
+					$row_data[$field_name] = $array_data;
 				}
 			}
 		}

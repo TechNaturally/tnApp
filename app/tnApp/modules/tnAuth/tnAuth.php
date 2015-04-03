@@ -4,9 +4,11 @@ function auth_session_start($user){
 	if(!empty($_SESSION['user'])){
 		return $_SESSION['user'];
 	}
-	$_SESSION['user'] = $user;
-
-	return auth_session_check();
+	if(!empty($user['id']) && isset($user['roles'])){
+		$_SESSION['user'] = array( "id" => $user['id'], "roles" => $user['roles'] );
+		return auth_session_check();
+	}
+	return NULL;
 }
 
 function auth_session_check(){
@@ -23,24 +25,26 @@ function auth_session_finish(){
 	return FALSE;
 }
 
-function auth_user_assert_profile($tn, $user){
-	try {
+function auth_assert_user($tn, $auth){
+	try{
 		if(function_exists('user_get_user')){
-			$profile = user_get_user($tn, array('auth_id' => $user['id']));
-
-			if(!$profile && function_exists('user_save_user')){
-				$profile = user_save_user($tn, array(
-					'auth' => array('id' => $user['id']),
-					'email' => $user['email'],
-					'name' => $user['username'],
-					'roles' => array('admin', 'test')
-					));
+			try {
+				return user_get_user($tn, array('auth' => $auth['id']));
 			}
-			// TODO: what about default roles? - should be in app's config.json - do we check in user_save_user for new users?
-
-			return $profile;
+			catch(\TN\DataMissingException $e){
+				// TODO: default roles? - should be in app's config.json - do we check in user_save_user for new users?
+				if(function_exists('user_save_user')){
+					return user_save_user($tn, array(
+						'auth' => $auth['id'],
+						'email' => $auth['email'],
+						'name' => $auth['username'],
+						'roles' => array('admin', 'test')
+						));
+				}
+			}
 		}
-	} catch(Exception $e) {}
+	}
+	catch(Exception $e) { throw $e; }
 
 	return NULL;
 }
@@ -170,9 +174,11 @@ function auth_register_post($tn){
 			);
 		if($auth = $tn->data->save('auth', $auth)){
 			$res['msg'] = "Created auth:<pre>".print_r($auth, TRUE)."</pre>\n";
-			// TODO: assert the user profile
-			// TODO: create the session using user.id and user.roles
-
+			if($user = auth_assert_user($tn, $auth)){
+				if($session = auth_session_start($user)){
+					$res['session'] = $session;
+				}
+			}
 		}
 
 /**

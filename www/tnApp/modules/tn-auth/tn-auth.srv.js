@@ -16,9 +16,12 @@ angular.module('tnApp.auth')
 		else if (user && user.id){
 			// TOOD: what if user already is loaded... (best way)
 			// TODO: we also need to track in Auth.data the auth_id, username, etc
-			User.api.loadUser(user.id).then(function(user){
+/**			User.api.loadUser(user.id).then(function(user){
 				data.user = user;
 			});
+*/
+			data.user = user;
+			console.log('User active! '+angular.toJson(data.user, true));
 		}
 	}
 
@@ -111,8 +114,8 @@ angular.module('tnApp.auth')
 					start_session: true
 				};				
 				API.post('/auth/register', {data: req}).then(function(res){
-					if(!res.error && res.user){
-						//setActiveUser(res.user);
+					if(!res.error && res.session){
+						setActiveUser(res.session);
 						defer.resolve(true);
 					}
 					else{

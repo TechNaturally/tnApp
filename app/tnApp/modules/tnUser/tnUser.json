@@ -3,8 +3,8 @@
 	"data": {
 		"input": ["auth", "name", "email"],
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "role", "name", "email", "phone"],
-		"save": ["auth", "role", "name", "email", "phone"],
+		"load": ["auth", "roles", "name", "email", "phone"],
+		"save": ["auth", "roles", "name", "email", "phone"],
 		"schema": {
 			"id": "/user",
 			"type": "object",
@@ -13,7 +13,7 @@
 					"title": "Account",
 					"$ref": "/auth/id"
 				},
-				"role": {
+				"roles": {
 					"title": "Roles",
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50, "required": true }
