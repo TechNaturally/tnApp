@@ -240,7 +240,13 @@ class Data extends NotORM {
 									$array_row_child_data = $array_row_child_data[$field_name];
 								}
 								// inject the array row child data into the array_row object
-								$array_row_data[$field_name] = array_merge($array_row_data[$field_name], $array_row_child_data);
+								
+								if(array_key_exists($field_name, $array_row_data)){
+									$array_row_data[$field_name] = array_merge($array_row_data[$field_name], $array_row_child_data);
+								}
+								else{
+									$array_row_data[$field_name] = $array_row_child_data;
+								}
 							}
 
 							if(is_array($array_row_data)){
@@ -725,8 +731,11 @@ class Data extends NotORM {
 									$result[$object_table_name] = array();
 								}
 
+								
+
 								// build a name of this array field
 								$object_name = str_replace($type."_", '', $object_table_name);
+								$use_table = in_array(str_replace('_', '.', $object_name), $field_ids);
 								$object_name = substr($object_name, 0, strrpos($object_name, '_'));
 								$object_name = str_replace('_', '.', $object_name); // config uses .-notation, database uses _'s
 								foreach($object_table_fields as $object_field_id => $object_field){
@@ -738,7 +747,7 @@ class Data extends NotORM {
 										$object_field_id_norm = str_replace('_', '.', $object_field_id); // config uses .-notation, database uses _'s
 
 										// make sure this array item's field is in the requested field list
-										$use_field = strpos($field_id, $object_field_id_norm) === 0 || strpos($object_field_id_norm, $field_id) === 0 || in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
+										$use_field = $use_table || strpos($field_id, $object_field_id_norm) === 0 || strpos($object_field_id_norm, $field_id) === 0 || in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
 										if(!empty($use_field)){
 											$ref_field_str = NULL;
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
