@@ -16,7 +16,7 @@ angular.module('tnApp.auth')
 		return Auth.api.logout();
 	};
 	$scope.register = function(input){
-		return Auth.api.register(input.username, input.password, input.password_confirm);
+		return Auth.api.register(input.username, input.password, input.password_confirm, input.t1, input.t2);
 	};
 	$scope.recover = function(input){
 		return Auth.api.recoverPassword(input.username);

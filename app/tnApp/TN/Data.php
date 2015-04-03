@@ -240,7 +240,13 @@ class Data extends NotORM {
 									$array_row_child_data = $array_row_child_data[$field_name];
 								}
 								// inject the array row child data into the array_row object
-								$array_row_data[$field_name] = array_merge($array_row_data[$field_name], $array_row_child_data);
+								
+								if(array_key_exists($field_name, $array_row_data)){
+									$array_row_data[$field_name] = array_merge($array_row_data[$field_name], $array_row_child_data);
+								}
+								else{
+									$array_row_data[$field_name] = $array_row_child_data;
+								}
 							}
 
 							if(is_array($array_row_data)){
@@ -275,18 +281,136 @@ class Data extends NotORM {
 	}
 
 	public function save($type, $data){
-		if($fields = $this->getFields($type, 'save')){
-			// validate $data against $fields
-			// if $data->id do as update
-			// else do as insert
-			// return rowToArray (newRow)
+		print "\n";
+		if($this->validate($type, $data)){
+			if($table_data = $this->dataToTables($type, $data)){
+				try {
+					$this->assert($type);
+				}
+				catch (Exception $e){ throw $e; }
+
+				if(!empty($table_data[$type])){
+					print "saving $type ".print_r($table_data, TRUE)."\n";
+					$this->insertToTable($type, $table_data[$type]);
+				}
+				
+
+				
+			}
+			
 		}
+		else{
+			throw new DataException("Invalid $type data!");
+		}
+		
 		return NULL;
 	}
 
-	public function validate($type, $data, $field_id){
+	public function insertToTable($table, $values){
+		$child_tables = array();
+		$data = array();
 
+		if(!array_key_exists('@values', $values)){
+			// sort out which values are tables and which go into this table
+			foreach($values as $key => $value){
+				if(strpos($key, $table.'_') === 0){
+					$child_tables[$key] = $value;
+				}
+				else{
+					$data[$key] = $value;
+				}
+			}
+
+			// first we need to insert the root data so we have the id for child tables to reference
+			$row = NULL;
+			if(!empty($data['id'])){
+				$row = $this->{$table}()->where('id', $data['id'])->update($data);
+			}
+			else{
+				$row = $this->{$table}()->insert($data);
+			}
+
+			if($row){
+				$row = $row->getRow();
+				if(!empty($row['id'])){
+					foreach($child_tables as $child_table => $child_values){
+						$child_values[$table.'_id'] = $row['id'];
+						$this->insertToTable($child_table, $child_values);
+					}
+				}			
+			}
+		}
+		else{
+			$parent_id = array_filter(array_keys($values), function($key){ return ($key != '@values'); });
+			if(!empty($parent_id)){
+				$parent_id = array_shift($parent_id);
+			}
+			foreach($values['@values'] as $value){
+				$value[$parent_id] = $values[$parent_id];
+				$this->insertToTable($table, $value);
+			}
+		}
+	}
+
+	public function validate($type, $data){
+		if($fields = $this->getFields($type, 'save')){
+			return Jsv4::validate($data, $fields);
+		}
 		return TRUE;
+	}
+
+	public function dataToTables($prefix, $data){
+		$flat = array();
+		$flat[$prefix] = array();
+		foreach($data as $key => $value){
+			if(is_object($value)){
+				$flat_obj = $this->dataToTables($key, $value);
+				foreach($flat_obj as $flat_table => $flat_values){
+					foreach($flat_values as $flat_key => $flat_value){
+						if(is_array($flat_value)){
+							$flat[$prefix][$prefix.'_'.$flat_key] = $flat_value;
+						}
+						else{
+							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
+						}
+					}
+				}
+			}
+			else if(is_array($value)){
+				$array_data = array();
+				foreach($value as $array_value){
+					if(is_object($array_value)){
+						$array_data_val = array();
+						$flat_obj = $this->dataToTables($key, $array_value);
+						foreach($flat_obj as $flat_table => $flat_values){
+							foreach($flat_values as $flat_key => $flat_value){
+								if(is_array($flat_value)){
+									$array_data_val[$prefix.'_'.$flat_key] = $flat_value;
+								}
+								else{
+									$array_data_val[$key.'_'.$flat_key] = $flat_value;
+								}
+							}
+						}
+						$array_data[] = $array_data_val;
+					}
+					else if(is_array($array_value)){
+						// we should never have an array of array
+						// child arrays should always be embedded as object properties
+					}
+					else{
+						$array_data_val = array();
+						$array_data_val[$key] = $array_value;
+						$array_data[] = $array_data_val;
+					}
+				}
+				$flat[$prefix][$prefix.'_'.$key] = array('@values' => $array_data);
+			}
+			else{
+				$flat[$prefix][$key] = $value;
+			}
+		}
+		return $flat;
 	}
 
 	public function rowToArray($row){
@@ -395,7 +519,6 @@ class Data extends NotORM {
 									// it's a different table (ie. an array table)
 									$flat_tables[$flat_field_table_name] = $flat_field_table_fields;
 								}
-								
 							}
 						}
 					}
@@ -608,8 +731,11 @@ class Data extends NotORM {
 									$result[$object_table_name] = array();
 								}
 
+								
+
 								// build a name of this array field
 								$object_name = str_replace($type."_", '', $object_table_name);
+								$use_table = in_array(str_replace('_', '.', $object_name), $field_ids);
 								$object_name = substr($object_name, 0, strrpos($object_name, '_'));
 								$object_name = str_replace('_', '.', $object_name); // config uses .-notation, database uses _'s
 								foreach($object_table_fields as $object_field_id => $object_field){
@@ -621,7 +747,7 @@ class Data extends NotORM {
 										$object_field_id_norm = str_replace('_', '.', $object_field_id); // config uses .-notation, database uses _'s
 
 										// make sure this array item's field is in the requested field list
-										$use_field = strpos($field_id, $object_field_id_norm) === 0 || strpos($object_field_id_norm, $field_id) === 0 || in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
+										$use_field = $use_table || strpos($field_id, $object_field_id_norm) === 0 || strpos($object_field_id_norm, $field_id) === 0 || in_array($object_field_id_norm, $field_ids) || in_array($object_name, $field_ids) || in_array($object_name.'.'.$object_field_id_norm , $field_ids);
 										if(!empty($use_field)){
 											$ref_field_str = NULL;
 											if(!empty($object_field->type) && $object_field->type == 'ref'){
