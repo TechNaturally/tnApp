@@ -38,10 +38,6 @@
 		}
 	},
 	"routes": {
-		"/:id": {
-			"callback": "load",
-			"methods": { "GET": true }
-		},
 		"/ping": {
 			"callback": "ping",
 			"methods": { "POST": true }
@@ -89,6 +85,10 @@
 		},
 		"/available": {
 			"callback": "available",
+			"methods": { "GET": true }
+		},
+		"/:id": {
+			"callback": "load",
 			"methods": { "GET": true }
 		}
 	}
