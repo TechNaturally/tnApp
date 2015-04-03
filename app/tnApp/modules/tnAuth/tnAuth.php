@@ -175,62 +175,6 @@ function auth_register_post($tn){
 				}
 			}
 		}
-
-/**
-		$username = $req->username;
-		$email = '';
-
-		if(auth_valid_email($username)){
-			$email = $username;
-		}
-
-		$auth = array(
-			"username" => $username,
-			"hash" => auth_password_hash($req->password),
-			"email" => $email
-			);
-		$auth = $tn->data->save('auth', $auth);
-		$res['msg'] = 'Registration successful!';
-*/
-
-		/**
-		$tn->data->assert('auth');
-
-		$req = json_decode($tn->app->request->getBody());
-
-		$username = $req->username;
-		$email = '';
-
-		if(auth_valid_email($username)){
-			$email = $username;
-		}
-		
-		$user = array(
-			"username" => $username,
-			"hash" => auth_password_hash($req->password),
-			"email" => $email
-			);
-		$user = $tn->data->auth()->insert($user);
-		$res['msg'] = 'Registration successful!';
-
-		if(!empty($req->start_session)){
-			$roles = array('user');
-			if($profile = auth_user_assert_profile($tn, $user)){
-				if(!empty($profile['roles'])){
-					$roles = array_merge($roles, $profile['roles']);
-				}
-
-				$res['user'] = auth_session_start(array(
-					'id' => $profile['id'],
-					'roles' => $roles
-					));
-			}
-			else{
-				$res['error'] = TRUE;
-				$res['msg'] = 'Could not load user profile.';
-			}
-		}
-		*/
 	} catch (Exception $e) {
 		$res_code = 500;
 		$res['msg'] = "Error: ".$e->getMessage();
