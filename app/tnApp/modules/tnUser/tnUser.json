@@ -36,6 +36,32 @@
 					"type": "string",
 					"minLength": 0,
 					"maxLength": 25
+				},
+				"address": {
+					"title": "Address",
+					"type": "object",
+					"properties": {
+						"street": {
+							"title": "Street",
+							"type": "string"
+						},
+						"street2": {
+							"title": "Street (second line)",
+							"type": "string"
+						},
+						"city": {
+							"title": "City",
+							"type": "string"
+						},
+						"province": {
+							"title": "Province/State",
+							"type": "string"
+						},
+						"postal": {
+							"title": "Postal/Zip Code",
+							"type": "string"
+						}
+					}
 				}
 			}
 		}
@@ -52,6 +78,7 @@
 				{ "key": "name", "placeholder": "Full Name" },
 				{ "key": "email", "placeholder": "Email address" },
 				{ "key": "phone", "placeholder": "Phone number" },
+				{ "key": "address" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
 						{ "type": "button", "style": "btn-warning", "title": "Reset", "onClick": "reset()" }
