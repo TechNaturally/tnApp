@@ -37,7 +37,6 @@ angular.module('tnApp.screen')
 					else if(path.charAt(0) != '/'){
 						path = '/'+path;
 					}
-					console.log('loading screen:'+path);
 
 					var screen = {};
 
