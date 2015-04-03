@@ -21,16 +21,9 @@ angular.module('tnApp.screen')
 			});
 		},
 		$get: ['$q', 'API', 'Auth', function($q, API, Auth){
-
 			var api = {
 				load: function(path){
 					var defer = $q.defer();
-					/** original concept which loads screen contents from server, we do what api/screen does right down here
-					API.get('/screen', {data: {path: path}}).then(function(res){
-						defer.resolve(res.content);
-					});
-					*/
-
 					if(!path){
 						path = '/';
 					}
