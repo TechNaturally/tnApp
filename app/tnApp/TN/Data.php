@@ -281,23 +281,16 @@ class Data extends NotORM {
 	}
 
 	public function save($type, $data){
-		print "\n";
 		if($this->validate($type, $data)){
 			if($table_data = $this->dataToTables($type, $data)){
 				try {
 					$this->assert($type);
+					if(!empty($table_data[$type])){
+						$this->insertToTable($type, $table_data[$type]);
+					}
 				}
 				catch (Exception $e){ throw $e; }
-
-				if(!empty($table_data[$type])){
-					print "saving $type ".print_r($table_data, TRUE)."\n";
-					$this->insertToTable($type, $table_data[$type]);
-				}
-				
-
-				
 			}
-			
 		}
 		else{
 			throw new DataException("Invalid $type data!");
@@ -323,33 +316,46 @@ class Data extends NotORM {
 
 			// first we need to insert the root data so we have the id for child tables to reference
 			$row = NULL;
-			if(!empty($data['id'])){
-				$row = $this->{$table}()->where('id', $data['id'])->update($data);
-			}
-			else{
-				$row = $this->{$table}()->insert($data);
-			}
-
-			if($row){
-				$row = $row->getRow();
-				if(!empty($row['id'])){
-					foreach($child_tables as $child_table => $child_values){
-						$child_values[$table.'_id'] = $row['id'];
-						$this->insertToTable($child_table, $child_values);
+			try{
+				if(!empty($data['id'])){
+					$row = $this->{$table}()->where('id', $data['id'])->update($data);
+				}
+				else{
+					$row = $this->{$table}()->insert($data);
+				}
+			
+				if($row){
+					$row = $row->getRow();
+					if(!empty($row['id'])){
+						foreach($child_tables as $child_table => $child_values){
+							$child_values[$table.'_id'] = $row['id'];
+							$child_rows = $this->insertToTable($child_table, $child_values);
+						}
 					}
-				}			
+				}
 			}
+			catch (Exception $e){ throw $e; }
+
+			return $this->rowToArray($row);
 		}
 		else{
 			$parent_id = array_filter(array_keys($values), function($key){ return ($key != '@values'); });
 			if(!empty($parent_id)){
 				$parent_id = array_shift($parent_id);
 			}
-			foreach($values['@values'] as $value){
-				$value[$parent_id] = $values[$parent_id];
-				$this->insertToTable($table, $value);
+			$rows = array();
+			try{
+				foreach($values['@values'] as $value){
+					$value[$parent_id] = $values[$parent_id];
+					$array_row = $this->insertToTable($table, $value);
+					$rows[] = $this->rowToArray($array_row);
+				}
 			}
+			catch (Exception $e){ throw $e; }
+			return !empty($rows)?$rows:NULL;
 		}
+
+		return NULL;
 	}
 
 	public function validate($type, $data){
