@@ -6,13 +6,35 @@ angular.module('tnApp.screen')
 		controller: 'ScreenController',
 		templateUrl: 'tnApp/modules/tn-screen/tn-screen.tpl.html',
 		link: function(scope, elem, attr){
+			//var children = angular.isDefined(elem[0].children[0].children)?elem[0].children[0].children:null;
+			var children = elem.children();
+			if(children){
+				children = children.children();
+			}
+			var areas = {};
+			if(children && children.length){
+				for(var i = 0; i < children.length; i++){
+					if(children[i].className){
+						var classSplit = children[i].className.split(' ', 2);
+						areas[classSplit[0]] = angular.element(children[i]);
+					}
+				}
+			}
+
 			scope.$watch('content', function(content){
-				elem.empty();
+				angular.forEach(areas, function(area, area_name){
+					area.empty();
+				});
 				if(!content){
 					return;
 				}
 				angular.forEach(content, function(contents, area){
-					var area_container = angular.element('<div class="area '+area+'"></div>');
+					if(angular.isUndefined(areas[area])){
+						console.log('add area '+area);
+						areas[area] = angular.element('<div class="'+area+'"></div>');
+						elem.append(areas[area]);
+					}
+					var area_container = areas[area];
 					var area_errors;
 					if(area == 'nav'){
 						var navTree = Tree.arrayToTree(contents);
@@ -55,7 +77,7 @@ angular.module('tnApp.screen')
 						});
 					}
 					$compile(area_container)(scope);
-					elem.append(area_container);
+					
 				});
 			});
 		}
