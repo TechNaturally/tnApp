@@ -4,9 +4,6 @@ angular.module('tnApp.screen')
 		screens: {}
 	};
 
-	
-
-
 	return {
 		addScreenContent: function(screens){
 			angular.forEach(screens, function(screen, path){
@@ -23,7 +20,7 @@ angular.module('tnApp.screen')
 				});
 			});
 		},
-		$get: ['$q', 'API', function($q, API){
+		$get: ['$q', 'API', 'Auth', function($q, API, Auth){
 
 			var api = {
 				load: function(path){
@@ -40,7 +37,7 @@ angular.module('tnApp.screen')
 					else if(path.charAt(0) != '/'){
 						path = '/'+path;
 					}
-					console.log('hello screen load:'+path);
+					console.log('loading screen:'+path);
 
 					var screen = {};
 
@@ -140,13 +137,9 @@ angular.module('tnApp.screen')
 													arg_value = arg_data;
 												}
 
-												// special arg values
-												/** TODO: implement as JS (auth_id)
-												if($arg_value == '!auth_id' && function_exists('auth_session_check')){
-													$auth_user = auth_session_check();
-													$arg_value = ($auth_user && isset($auth_user['id']))?$auth_user['id']:'';
+												if(arg_value == '!auth_id'){
+													data_arg = Auth.data.user.id?Auth.data.user.id:'';
 												}
-												*/
 												
 												// store it for the content
 												data_args[data_arg] = arg_value;
@@ -154,19 +147,10 @@ angular.module('tnApp.screen')
 											content[content_idx].args = data_args;
 										}
 
-										// check security access for this content
-										if(content_data && angular.isDefined(content_data.access) && content_data.access){
-											// need to check the security
-										}
-										/** TODO: implement as JS (content security)
-										if(!empty($content_data->access) && !$this->app->security->passes($content_data->access, $data_args)){
-											$content[$content_idx] = NULL;
-											continue;
-										}
-										*/
-
 										if(content_data){
-											screen_content.push(content_data);
+											if(!angular.isDefined(content_data.access) || Auth.api.passes(content_data.access)){
+												screen_content.push(content_data);
+											}
 										}
 									});
 
