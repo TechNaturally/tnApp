@@ -13,6 +13,9 @@ angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
       templateUrl: '/tnApp/app.html',
       controller: 'AppController',
       resolve: {
+        authenticated: function(Auth){
+          return Auth.api.ping();
+        },
         hasTheme: function(Theme){
           return Theme.register();
         }
@@ -23,7 +26,4 @@ angular.module('tnApp', ['ngRoute', 'tnApp.screen', 'tnApp.auth'])
   	});
 
     $locationProvider.html5Mode(true);
-  }])
-.run(['$rootScope', 'Auth', function($rootScope, Auth) {
-  Auth.api.ping();
 }]);
