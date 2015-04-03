@@ -160,22 +160,20 @@ function auth_register_post($tn){
 
 		$req = json_decode($tn->app->request->getBody());
 
-		$res['msg'] = "REQ:".print_r($req, TRUE);
-
 		$username = !empty($req->username)?$req->username:'';
 		$email = auth_valid_email($username)?$username:'';
-		$t1 = !empty($req->t1)?$req->t1:NULL;
-		$t2 = !empty($req->t2)?$req->t2:NULL;
 
 		$auth = array(
 			"username" => $username,
 			"hash" => auth_password_hash($req->password),
-			"email" => $email,
-			"t1" => $t1,
-			"t2" => $t2
+			"email" => $email
 			);
-		$auth = $tn->data->save('auth', $auth);
+		if($auth = $tn->data->save('auth', $auth)){
+			$res['msg'] = "Created auth:<pre>".print_r($auth, TRUE)."</pre>\n";
+			// TODO: assert the user profile
+			// TODO: create the session using user.id and user.roles
 
+		}
 
 /**
 		$username = $req->username;
