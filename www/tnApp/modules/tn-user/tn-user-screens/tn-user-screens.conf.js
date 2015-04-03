@@ -23,6 +23,13 @@ angular.module('tnApp.auth')
 					"title": "Edit Profile",
 					"access": ["user"]
 				}
+			],
+			"page": [
+				{	"type": "error",
+					"content": "Access denied.",
+					"access": ["^user"],
+					"hide": ["/user/(login|register|recover)"]
+				}
 			]
 		},
 		"/user/:user_id<\\d+>?/:action<view|edit>?": {
