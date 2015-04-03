@@ -76,15 +76,20 @@ angular.module('tnApp.auth')
 		},
 		ping: function(){
 			var defer = $q.defer();
-			API.post('/auth/ping').then(function(res){
-				if(!res.error && res.session){
-					setActiveUser(res.session);
-					defer.resolve(true);
-				}
-				else{
-					defer.resolve(false);
-				}
-			}, function(reason){ defer.reject(reason); });
+			if(data.user){
+				defer.resolve(true);
+			}
+			else{
+				API.post('/auth/ping').then(function(res){
+					if(!res.error && res.session){
+						setActiveUser(res.session);
+						defer.resolve(true);
+					}
+					else{
+						defer.resolve(false);
+					}
+				}, function(reason){ defer.reject(reason); });
+			}
 			return defer.promise;
 		},
 		login: function(username, password){
