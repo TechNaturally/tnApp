@@ -47,8 +47,8 @@ angular.module('tnApp.auth')
 		ping: function(){
 			var defer = $q.defer();
 			API.post('/auth/ping').then(function(res){
-				if(!res.error && res.user){
-					setActiveUser(res.user);
+				if(!res.error && res.session){
+					setActiveUser(res.session);
 					defer.resolve(true);
 				}
 				else{
@@ -65,8 +65,8 @@ angular.module('tnApp.auth')
 					password: hash_password(password, username)
 				};
 				API.post('/auth/login', {data: req}).then(function(res){
-					if(!res.error && res.user){
-						setActiveUser(res.user);
+					if(!res.error && res.session){
+						setActiveUser(res.session);
 						var search = $location.search();
 						var from = search.from?search.from:'';
 						$location.path(from);

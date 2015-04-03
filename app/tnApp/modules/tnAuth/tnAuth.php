@@ -79,8 +79,8 @@ function auth_ping_post($tn){
 	$res = array();
 	$res_code = 200;
 
-	if($user = auth_session_check()){
-		$res['user'] = $user;
+	if($session = auth_session_check()){
+		$res['session'] = $session;
 		$res['msg'] = 'Session active!';
 	}
 
@@ -92,25 +92,21 @@ function auth_login_post($tn){
 	$res_code = 200;
 
 	try {
-		/**
 		$tn->data->assert('auth');
-
 		$req = json_decode($tn->app->request->getBody());
-		if($req->username && $req->password){
-
-			$user = $tn->data->auth("username", $req->username)->fetch();
-			if($user && !empty($user['hash'])){
-				if(auth_password_check($req->password, $user['hash'])){
-					$roles = array('user');
-					if($profile = auth_user_assert_profile($tn, $user)){
-						if(!empty($profile['roles'])){
-							$roles = array_merge($roles, $profile['roles']);
+		if(!empty($req->username) && !empty($req->password)){
+			$auth = $tn->data->loadFields('auth', array('username' => $req->username), array('username', 'email', 'hash'));
+			if($auth){
+				if(auth_password_check($req->password, $auth['hash'])){
+					unset($auth['hash']);
+					if($user = auth_assert_user($tn, $auth)){
+						if($session = auth_session_start($user)){
+							$res['msg'] = 'Login successful!';
+							$res['session'] = $session;
 						}
-						$res['user'] = auth_session_start(array(
-							'id' => $profile['id'],
-							'roles' => $roles
-							));
-						$res['msg'] = 'Login successful!';
+						else{
+							$res['error'] = TRUE; // no session
+						}
 					}
 					else{
 						$res['error'] = TRUE; // no profile
@@ -121,17 +117,16 @@ function auth_login_post($tn){
 				}
 			}
 			else {
-				$res['error'] = TRUE; // bad username
+				$res['error'] = TRUE; // no auth for username
 			}
 		}
 		else {
 			$res['error'] = TRUE; // missing username or password
 		}
+
 		if(!empty($res['error'])){
 			$res['msg'] = 'Invalid username or password!';
 		}
-		*/
-		$res['msg'] = "Testing...";
 	} catch (Exception $e) {
 		$res['error'] = TRUE; // something went wrong
 		$res['msg'] = $e->getMessage();
