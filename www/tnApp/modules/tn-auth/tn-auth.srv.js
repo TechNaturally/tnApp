@@ -102,15 +102,13 @@ angular.module('tnApp.auth')
 			}
 			return false;
 		},
-		register: function(username, password, password_confirm, t1, t2){
+		register: function(username, password, password_confirm){
 			var defer = $q.defer();
 			if(username && password && password_confirm == password){
 				var req = {
 					username: username,
 					password: hash_password(password, username),
-					start_session: true,
-					t1: t1,
-					t2: t2
+					start_session: true
 				};				
 				API.post('/auth/register', {data: req}).then(function(res){
 					if(!res.error && res.user){
