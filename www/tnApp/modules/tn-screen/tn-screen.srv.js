@@ -84,6 +84,8 @@ angular.module('tnApp.screen')
 							//console.log('with:'+JSON.stringify(path_match));
 							//console.log('args:'+JSON.stringify(args));
 
+							// TODO: do we want to block the screen?
+
 							// add the content sorted by area
 							angular.forEach(contents, function(content, area){
 								if(content){
@@ -138,7 +140,7 @@ angular.module('tnApp.screen')
 												}
 
 												if(arg_value == '!auth_id'){
-													data_arg = Auth.data.user.id?Auth.data.user.id:'';
+													data_arg = (!Auth.data.user || angular.isUndefined(Auth.data.user.id))?'':Auth.data.user.id;
 												}
 												
 												// store it for the content
