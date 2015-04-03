@@ -139,7 +139,6 @@ class Data extends NotORM {
 				$tables = $this->getFields($type, 'load');
 			}
 			if(!empty($args) && !empty($tables)){
-				//print "\nloading $type with tables: ".print_r($tables,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -286,7 +285,11 @@ class Data extends NotORM {
 				try {
 					$this->assert($type);
 					if(!empty($table_data[$type])){
-						$this->insertToTable($type, $table_data[$type]);
+						if($entry = $this->insertToTable($type, $table_data[$type])){
+							if(!empty($entry['id'])){
+								return $this->load($type, array("$type.id" => $entry['id']));
+							}
+						}
 					}
 				}
 				catch (Exception $e){ throw $e; }
@@ -295,7 +298,6 @@ class Data extends NotORM {
 		else{
 			throw new DataException("Invalid $type data!");
 		}
-		
 		return NULL;
 	}
 
@@ -303,6 +305,7 @@ class Data extends NotORM {
 		$child_tables = array();
 		$data = array();
 
+		// check if we are handling an array of values for a given parent_id
 		if(!array_key_exists('@values', $values)){
 			// sort out which values are tables and which go into this table
 			foreach($values as $key => $value){
@@ -325,7 +328,7 @@ class Data extends NotORM {
 				}
 			
 				if($row){
-					$row = $row->getRow();
+					$row = $this->rowToArray($row);
 					if(!empty($row['id'])){
 						foreach($child_tables as $child_table => $child_values){
 							$child_values[$table.'_id'] = $row['id'];
@@ -336,19 +339,21 @@ class Data extends NotORM {
 			}
 			catch (Exception $e){ throw $e; }
 
-			return $this->rowToArray($row);
+			return $row;
 		}
 		else{
+			// it's an array of values
+			// detect what the parent_id is called and what its value is - it is whatever key is not @values
 			$parent_id = array_filter(array_keys($values), function($key){ return ($key != '@values'); });
 			if(!empty($parent_id)){
 				$parent_id = array_shift($parent_id);
 			}
 			$rows = array();
 			try{
+				// insert each row, assinging the parent id, recursively using insertToTable to support grandchild tables
 				foreach($values['@values'] as $value){
 					$value[$parent_id] = $values[$parent_id];
-					$array_row = $this->insertToTable($table, $value);
-					$rows[] = $this->rowToArray($array_row);
+					$rows[] = $this->insertToTable($table, $value); // don't need to rowToArray it, because insertToTable already did this
 				}
 			}
 			catch (Exception $e){ throw $e; }
@@ -421,7 +426,7 @@ class Data extends NotORM {
 
 	public function rowToArray($row){
 		// transposes a NotORM row object into a simple array of the data
-		return $row->getRow();
+		return !empty($row)?$row->getRow():array();
 	}
 
 	public function getArrayRowValue($array_row, $array_name, $exclude_fields){
