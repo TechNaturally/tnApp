@@ -33,7 +33,7 @@ angular.module('tnApp.screen')
 
 					var screen = {};
 
-					angular.forEach(data.screens, function(contents, screen_path){
+					angular.forEach(angular.copy(data.screens), function(contents, screen_path){
 						var path_rxp = screen_path;
 						path_rxp = path_rxp.replace(/\*/g, '.*');
 
@@ -75,8 +75,6 @@ angular.module('tnApp.screen')
 							//console.log('matched:'+screen_path);
 							//console.log('with:'+JSON.stringify(path_match));
 							//console.log('args:'+JSON.stringify(args));
-
-							// TODO: do we want to block the screen?
 
 							// add the content sorted by area
 							angular.forEach(contents, function(content, area){
