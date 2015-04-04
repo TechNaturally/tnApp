@@ -1,10 +1,10 @@
 {
 	"id": "user",
 	"data": {
-		"input": ["auth", "name", "email", "phone", "address", "roles"],
+		"input": ["auth", "name", "test", "email", "phone", "address", "roles"],
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "roles", "name", "email", "phone"],
-		"save": ["auth", "roles", "name", "email", "phone"],
+		"load": ["auth", "roles", "test", "name", "email", "phone"],
+		"save": ["auth", "roles", "test", "name", "email", "phone"],
 		"schema": {
 			"id": "/user",
 			"type": "object",
@@ -17,6 +17,31 @@
 					"title": "Roles",
 					"type": "array",
 					"items": {"type": "string", "maxLength": 50 }
+				},
+				"test": {
+					"title": "Test",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"field1": { "type": "string" },
+							"field2": {
+								"type": "array",
+								"items": { "type": "string" }
+							},
+							"field3": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"check": { "type": "string" },
+										"again": { "type": "string" }
+									}
+								}
+							}
+						}
+					}
+
 				},
 				"name": {
 					"title": "Name",
@@ -78,7 +103,7 @@
 				{ "key": "name", "placeholder": "Full Name" },
 				{ "key": "email", "placeholder": "Email address" },
 				{ "key": "phone", "placeholder": "Phone number" },
-				{ "key": "address" },
+				{ "key": "test" },
 				{ "key": "roles" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
