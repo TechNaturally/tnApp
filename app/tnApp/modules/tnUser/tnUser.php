@@ -15,7 +15,7 @@ function user_list_get($tn){
 }
 
 function user_list_post($tn){
-	// adding a new user
+	// TODO: adding a new user
 	// /api/user/post {user info}
 }
 
@@ -54,7 +54,6 @@ function user_profile_put($tn, $id){
 	$req = json_decode($tn->app->request->getBody());
 	if($req->user){
 		try{
-			//$res['msg'] = print_r($req->user,true);
 			if($user = user_save_user($tn, (array)$req->user)){
 				$res['user'] = $user;
 				$res['msg'] = 'User saved!';
@@ -79,6 +78,12 @@ function user_get_user($tn, $args){
 
 function user_save_user($tn, $user){
 	try{
+		if(!empty($user['auth'])){
+			// TODO: update referenced auth? maybe in the Data saver for reference fields?
+			if(!empty($user['auth']->id)){
+				$user['auth'] = $user['auth']->id;
+			}
+		}
 		if($user = $tn->data->save('user', $user)){
 			return $user;
 		}
