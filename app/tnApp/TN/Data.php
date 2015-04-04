@@ -334,7 +334,9 @@ class Data extends NotORM {
 			$row = NULL;
 			try{
 				if(!empty($data['id'])){
-					$row = $this->{$table}()->where('id', $data['id'])->update($data);
+					$row = $this->{$table}()->where('id', $data['id']);
+					$row->update($data);
+					$row = $row->fetch();
 				}
 				else{
 					$row = $this->{$table}()->insert($data);
