@@ -235,8 +235,9 @@ class Data extends NotORM {
 							$array_row_data = $this->rowToArray($array_row);
 							
 							// we don't need the array row's id or the link back to this row
-							unset($array_row_data['id']);
-							unset($array_row_data[$row_type.'_id']);
+							// TODO: or maybe we do?  need to see with arrays of objects...
+							//unset($array_row_data['id']);
+							//unset($array_row_data[$row_type.'_id']);
 
 							// compile the row into an object
 							$array_row_data = $this->compileObject($array_row_data);
@@ -261,7 +262,10 @@ class Data extends NotORM {
 								}
 							}
 
+							$item_id = NULL;
 							if(is_array($array_row_data)){
+								$item_id = !empty($array_row_data['id'])?$array_row_data['id']:NULL;
+
 								if(array_key_exists($field_name, $array_row_data)){
 									// if the array data is a single-field value (ie. not an object), just use the value
 									$array_row_data = $array_row_data[$field_name];
@@ -298,7 +302,15 @@ class Data extends NotORM {
 				try {
 					$this->assert($type);
 					if(!empty($table_data[$type])){
-						if($entry = $this->insertToTable($type, $table_data[$type])){
+						$existing_data = NULL;
+						if(isset($data['id'])){
+							if($existing = $this->load($type, array("$type.id"=>$data['id']))){
+								$existing = json_decode(json_encode($existing)); // quick trick that transforms object arrays to stdClass objects
+								$existing_data = $this->dataToTables($type, $existing);
+								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
+							}
+						}
+						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
 							if(!empty($entry['id'])){
 								return $this->load($type, array("$type.id" => $entry['id']));
 							}
@@ -314,9 +326,13 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function insertToTable($table, $values){
+	public function insertToTable($table, $values, $old_values){
 		$child_tables = array();
 		$data = array();
+		$old_child_tables = array();
+		$old_data = array();
+
+		//print "\ninsert to table $table :".print_r($values, TRUE)." vs ".print_r($old_values, TRUE)."\n";
 
 		// check if we are handling an array of values for a given parent_id
 		if(!array_key_exists('@values', $values)){
@@ -324,9 +340,15 @@ class Data extends NotORM {
 			foreach($values as $key => $value){
 				if(strpos($key, $table.'_') === 0){
 					$child_tables[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_child_tables[$key] = $old_values[$key];
+					}
 				}
 				else{
 					$data[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_data[$key] = $old_values[$key];
+					}
 				}
 			}
 
@@ -335,7 +357,7 @@ class Data extends NotORM {
 			try{
 				if(!empty($data['id'])){
 					$row = $this->{$table}()->where('id', $data['id']);
-					$row->update($data);
+					//$row->update($data);
 					$row = $row->fetch();
 				}
 				else{
@@ -347,7 +369,7 @@ class Data extends NotORM {
 					if(!empty($row['id'])){
 						foreach($child_tables as $child_table => $child_values){
 							$child_values[$table.'_id'] = $row['id'];
-							$child_rows = $this->insertToTable($child_table, $child_values);
+							$child_rows = $this->insertToTable($child_table, $child_values, !empty($old_child_tables[$child_table])?$old_child_tables[$child_table]:NULL);
 						}
 					}
 				}
@@ -365,10 +387,28 @@ class Data extends NotORM {
 			}
 			$rows = array();
 			try{
-				// insert each row, assinging the parent id, recursively using insertToTable to support grandchild tables
-				foreach($values['@values'] as $value){
+				// insert each array row, assinging the parent id, recursively using insertToTable to support grandchild tables
+				// for cases where the value has an id, insertToTable will update it
+				// for cases where values have no id, don't duplicate
+				// also be sure to remove any existing items that are not in the array
+				//$this->{$table}->where($parent_id, $values[$parent_id])->fetchPairs
+				
+
+				$new_values = $values['@values'];
+				$old_values = $old_values['@values'];
+
+				print "\ninsert array [$table] ($parent_id=".$values[$parent_id].") ".print_r($new_values, TRUE)."\n";
+				print "old array [$table]".print_r($old_values, TRUE)."...\n";
+				
+				$array_delete = array_filter($old_values, function($check_value) use ($new_values){
+					return (array_search($check_value, $new_values) === FALSE);
+				});
+				print "DELETE these:".print_r($array_delete, TRUE)."\n";
+				print "SAVE these:".print_r($new_values, TRUE)."\n";
+
+				foreach($new_values as $value){
 					$value[$parent_id] = $values[$parent_id];
-					$rows[] = $this->insertToTable($table, $value); // don't need to rowToArray it, because insertToTable already did this
+					//$rows[] = $this->insertToTable($table, $value); // don't need to rowToArray it, because insertToTable already did this
 				}
 			}
 			catch (Exception $e){ throw $e; }
@@ -756,8 +796,6 @@ class Data extends NotORM {
 								if(!isset($result[$object_table_name])){
 									$result[$object_table_name] = array();
 								}
-
-								
 
 								// build a name of this array field
 								$object_name = str_replace($type."_", '', $object_table_name);
