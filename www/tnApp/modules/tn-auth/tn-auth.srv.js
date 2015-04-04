@@ -15,6 +15,10 @@ angular.module('tnApp.auth')
 		}
 		else if (user && user.id){
 			data.user = user;
+			User.api.loadUser(user.id).then(function(user){
+				data.user = User.data.list[user.id];
+				console.log('Loaded user:'+angular.toJson(data.user, true));
+			});
 			console.log('User active! '+angular.toJson(data.user, true));
 		}
 	}
