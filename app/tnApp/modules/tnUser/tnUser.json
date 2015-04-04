@@ -1,7 +1,7 @@
 {
 	"id": "user",
 	"data": {
-		"input": ["auth", "name", "email"],
+		"input": ["auth", "name", "email", "phone", "address", "roles"],
 		"list": ["name", "email", "auth.username", "auth.email"],
 		"load": ["auth", "roles", "name", "email", "phone"],
 		"save": ["auth", "roles", "name", "email", "phone"],
@@ -16,7 +16,7 @@
 				"roles": {
 					"title": "Roles",
 					"type": "array",
-					"items": {"type": "string", "maxLength": 50, "required": true }
+					"items": {"type": "string", "maxLength": 50 }
 				},
 				"name": {
 					"title": "Name",
@@ -79,6 +79,7 @@
 				{ "key": "email", "placeholder": "Email address" },
 				{ "key": "phone", "placeholder": "Phone number" },
 				{ "key": "address" },
+				{ "key": "roles" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
 						{ "type": "button", "style": "btn-warning", "title": "Reset", "onClick": "reset()" }
