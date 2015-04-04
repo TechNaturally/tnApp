@@ -1,5 +1,4 @@
 <div class="user-profile panel panel-default" tn-state>
-
 	<div class="panel-heading">
 		<h3 class="panel-title">User Profile</h3>
 	</div>
@@ -13,7 +12,9 @@
 		<strong>Name:</strong> {{user.list[user_id].name}}<br/>
 		<strong>Email:</strong> {{user.list[user_id].email}}<br/>
 		<strong>Phone:</strong> {{user.list[user_id].phone}}<br/>
-		<strong>Account:</strong> #{{user.list[user_id].auth_id}}<br/>
+		<strong>Address:</strong> {{user.list[user_id].address}}<br/>
+		<strong>Account:</strong> {{user.list[user_id].auth}}<br/>
+		<strong>Roles:</strong> {{user.list[user_id].roles}}
 	</div>
 
 	<div class="panel-body" ng-show="state=='edit'">
