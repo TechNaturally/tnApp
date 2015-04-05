@@ -264,20 +264,32 @@ class Data extends NotORM {
 
 							$item_id = NULL;
 							if(is_array($array_row_data)){
-								$item_id = !empty($array_row_data['id'])?$array_row_data['id']:NULL;
+								if(!empty($array_row_data['id'])){
+									$item_id = $array_row_data['id'];
+									unset($array_row_data['id']);
+								}
 
+								// make sure all array items load their id's into good objects
 								if(array_key_exists($field_name, $array_row_data)){
 									// if the array data is a single-field value (ie. not an object), just use the value
-									$array_row_data = $array_row_data[$field_name];
+									if(is_array($array_row_data[$field_name])){
+										$array_row_data = $array_row_data[$field_name];
+										$array_row_data['id'] = $item_id;
+									}
+									else{
+										$array_row_data = array('id' => $item_id, $field_name => $array_row_data[$field_name]);
+									}
+									
 								}
 								else if(count($array_row_data) == 1){
 									// if it has only one field value, do special processing, because it might still be a single-field value
 									$single_key = array_keys($array_row_data)[0];
-									
+									// TODO: what is this stuff for?
+
 									// if the field_name ends with the name of the single value,
 									// it is an array within an object
 									if(($temp = strlen($field_name) - strlen($single_key)) >= 0 && strpos($field_name, $single_key, $temp) !== FALSE){
-										$array_row_data = $array_row_data[$single_key];
+										$array_row_data = array('id' => $item_id, $single_key => $array_row_data[$single_key]);
 									}
 								}
 							}
@@ -298,6 +310,7 @@ class Data extends NotORM {
 
 	public function save($type, $data){
 		if($this->validate($type, $data)){
+			print "saving $type:".print_r($data, TRUE)."\n";
 			if($table_data = $this->dataToTables($type, $data)){
 				try {
 					$this->assert($type);
@@ -397,17 +410,23 @@ class Data extends NotORM {
 				$new_values = $values['@values'];
 				$old_values = $old_values['@values'];
 
-				print "\ninsert array [$table] ($parent_id=".$values[$parent_id].") ".print_r($new_values, TRUE)."\n";
-				print "old array [$table]".print_r($old_values, TRUE)."...\n";
-				
+				//print "\ninsert array [$table] ($parent_id=".$values[$parent_id].") ".print_r($new_values, TRUE)."\n";
+				//print "old array [$table]".print_r($old_values, TRUE)."...\n";
+
+				/**  what we need to do for each value:
+				- remove fields with @values in them (this leaves us with the root values)
+				- if the root values are the same, don't update the root table
+					- recursively update the child tables though
+				*/
+/**				
 				$array_delete = array_filter($old_values, function($check_value) use ($new_values){
 					return (array_search($check_value, $new_values) === FALSE);
 				});
 				print "DELETE these:".print_r($array_delete, TRUE)."\n";
 				print "SAVE these:".print_r($new_values, TRUE)."\n";
-
+*/
 				foreach($new_values as $value){
-					$value[$parent_id] = $values[$parent_id];
+//					$value[$parent_id] = $values[$parent_id];
 					//$rows[] = $this->insertToTable($table, $value); // don't need to rowToArray it, because insertToTable already did this
 				}
 			}
@@ -917,10 +936,10 @@ class Data extends NotORM {
 							}
 
 						}
-
 					}
 				}
 				if($field){
+					$field = $this->schemaArrayIds($field, $field_id);
 					$filtered_schema->properties->{$field_id} = $field;
 				}
 			}
@@ -928,6 +947,33 @@ class Data extends NotORM {
 		}
 
 		return NULL;
+	}
+
+	private function schemaArrayIds($field, $field_id){
+		if(!empty($field->type)){
+			if($field->type == 'array' && !empty($field->items)){
+				if($field->items->type == 'object'){
+					if(empty($field->items->properties->id)){
+						$field->items->properties->id = (object)array("type" => "string");
+					}
+					$field->items = $this->schemaArrayIds($field->items, $field_id);
+				}
+				else{
+					$field_properties = new stdClass;
+					$field_properties->id = (object)array( "type" => "string" );
+					$field_properties->{$field_id} = $field->items;
+					$field->items = (object)array( "type" => "object", "properties" => $field_properties);
+				}
+			}
+			else if($field->type == 'object' && !empty($field->properties)){
+				foreach($field->properties as $field_prop_id => $field_prop){
+					if($field_prop->type == 'object' || $field_prop->type == 'array'){
+						$field->properties->{$field_prop_id} = $this->schemaArrayIds($field_prop, $field_prop_id);
+					}
+				}
+			}
+		}
+		return $field;
 	}
 
 	public function getFields($type, $mode, $field_list=NULL){
