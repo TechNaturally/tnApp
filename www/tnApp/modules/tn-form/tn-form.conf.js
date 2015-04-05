@@ -1,5 +1,5 @@
 angular.module('tnApp.form')
-.directive('tnArrayId', function(){
+.directive('tnArrayHideId', function(){
 	return {
 		restrict: 'A',
 		controller: function($scope){
@@ -27,7 +27,7 @@ angular.module('tnApp.form')
 .run(['$templateCache', function($templateCache){
 	// hack the array template to hide id fields
 	var tmpl = $templateCache.get('directives/decorators/bootstrap/array.html');
-	tmpl = tmpl.replace('<div sf-array="form"', '<div sf-array="form" tn-array-id').replace('copyWithIndex($index)', 'hideArrayId($index)');
+	tmpl = tmpl.replace('<div sf-array="form"', '<div sf-array="form" tn-array-hide-id').replace('copyWithIndex($index)', 'hideArrayId($index)');
 	$templateCache.put(
 		'directives/decorators/bootstrap/array.html',
 		tmpl
