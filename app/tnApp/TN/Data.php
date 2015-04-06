@@ -380,12 +380,13 @@ class Data extends NotORM {
 				}
 			}
 
-			print "\ninsert [$table]:".print_r($data, TRUE)."\n";
+			//print "\ninsert [$table]:".print_r($data, TRUE)."\n";
 			if(!empty($ref_fields)){
-				print "with refs:".print_r($ref_fields, TRUE)."\n";
+			//	print "with refs:".print_r($ref_fields, TRUE)."\n";
+			//	print "old refs:".print_r($old_ref_fields, TRUE)."\n";
 			}
 			if(!empty($child_tables)){
-				print "with children:".print_r($child_tables, TRUE)."\n";
+			//	print "with children:".print_r($child_tables, TRUE)."\n";
 			}
 
 			// first we need to insert the root data so we have the id for child tables to reference
@@ -393,7 +394,7 @@ class Data extends NotORM {
 			try{
 				if(!empty($data['id'])){
 					$row = $this->{$table}()->where('id', $data['id']);
-					//$row->update($data);
+					$row->update($data);
 					$row = $row->fetch();
 				}
 				else{
@@ -421,40 +422,50 @@ class Data extends NotORM {
 			if(!empty($parent_id)){
 				$parent_id = array_shift($parent_id);
 			}
-			$rows = array();
-			try{
-				// insert each array row, assinging the parent id, recursively using insertToTable to support grandchild tables
-				// for cases where the value has an id, insertToTable will update it
-				// for cases where values have no id, don't duplicate
-				// also be sure to remove any existing items that are not in the array
-				//$this->{$table}->where($parent_id, $values[$parent_id])->fetchPairs
-				
+			if($parent_id){
+				$rows = array();
+				try{
+					// insert each array row, assinging the parent id, recursively using insertToTable to support grandchild tables
+					// for cases where the value has an id, insertToTable will update it
+					// for cases where values have no id, don't duplicate
+					// also be sure to remove any existing items that are not in the array
+					//$this->{$table}->where($parent_id, $values[$parent_id])->fetchPairs
+					
+					$new_values = $values['@values'];
+					$old_values = $old_values['@values'];
+					$new_ids = array();
 
-				$new_values = $values['@values'];
-				$old_values = $old_values['@values'];
+					foreach($new_values as $value){
+						$new_id = !empty($value['id'])?$value['id']:NULL;
+						$old_row = array();
+						if($new_id){
+							$old_row = array_values(array_filter($old_values, function($old_value) use ($new_id){
+								return (!empty($old_value['id'] && $old_value['id'] == $new_id));
+							}));
+							if(!empty($old_row)){
+								$old_row = $old_row[0];
+							}
+						}
 
-				//print "\ninsert array [$table] ($parent_id=".$values[$parent_id].") ".print_r($new_values, TRUE)."\n";
-				//print "old array [$table]".print_r($old_values, TRUE)."...\n";
+						$value[$parent_id] = $values[$parent_id];
+						$new_row = $this->insertToTable($table, $value, $old_row);
+						$rows[] = $new_row; // don't need to rowToArray it, because insertToTable already did this
+						$new_id = !empty($new_row['id'])?$new_row['id']:NULL;
+						$new_ids[] = $new_id;
+					}
 
-				/**  what we need to do for each value:
-				- remove fields with @values in them (this leaves us with the root values)
-				- if the root values are the same, don't update the root table
-					- recursively update the child tables though
-				*/
-/**				
-				$array_delete = array_filter($old_values, function($check_value) use ($new_values){
-					return (array_search($check_value, $new_values) === FALSE);
-				});
-				print "DELETE these:".print_r($array_delete, TRUE)."\n";
-				print "SAVE these:".print_r($new_values, TRUE)."\n";
-*/
-				foreach($new_values as $value){
-//					$value[$parent_id] = $values[$parent_id];
-					//$rows[] = $this->insertToTable($table, $value); // don't need to rowToArray it, because insertToTable already did this
+					$delete_old = array_filter($old_values, function($old_value) use ($new_ids){
+						return (!empty($old_value['id']) && !in_array($old_value['id'], $new_ids));
+					});
+
+					foreach($delete_old as $old_row){
+						$this->{$table}()->where('id', $old_row['id'])->delete();
+					}
 				}
+				catch (Exception $e){ throw $e; }
+				return !empty($rows)?$rows:NULL;
 			}
-			catch (Exception $e){ throw $e; }
-			return !empty($rows)?$rows:NULL;
+			
 		}
 
 		return NULL;
