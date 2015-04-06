@@ -103,7 +103,7 @@
 				{ "key": "name", "placeholder": "Full Name" },
 				{ "key": "email", "placeholder": "Email address" },
 				{ "key": "phone", "placeholder": "Phone number" },
-				{ "key": "test" },
+				{ "key": "test", "startEmpty": true },
 				{ "key": "roles" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },

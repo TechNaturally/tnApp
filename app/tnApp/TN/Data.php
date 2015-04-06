@@ -432,7 +432,7 @@ class Data extends NotORM {
 					//$this->{$table}->where($parent_id, $values[$parent_id])->fetchPairs
 					
 					$new_values = $values['@values'];
-					$old_values = $old_values['@values'];
+					$old_values = !empty($old_values['@values'])?$old_values['@values']:array();
 					$new_ids = array();
 
 					foreach($new_values as $value){
