@@ -457,10 +457,10 @@ class Data extends NotORM {
 					$delete_old = array_filter($old_values, function($old_value) use ($new_ids){
 						return (!empty($old_value['id']) && !in_array($old_value['id'], $new_ids));
 					});
-
-					foreach($delete_old as $old_row){
-						$this->{$table}()->where('id', $old_row['id'])->delete();
-					}
+					array_walk($delete_old, function(&$old_value){
+						$old_value = $old_value['id'];
+					});
+					$this->{$table}()->where('id', $delete_old)->delete();
 				}
 				catch (Exception $e){ throw $e; }
 				return !empty($rows)?$rows:NULL;
