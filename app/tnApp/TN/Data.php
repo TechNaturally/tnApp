@@ -314,34 +314,22 @@ class Data extends NotORM {
 			//$schema = $schema->properties;
 			
 			$schema = $this->getFields($type, 'save');
-			print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
-			print "*** DATA:".print_r($data, TRUE)."\n";
+			//print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
+			//print "*** DATA:".print_r($data, TRUE)."\n";
 
-			$table_data = $this->dataToTables($type, $data, $schema);
-
-			print "*** TABLED:".print_r($table_data, TRUE)."\n";
-		}
-		
-		
-
-		
-
-/**		if($this->validate($type, $data)){
-			//print "saving $type:".print_r($data, TRUE)."\n";
-
-			if($table_data = $this->dataToTables($type, $data)){
-				try {
+			try {
+				if($table_data = $this->dataToTables($type, $data, $schema)){
 					$this->assert($type);
 					if(!empty($table_data[$type])){
 						$existing_data = NULL;
 						if(isset($data['id'])){
 							if($existing = $this->load($type, array("$type.id"=>$data['id']))){
 								$existing = json_decode(json_encode($existing)); // quick trick that transforms object arrays to stdClass objects
-								$existing_data = $this->dataToTables($type, $existing);
+								$existing_data = $this->dataToTables($type, $existing, $schema);
 								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
 							}
 						}
-						print "save $type:".print_r($table_data, TRUE);
+
 						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
 							if(!empty($entry['id'])){
 								return $this->load($type, array("$type.id" => $entry['id']));
@@ -349,43 +337,19 @@ class Data extends NotORM {
 						}
 					}
 				}
-				catch (Exception $e){ throw $e; }
 			}
-
+			catch (Exception $e){ throw $e; }
 		}
-		else{
-			throw new DataException("Invalid $type data!");
-		}
-		*/
-		return NULL;
-	}
-
-	public function dataToTables2($type, $data, $prefix=''){
-		if($fields = $this->getFields($type, 'save')){
-			$tables = array();
-			print "fields [$type]:".print_r($fields, TRUE)."\n";
-			print "saving [$type] ($prefix) ".print_r($data, TRUE)."\n";
-			foreach($fields as $table_name => $table_fields){
-				$table_data = array();
-				if($table_name == $type){
-
-				}
-				else if(strpos($table_name, $type.'_') === 0){
-				}
-				if(!empty($table_data)){
-					$tables[$table_name] = $table_data;
-				}
-			}
-
-			return $tables;
-		}
+		
 		return NULL;
 	}
 
 	public function insertToTable($table, $values, $old_values){
 		$child_tables = array();
+		$ref_fields = array();
 		$data = array();
 		$old_child_tables = array();
+		$old_ref_fields = array();
 		$old_data = array();
 
 		//print "\ninsert to table $table :".print_r($values, TRUE)." vs ".print_r($old_values, TRUE)."\n";
@@ -400,12 +364,28 @@ class Data extends NotORM {
 						$old_child_tables[$key] = $old_values[$key];
 					}
 				}
+				else if(is_array($value) && !empty(array_filter(array_keys($value), function($field_key){
+							return ($field_key && $field_key[0] == '$');
+						}))){
+					$ref_fields[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_ref_fields[$key] = $old_values[$key];
+					}
+				}
 				else{
 					$data[$key] = $value;
 					if(array_key_exists($key, $old_values)){
 						$old_data[$key] = $old_values[$key];
 					}
 				}
+			}
+
+			print "\ninsert [$table]:".print_r($data, TRUE)."\n";
+			if(!empty($ref_fields)){
+				print "with refs:".print_r($ref_fields, TRUE)."\n";
+			}
+			if(!empty($child_tables)){
+				print "with children:".print_r($child_tables, TRUE)."\n";
 			}
 
 			// first we need to insert the root data so we have the id for child tables to reference
@@ -533,7 +513,7 @@ class Data extends NotORM {
 						$array_data[] = $array_row[$table_key];
 					}
 				}
-				$flat[$table][$table_key] = $array_data;
+				$flat[$table][$table_key] = array('@values' => $array_data);
 			}
 			else{
 				print "JANKY [$table] [$key]\n";
