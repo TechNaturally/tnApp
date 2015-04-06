@@ -77,9 +77,11 @@ angular.module('tnApp.user')
 					delete user.loaded;
 				}
 				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
-					angular.forEach(user, function(value, key){
-						data.list[user.id][key] = value;
-					});
+					if(res.user){
+						angular.forEach(res.user, function(value, key){
+							data.list[user.id][key] = value;
+						});
+					}
 					defer.resolve('User saved.');
 
 				}, function(reason){ defer.reject(reason); });				
