@@ -1028,6 +1028,7 @@ class Data extends NotORM {
 				}
 				if($field){
 					$field = $this->schemaArrayIds($field, $field_id);
+					$field = $this->schemaResolveRefs($field);
 					$filtered_schema->properties->{$field_id} = $field;
 				}
 			}
@@ -1037,10 +1038,52 @@ class Data extends NotORM {
 		return NULL;
 	}
 
+	private function schemaResolveRefs($field){
+		if(!empty($field->type)){
+			if($field->type == 'array' && !empty($field->items)){
+				if(!empty($field->items->type) && $field->items->type == 'object'){
+					$field->items = $this->schemaResolveRefs($field->items);
+				}
+			}
+			else if($field->type == 'object' && !empty($field->properties)){
+				foreach($field->properties as $field_prop_id => $field_prop){
+					if(!empty($field_prop->{'$ref'}) || (!empty($field_prop->type) && ($field_prop->type == 'object' || $field_prop->type == 'array'))){
+						$field->properties->{$field_prop_id} = $this->schemaResolveRefs($field_prop);
+					}
+				}
+			}
+		}
+		else if(!empty($field->{'$ref'})){
+			$new_field = new stdClass;
+			if(!empty($field->title)){
+				$new_field->title = $field->title;
+			}
+			$new_field->type = "object";
+			$new_field->properties = array();
+			$new_field->properties['id'] = $field;
+
+			$ref_str = $field->{'$ref'};
+			if($ref_str[0] == '/'){
+				$ref_str = substr($ref_str, 1);
+			}
+			$ref_split = explode('/', $ref_str, 2);
+			$ref_table = $ref_split[0];
+			if($ref_table){
+				if($ref_schema = $this->getSchema($ref_table, 'input')){
+					if(!empty($ref_schema->properties)){
+						$new_field->properties = (object)array_merge($new_field->properties, (array)($ref_schema->properties));
+					}
+				}
+			}
+			$field = $new_field;
+		}
+		return $field;
+	}
+
 	private function schemaArrayIds($field, $field_id){
 		if(!empty($field->type)){
 			if($field->type == 'array' && !empty($field->items)){
-				if($field->items->type == 'object'){
+				if(!empty($field->items->type) && $field->items->type == 'object'){
 					if(empty($field->items->properties->id)){
 						$field->items->properties->id = (object)array("type" => "string");
 					}
@@ -1055,7 +1098,7 @@ class Data extends NotORM {
 			}
 			else if($field->type == 'object' && !empty($field->properties)){
 				foreach($field->properties as $field_prop_id => $field_prop){
-					if($field_prop->type == 'object' || $field_prop->type == 'array'){
+					if(!empty($field_prop->type) && ($field_prop->type == 'object' || $field_prop->type == 'array')){
 						$field->properties->{$field_prop_id} = $this->schemaArrayIds($field_prop, $field_prop_id);
 					}
 				}
