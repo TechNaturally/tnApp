@@ -309,8 +309,26 @@ class Data extends NotORM {
 	}
 
 	public function save($type, $data){
-		if($this->validate($type, $data)){
-			print "saving $type:".print_r($data, TRUE)."\n";
+		$schema = $this->getSchema($type);
+		if($schema && !empty($schema->properties)){
+			//$schema = $schema->properties;
+			
+			$schema = $this->getFields($type, 'save');
+			print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
+			print "*** DATA:".print_r($data, TRUE)."\n";
+
+			$table_data = $this->dataToTables($type, $data, $schema);
+
+			print "*** TABLED:".print_r($table_data, TRUE)."\n";
+		}
+		
+		
+
+		
+
+/**		if($this->validate($type, $data)){
+			//print "saving $type:".print_r($data, TRUE)."\n";
+
 			if($table_data = $this->dataToTables($type, $data)){
 				try {
 					$this->assert($type);
@@ -323,6 +341,7 @@ class Data extends NotORM {
 								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
 							}
 						}
+						print "save $type:".print_r($table_data, TRUE);
 						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
 							if(!empty($entry['id'])){
 								return $this->load($type, array("$type.id" => $entry['id']));
@@ -332,9 +351,33 @@ class Data extends NotORM {
 				}
 				catch (Exception $e){ throw $e; }
 			}
+
 		}
 		else{
 			throw new DataException("Invalid $type data!");
+		}
+		*/
+		return NULL;
+	}
+
+	public function dataToTables2($type, $data, $prefix=''){
+		if($fields = $this->getFields($type, 'save')){
+			$tables = array();
+			print "fields [$type]:".print_r($fields, TRUE)."\n";
+			print "saving [$type] ($prefix) ".print_r($data, TRUE)."\n";
+			foreach($fields as $table_name => $table_fields){
+				$table_data = array();
+				if($table_name == $type){
+
+				}
+				else if(strpos($table_name, $type.'_') === 0){
+				}
+				if(!empty($table_data)){
+					$tables[$table_name] = $table_data;
+				}
+			}
+
+			return $tables;
 		}
 		return NULL;
 	}
@@ -444,12 +487,60 @@ class Data extends NotORM {
 		return TRUE;
 	}
 
-	public function dataToTables($prefix, $data){
+	public function dataToTables($table, $data, $schema){
 		$flat = array();
-		$flat[$prefix] = array();
+		$flat[$table] = array();
+
+		if(!isset($schema[$table])){
+			print "missing schema [$table]\n";
+			$schema[$table] = array();
+		}
+		
 		foreach($data as $key => $value){
+			// TODO: add data access check
+			// TODO: add validation
+
+			$field_key = NULL;
+			if(array_key_exists($key, $schema[$table])){
+				$field_key = $key;
+			}
+			else if(strpos($table, '_') !== FALSE){
+				$field_base = substr($table, strrpos($table, '_')+1);
+				if(array_key_exists($field_base.'_'.$key, $schema[$table])){
+					$field_key = $field_base.'_'.$key;
+				}
+			}
+
+			$field_schema = !empty($field_key)?$schema[$table][$field_key]:NULL;
+
+			if($field_schema && !empty($field_schema->type)){
+				// field found in the table schema
+				if($field_schema->type == 'ref'){
+					// reference fields are special
+					$flat[$table][$field_key] = array("$$field_schema->table" => $value);
+				}
+				else{
+					$flat[$table][$field_key] = $value;
+				}
+			}
+			else if(array_key_exists($table.'_'.$key, $schema)){
+				// array fields have their own table schema
+				$table_key = $table.'_'.$key;
+				$array_data = array();
+				foreach($value as $array_value){
+					$array_row = $this->dataToTables($table_key, $array_value, $schema);
+					if(isset($array_row[$table_key])){
+						$array_data[] = $array_row[$table_key];
+					}
+				}
+				$flat[$table][$table_key] = $array_data;
+			}
+			else{
+				print "JANKY [$table] [$key]\n";
+			}
+/**
 			if(is_object($value)){
-				$flat_obj = $this->dataToTables($key, $value);
+				$flat_obj = $this->dataToTables($key, $value, $schema);
 				foreach($flat_obj as $flat_table => $flat_values){
 					foreach($flat_values as $flat_key => $flat_value){
 						if(is_array($flat_value)){
@@ -465,8 +556,12 @@ class Data extends NotORM {
 				$array_data = array();
 				foreach($value as $array_value){
 					if(is_object($array_value)){
+						$array_data_prefix = '';
+						if(isset($array_value->id)){
+
+						}
 						$array_data_val = array();
-						$flat_obj = $this->dataToTables($key, $array_value);
+						$flat_obj = $this->dataToTables($key, $array_value, $schema);
 						foreach($flat_obj as $flat_table => $flat_values){
 							foreach($flat_values as $flat_key => $flat_value){
 								if(is_array($flat_value)){
@@ -494,7 +589,9 @@ class Data extends NotORM {
 			else{
 				$flat[$prefix][$key] = $value;
 			}
+			*/
 		}
+		//print "flattened:[$prefix] =>".print_r($flat, true)."\n";
 		return $flat;
 	}
 
