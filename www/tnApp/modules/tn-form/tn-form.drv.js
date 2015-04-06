@@ -48,7 +48,7 @@ angular.module('tnApp.form')
 				});
 				if($scope.defaults){
 					angular.forEach($scope.defaults, function(value, key){
-						input[key] = value;
+						input[key] = angular.copy(value);
 					});
 				}
 				
@@ -66,7 +66,6 @@ angular.module('tnApp.form')
 				if(angular.isFunction($scope.go)){
 					$scope.go();
 				}
-
 				$scope.reset();
 				if(angular.isDefined($scope.$parent.input) && $scope.input !== $scope.$parent.input){
 					$scope.reset($scope.$parent.input);
@@ -128,9 +127,10 @@ angular.module('tnApp.form')
 			}
 			else{
 				angular.forEach(scope.defaults, function(value, key){
-					scope.input[key] = value;
+					scope.input[key] = angular.copy(value);
 				});
 			}
+			
 			if(angular.isUndefined(scope.input['#forms'])){
 				scope.input['#forms'] = {};
 			}
