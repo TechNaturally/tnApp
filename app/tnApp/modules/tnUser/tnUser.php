@@ -78,12 +78,6 @@ function user_get_user($tn, $args){
 
 function user_save_user($tn, $user){
 	try{
-		if(!empty($user['auth'])){
-			// TODO: update referenced auth? maybe in the Data saver for reference fields?
-			if(!empty($user['auth']->id)){
-				$user['auth'] = $user['auth']->id;
-			}
-		}
 		if($user = $tn->data->save('user', $user)){
 			return $user;
 		}
