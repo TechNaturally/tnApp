@@ -81,17 +81,21 @@ angular.module('tnApp.user')
 					delete user.loaded;
 				}
 				if(angular.isDefined(user.auth)){
-					if(user.auth.password){
-						user.auth.password = hash_password(user.auth.password, user.auth.username);
-					}
+					var old_user = angular.isDefined(data.list[user.id])?data.list[user.id]:null;
 					if(user.auth.new_password){
 						user.auth.new_password = hash_password(user.auth.new_password, user.auth.username);
 					}
+					else if(user.auth.username != old_user.auth.username){
+						user.auth.new_password = hash_password(user.auth.password, user.auth.username);
+					}
+					if(user.auth.password){
+						user.auth.password = hash_password(user.auth.password, old_user?old_user.auth.username:user.auth.username);
+					}
+
 					if(user.auth.new_password_confirm){
 						// validation has confirmed they are the same, so don't pass the new password confirmation
 						delete user.auth.new_password_confirm;
 					}
-					console.log('Saving with auth:'+angular.toJson(user.auth,true));
 				}
 				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
 					if(res.user){

@@ -213,6 +213,39 @@ function auth_available_get($tn){
 	$tn->app->render($res_code, $res);
 }
 
+function auth_presave(&$value, $old_value, $data){
+	$changed = FALSE;
+	if(is_object($old_value)){
+		$old_value = (array)$old_value;
+	}
+	if(!empty($old_value) && !empty($value) && !empty($old_value['username'])){
+		$check_passwords = (!empty($value['new_password']) || (!empty($value['username']) && !empty($old_value['username']) && $value['username'] != $old_value['username']));
+		if($check_passwords){
+			$passes = TRUE;
+			if(empty($value['password'])){
+				$passes = FALSE;
+			}
+			else{
+				if($auth = $data->loadFields('auth', array('username' => $old_value['username']), array('username', 'hash'))){
+					if(empty($auth['hash']) || !auth_password_check($value['password'], $auth['hash'])){
+						$passes = FALSE;
+					}
+				}
+			}
+
+			if(!$passes){
+				throw new Exception('You must enter your current password to change account information.');
+			}
+
+			if(!empty($value['new_password'])){
+				$value['hash'] = auth_password_hash($value['new_password']);
+				$changed = TRUE;
+			}
+		}
+	}
+	return $changed;
+}
+
 function auth_username_exists($tn, $username){
 	if($username){
 		try{
