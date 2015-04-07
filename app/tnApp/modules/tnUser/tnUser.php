@@ -60,9 +60,9 @@ function user_profile_put($tn, $id){
 			}
 		}catch(Exception $e){
 			$res['msg'] = $e->getMessage();
+			$res['error'] = TRUE;
 		}
 	}
-	
 	$tn->app->render($res_code, $res);
 }
 
