@@ -1,9 +1,13 @@
 angular.module('tnApp.user')
-.factory('User', ['$q', 'API', function($q, API){
+.factory('User', ['$q', 'API', '$crypthmac', function($q, API, $crypthmac){
 	var data = {
 		list: {},
 		schema: null
 	};
+
+	function hash_password(password, username){
+		return $crypthmac.encrypt(password, username);
+	}
 
 	var api = {
 		loadSchema: function(){
@@ -75,6 +79,19 @@ angular.module('tnApp.user')
 				user = angular.copy(user);
 				if(angular.isDefined(user.loaded)){
 					delete user.loaded;
+				}
+				if(angular.isDefined(user.auth)){
+					if(user.auth.password){
+						user.auth.password = hash_password(user.auth.password, user.auth.username);
+					}
+					if(user.auth.new_password){
+						user.auth.new_password = hash_password(user.auth.new_password, user.auth.username);
+					}
+					if(user.auth.new_password_confirm){
+						// validation has confirmed they are the same, so don't pass the new password confirmation
+						delete user.auth.new_password_confirm;
+					}
+					console.log('Saving with auth:'+angular.toJson(user.auth,true));
 				}
 				API.put('/user/'+user.id, {data: {user: user}}).then(function(res){
 					if(res.user){
