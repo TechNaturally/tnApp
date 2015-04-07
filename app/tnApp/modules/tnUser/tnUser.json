@@ -100,11 +100,20 @@
 			"callback": "profile",
 			"methods": { "GET": true, "PUT": true },
 			"form": [
-				{ "key": "name", "placeholder": "Full Name" },
-				{ "key": "email", "placeholder": "Email address" },
-				{ "key": "phone", "placeholder": "Phone number" },
-				{ "key": "test", "startEmpty": true },
-				{ "key": "roles" },
+				{ "type": "fieldset", "title": "Account", "items": [
+					{ "key": "auth.password", "title": "Current Password", "type": "password" },
+					{ "key": "auth.username", "type": "new-username" },
+					{ "key": "auth.email" },
+					{ "key": "auth.new_password", "title": "New Password", "type": "password" },
+					{ "key": "auth.new_password_confirm", "title": "Confirm New Password", "type": "password-confirm", "condition": "model.auth.new_password" } 
+				]},
+				{ "type": "fieldset", "title": "Profile", "items": [
+					{ "key": "name", "placeholder": "Full Name" },
+					{ "key": "email", "placeholder": "Email address" },
+					{ "key": "phone", "placeholder": "Phone number" },
+					{ "key": "test", "startEmpty": true },
+					{ "key": "roles" }
+				]},
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
 						{ "type": "button", "style": "btn-warning", "title": "Reset", "onClick": "reset()" }
