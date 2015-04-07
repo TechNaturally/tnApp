@@ -341,6 +341,7 @@ class Data extends NotORM {
 	}
 
 	public function insertToTable($table, $values, $old_values){
+		$old_values = !empty($old_values)?$old_values:array();
 		$child_tables = array();
 		$ref_fields = array();
 		$data = array();
@@ -408,7 +409,6 @@ class Data extends NotORM {
 				}
 			}
 			catch (Exception $e){ throw $e; }
-
 			return $row;
 		}
 		else{
@@ -461,9 +461,7 @@ class Data extends NotORM {
 				catch (Exception $e){ throw $e; }
 				return !empty($rows)?$rows:NULL;
 			}
-			
 		}
-
 		return NULL;
 	}
 
@@ -479,7 +477,6 @@ class Data extends NotORM {
 		$flat[$table] = array();
 
 		if(!isset($schema[$table])){
-			print "missing schema [$table]\n";
 			$schema[$table] = array();
 		}
 		
@@ -515,6 +512,9 @@ class Data extends NotORM {
 				$table_key = $table.'_'.$key;
 				$array_data = array();
 				foreach($value as $array_value){
+					if(!is_array($array_value)){
+						$array_value = array($key => $array_value);
+					}
 					$array_row = $this->dataToTables($table_key, $array_value, $schema);
 					if(isset($array_row[$table_key])){
 						$array_data[] = $array_row[$table_key];
@@ -523,60 +523,8 @@ class Data extends NotORM {
 				$flat[$table][$table_key] = array('@values' => $array_data);
 			}
 			else{
-				print "JANKY [$table] [$key]\n";
+				//print "JANKY [$table] [$key]\n";
 			}
-/**
-			if(is_object($value)){
-				$flat_obj = $this->dataToTables($key, $value, $schema);
-				foreach($flat_obj as $flat_table => $flat_values){
-					foreach($flat_values as $flat_key => $flat_value){
-						if(is_array($flat_value)){
-							$flat[$prefix][$prefix.'_'.$flat_key] = $flat_value;
-						}
-						else{
-							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
-						}
-					}
-				}
-			}
-			else if(is_array($value)){
-				$array_data = array();
-				foreach($value as $array_value){
-					if(is_object($array_value)){
-						$array_data_prefix = '';
-						if(isset($array_value->id)){
-
-						}
-						$array_data_val = array();
-						$flat_obj = $this->dataToTables($key, $array_value, $schema);
-						foreach($flat_obj as $flat_table => $flat_values){
-							foreach($flat_values as $flat_key => $flat_value){
-								if(is_array($flat_value)){
-									$array_data_val[$prefix.'_'.$flat_key] = $flat_value;
-								}
-								else{
-									$array_data_val[$key.'_'.$flat_key] = $flat_value;
-								}
-							}
-						}
-						$array_data[] = $array_data_val;
-					}
-					else if(is_array($array_value)){
-						// we should never have an array of array
-						// child arrays should always be embedded as object properties
-					}
-					else{
-						$array_data_val = array();
-						$array_data_val[$key] = $array_value;
-						$array_data[] = $array_data_val;
-					}
-				}
-				$flat[$prefix][$prefix.'_'.$key] = array('@values' => $array_data);
-			}
-			else{
-				$flat[$prefix][$key] = $value;
-			}
-			*/
 		}
 		//print "flattened:[$prefix] =>".print_r($flat, true)."\n";
 		return $flat;
