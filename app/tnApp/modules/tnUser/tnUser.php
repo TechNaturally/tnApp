@@ -86,4 +86,16 @@ function user_save_user($tn, $user){
 	return NULL;
 }
 
+function user_email_exists($tn, $email){
+	if($email){
+		try{
+			$tn->data->assert('user');
+			$user = $tn->data->user()->where('email', $email)->fetch();
+			return !empty($user);
+		}
+		catch(Exception $e){}
+	}
+	return FALSE;
+}
+
 ?>

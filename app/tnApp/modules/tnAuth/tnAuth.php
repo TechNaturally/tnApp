@@ -5,7 +5,13 @@ function auth_session_start($user){
 		return $_SESSION['user'];
 	}
 	if(!empty($user['id']) && isset($user['roles'])){
-		$_SESSION['user'] = array( "id" => $user['id'], "roles" => $user['roles'] );
+		$roles = array();
+		foreach($user['roles'] as $role){
+			if(!empty($role['roles'])){
+				$roles[] = $role['roles'];
+			}
+		}
+		$_SESSION['user'] = array( "id" => $user['id'], "roles" => $roles );
 		return auth_session_check();
 	}
 	return NULL;
@@ -34,10 +40,15 @@ function auth_assert_user($tn, $auth){
 			catch(\TN\DataMissingException $e){
 				// TODO: default roles? - should be in app's config.json - do we check in user_save_user for new users?
 				if(function_exists('user_save_user')){
+					$email = $auth['email'];
+					$name = $auth['username'];
+					if($name == $email){
+						$name = ucfirst(substr($name, 0, strpos($name, '@')));
+					}
 					return user_save_user($tn, array(
-						'auth' => $auth['id'],
-						'email' => $auth['email'],
-						'name' => $auth['username'],
+						'auth' => array('id' => $auth['id']),
+						'email' => $email,
+						'name' => $name,
 						'roles' => array('admin', 'test')
 						));
 				}
@@ -47,32 +58,6 @@ function auth_assert_user($tn, $auth){
 	catch(Exception $e) { throw $e; }
 
 	return NULL;
-}
-
-function auth_load_get($tn, $id){
-	$res = array();
-	$res_code = 200;
-
-	try{
-		print "\n";
-
-		$auth = $tn->data->load('auth', array('auth.id' => $id));
-		if($auth){
-			print "*** GOT AUTH #$id:".print_r($auth, TRUE)."\n";
-
-		}
-		else{
-			$res['msg'] = 'Auth not found.';
-		}
-
-	}catch(Exception $e){
-		// EXAMPLE OF ERROR BUBBLING
-		$res_code = 500;
-		$res['msg'] = $e->getMessage();
-		$res['error'] = TRUE;	
-	}
-
-	$tn->app->render($res_code, $res);
 }
 
 function auth_ping_post($tn){
@@ -95,7 +80,7 @@ function auth_login_post($tn){
 		$tn->data->assert('auth');
 		$req = json_decode($tn->app->request->getBody());
 		if(!empty($req->username) && !empty($req->password)){
-			$auth = $tn->data->loadFields('auth', array('username' => $req->username), array('username', 'email', 'hash'));
+			$auth = $tn->data->loadFields('auth', array('username' => $req->username), array('username', 'hash'));
 			if($auth){
 				if(auth_password_check($req->password, $auth['hash'])){
 					unset($auth['hash']);
@@ -164,11 +149,11 @@ function auth_register_post($tn){
 
 		$auth = array(
 			"username" => $username,
-			"hash" => auth_password_hash($req->password),
-			"email" => $email
+			"hash" => auth_password_hash($req->password)
 			);
 		if($auth = $tn->data->save('auth', $auth)){
-			$res['msg'] = "Created auth:<pre>".print_r($auth, TRUE)."</pre>\n";
+			$res['msg'] = "Account created!\n";
+			$auth['email'] = $email;
 			if($user = auth_assert_user($tn, $auth)){
 				if($session = auth_session_start($user)){
 					$res['session'] = $session;
@@ -230,20 +215,24 @@ function auth_available_get($tn){
 
 function auth_username_exists($tn, $username){
 	if($username){
-		$auth = $tn->data->auth()->where('username', $username)->fetch();
-		return !empty($auth);
+		try{
+			$tn->data->assert('auth');
+			$auth = $tn->data->auth()->where('username', $username)->fetch();
+			return !empty($auth);
+		}
+		catch(Exception $e){}
 	}
 	return FALSE;
 }
 
 function auth_email_exists($tn, $email){
 	if($email){
-		$auth = $tn->data->auth()->where('email', $email)->fetch();
-		return !empty($auth);
+		if(function_exists("user_email_exists")){
+			return user_email_exists($tn, $email);
+		}
 	}
 	return FALSE;
 }
-
 
 function auth_valid_email($username){
 	return (function_exists('email_is_valid') && email_is_valid($username));
