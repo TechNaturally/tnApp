@@ -46,7 +46,7 @@ function auth_assert_user($tn, $auth){
 						$name = ucfirst(substr($name, 0, strpos($name, '@')));
 					}
 					return user_save_user($tn, array(
-						'auth' => array('id' => $auth['id']),
+						'auth' => (object)array('id' => $auth['id']),
 						'email' => $email,
 						'name' => $name,
 						'roles' => array('admin', 'test')
