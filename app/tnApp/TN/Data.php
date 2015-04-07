@@ -4,6 +4,8 @@ namespace TN;
 use PDO, NotORM, NotORM_Row, NotORM_Structure_Convention, SchemaStore, Exception, stdClass, Jsv4;
 
 class DataException extends Exception{}
+class DataInvalidException extends DataException{}
+class DataMissingException extends DataException{}
 
 class DataRow extends NotORM_Row {
 	public function getRow(){
@@ -133,13 +135,23 @@ class Data extends NotORM {
 		return array();
 	}
 
+	public function loadFields($type, $args, $fields){
+		try{
+			if(!empty($fields)){
+				$tables = $this->getFields($type, 'read', $fields);
+				return $this->load($type, $args, $tables);
+			}
+		}
+		catch(Exception $e){ throw $e; }
+		return NULL;
+	}
+
 	public function load($type, $args, $tables=NULL){
 		try{
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
 			if(!empty($args) && !empty($tables)){
-				//print "\nloading $type with tables: ".print_r($tables,true)."\n";
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -221,10 +233,6 @@ class Data extends NotORM {
 						// load all the array rows into the $array_data
 						while($array_row = $query->fetch()){
 							$array_row_data = $this->rowToArray($array_row);
-							
-							// we don't need the array row's id or the link back to this row
-							unset($array_row_data['id']);
-							unset($array_row_data[$row_type.'_id']);
 
 							// compile the row into an object
 							$array_row_data = $this->compileObject($array_row_data);
@@ -249,19 +257,35 @@ class Data extends NotORM {
 								}
 							}
 
+							$item_id = NULL;
 							if(is_array($array_row_data)){
+								if(!empty($array_row_data['id'])){
+									$item_id = $array_row_data['id'];
+									unset($array_row_data['id']);
+								}
+
+								// make sure all array items load their id's into good objects
 								if(array_key_exists($field_name, $array_row_data)){
 									// if the array data is a single-field value (ie. not an object), just use the value
-									$array_row_data = $array_row_data[$field_name];
+									if(is_array($array_row_data[$field_name])){
+										$array_row_data = $array_row_data[$field_name];
+										$array_row_data['id'] = $item_id;
+									}
+									else{
+										$array_row_data = array('id' => $item_id, $field_name => $array_row_data[$field_name]);
+									}
+									
 								}
 								else if(count($array_row_data) == 1){
 									// if it has only one field value, do special processing, because it might still be a single-field value
 									$single_key = array_keys($array_row_data)[0];
 									
+									// TODO: does this happen any more?
+
 									// if the field_name ends with the name of the single value,
 									// it is an array within an object
 									if(($temp = strlen($field_name) - strlen($single_key)) >= 0 && strpos($field_name, $single_key, $temp) !== FALSE){
-										$array_row_data = $array_row_data[$single_key];
+										$array_row_data = array('id' => $item_id, $single_key => $array_row_data[$single_key]);
 									}
 								}
 							}
@@ -272,7 +296,7 @@ class Data extends NotORM {
 					}
 
 					// resulting array
-					$row_data[$field_name.'s'] = $array_data;
+					$row_data[$field_name] = $array_data;
 				}
 			}
 		}
@@ -281,75 +305,166 @@ class Data extends NotORM {
 	}
 
 	public function save($type, $data){
-		print "\n";
-		if($this->validate($type, $data)){
-			if($table_data = $this->dataToTables($type, $data)){
-				try {
-					$this->assert($type);
-				}
-				catch (Exception $e){ throw $e; }
-
-				if(!empty($table_data[$type])){
-					print "saving $type ".print_r($table_data, TRUE)."\n";
-					$this->insertToTable($type, $table_data[$type]);
-				}
-				
-
-				
-			}
+		$schema = $this->getSchema($type);
+		if($schema && !empty($schema->properties)){
+			//$schema = $schema->properties;
 			
-		}
-		else{
-			throw new DataException("Invalid $type data!");
+			$schema = $this->getFields($type, 'save');
+			//print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
+			//print "*** DATA:".print_r($data, TRUE)."\n";
+
+			try {
+				if($table_data = $this->dataToTables($type, $data, $schema)){
+					$this->assert($type);
+					if(!empty($table_data[$type])){
+						$existing_data = NULL;
+						if(isset($data['id'])){
+							if($existing = $this->load($type, array("$type.id"=>$data['id']))){
+								$existing = json_decode(json_encode($existing)); // quick trick that transforms object arrays to stdClass objects
+								$existing_data = $this->dataToTables($type, $existing, $schema);
+								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
+							}
+						}
+
+						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
+							if(!empty($entry['id'])){
+								return $this->load($type, array("$type.id" => $entry['id']));
+							}
+						}
+					}
+				}
+			}
+			catch (Exception $e){ throw $e; }
 		}
 		
 		return NULL;
 	}
 
-	public function insertToTable($table, $values){
+	public function insertToTable($table, $values, $old_values){
 		$child_tables = array();
+		$ref_fields = array();
 		$data = array();
+		$old_child_tables = array();
+		$old_ref_fields = array();
+		$old_data = array();
 
+		//print "\ninsert to table $table :".print_r($values, TRUE)." vs ".print_r($old_values, TRUE)."\n";
+
+		// check if we are handling an array of values for a given parent_id
 		if(!array_key_exists('@values', $values)){
 			// sort out which values are tables and which go into this table
 			foreach($values as $key => $value){
 				if(strpos($key, $table.'_') === 0){
 					$child_tables[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_child_tables[$key] = $old_values[$key];
+					}
+				}
+				else if(is_array($value) && !empty(array_filter(array_keys($value), function($field_key){
+							return ($field_key && $field_key[0] == '$');
+						}))){
+					$ref_fields[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_ref_fields[$key] = $old_values[$key];
+					}
 				}
 				else{
 					$data[$key] = $value;
+					if(array_key_exists($key, $old_values)){
+						$old_data[$key] = $old_values[$key];
+					}
 				}
+			}
+
+			//print "\ninsert [$table]:".print_r($data, TRUE)."\n";
+			if(!empty($ref_fields)){
+			//	print "with refs:".print_r($ref_fields, TRUE)."\n";
+			//	print "old refs:".print_r($old_ref_fields, TRUE)."\n";
+			}
+			if(!empty($child_tables)){
+			//	print "with children:".print_r($child_tables, TRUE)."\n";
 			}
 
 			// first we need to insert the root data so we have the id for child tables to reference
 			$row = NULL;
-			if(!empty($data['id'])){
-				$row = $this->{$table}()->where('id', $data['id'])->update($data);
-			}
-			else{
-				$row = $this->{$table}()->insert($data);
-			}
-
-			if($row){
-				$row = $row->getRow();
-				if(!empty($row['id'])){
-					foreach($child_tables as $child_table => $child_values){
-						$child_values[$table.'_id'] = $row['id'];
-						$this->insertToTable($child_table, $child_values);
+			try{
+				if(!empty($data['id'])){
+					$row = $this->{$table}()->where('id', $data['id']);
+					$row->update($data);
+					$row = $row->fetch();
+				}
+				else{
+					$row = $this->{$table}()->insert($data);
+				}
+			
+				if($row){
+					$row = $this->rowToArray($row);
+					if(!empty($row['id'])){
+						foreach($child_tables as $child_table => $child_values){
+							$child_values[$table.'_id'] = $row['id'];
+							$child_rows = $this->insertToTable($child_table, $child_values, !empty($old_child_tables[$child_table])?$old_child_tables[$child_table]:NULL);
+						}
 					}
-				}			
+				}
 			}
+			catch (Exception $e){ throw $e; }
+
+			return $row;
 		}
 		else{
+			// it's an array of values
+			// detect what the parent_id is called and what its value is - it is whatever key is not @values
 			$parent_id = array_filter(array_keys($values), function($key){ return ($key != '@values'); });
 			if(!empty($parent_id)){
 				$parent_id = array_shift($parent_id);
 			}
-			foreach($values['@values'] as $value){
-				$value[$parent_id] = $values[$parent_id];
-				$this->insertToTable($table, $value);
+			if($parent_id){
+				$rows = array();
+				try{
+					// insert each array row, assinging the parent id, recursively using insertToTable to support grandchild tables
+					// for cases where the value has an id, insertToTable will update it
+					// for cases where values have no id, don't duplicate
+					// also be sure to remove any existing items that are not in the array
+					//$this->{$table}->where($parent_id, $values[$parent_id])->fetchPairs
+					
+					$new_values = $values['@values'];
+					$old_values = !empty($old_values['@values'])?$old_values['@values']:array();
+					$new_ids = array();
+
+					foreach($new_values as $value){
+						$new_id = !empty($value['id'])?$value['id']:NULL;
+						$old_row = array();
+						if($new_id){
+							$old_row = array_values(array_filter($old_values, function($old_value) use ($new_id){
+								return (!empty($old_value['id'] && $old_value['id'] == $new_id));
+							}));
+							if(!empty($old_row)){
+								$old_row = $old_row[0];
+							}
+						}
+
+						$value[$parent_id] = $values[$parent_id];
+						$new_row = $this->insertToTable($table, $value, $old_row);
+						$rows[] = $new_row; // don't need to rowToArray it, because insertToTable already did this
+						$new_id = !empty($new_row['id'])?$new_row['id']:NULL;
+						$new_ids[] = $new_id;
+					}
+
+					$delete_old = array_filter($old_values, function($old_value) use ($new_ids){
+						return (!empty($old_value['id']) && !in_array($old_value['id'], $new_ids));
+					});
+					array_walk($delete_old, function(&$old_value){
+						$old_value = $old_value['id'];
+					});
+					$this->{$table}()->where('id', $delete_old)->delete();
+				}
+				catch (Exception $e){ throw $e; }
+				return !empty($rows)?$rows:NULL;
 			}
+			
 		}
+
+		return NULL;
 	}
 
 	public function validate($type, $data){
@@ -359,12 +474,60 @@ class Data extends NotORM {
 		return TRUE;
 	}
 
-	public function dataToTables($prefix, $data){
+	public function dataToTables($table, $data, $schema){
 		$flat = array();
-		$flat[$prefix] = array();
+		$flat[$table] = array();
+
+		if(!isset($schema[$table])){
+			print "missing schema [$table]\n";
+			$schema[$table] = array();
+		}
+		
 		foreach($data as $key => $value){
+			// TODO: add data access check
+			// TODO: add validation
+
+			$field_key = NULL;
+			if(array_key_exists($key, $schema[$table])){
+				$field_key = $key;
+			}
+			else if(strpos($table, '_') !== FALSE){
+				$field_base = substr($table, strrpos($table, '_')+1);
+				if(array_key_exists($field_base.'_'.$key, $schema[$table])){
+					$field_key = $field_base.'_'.$key;
+				}
+			}
+
+			$field_schema = !empty($field_key)?$schema[$table][$field_key]:NULL;
+
+			if($field_schema && !empty($field_schema->type)){
+				// field found in the table schema
+				if($field_schema->type == 'ref'){
+					// reference fields are special
+					$flat[$table][$field_key] = array("$$field_schema->table" => $value);
+				}
+				else{
+					$flat[$table][$field_key] = $value;
+				}
+			}
+			else if(array_key_exists($table.'_'.$key, $schema)){
+				// array fields have their own table schema
+				$table_key = $table.'_'.$key;
+				$array_data = array();
+				foreach($value as $array_value){
+					$array_row = $this->dataToTables($table_key, $array_value, $schema);
+					if(isset($array_row[$table_key])){
+						$array_data[] = $array_row[$table_key];
+					}
+				}
+				$flat[$table][$table_key] = array('@values' => $array_data);
+			}
+			else{
+				print "JANKY [$table] [$key]\n";
+			}
+/**
 			if(is_object($value)){
-				$flat_obj = $this->dataToTables($key, $value);
+				$flat_obj = $this->dataToTables($key, $value, $schema);
 				foreach($flat_obj as $flat_table => $flat_values){
 					foreach($flat_values as $flat_key => $flat_value){
 						if(is_array($flat_value)){
@@ -380,8 +543,12 @@ class Data extends NotORM {
 				$array_data = array();
 				foreach($value as $array_value){
 					if(is_object($array_value)){
+						$array_data_prefix = '';
+						if(isset($array_value->id)){
+
+						}
 						$array_data_val = array();
-						$flat_obj = $this->dataToTables($key, $array_value);
+						$flat_obj = $this->dataToTables($key, $array_value, $schema);
 						foreach($flat_obj as $flat_table => $flat_values){
 							foreach($flat_values as $flat_key => $flat_value){
 								if(is_array($flat_value)){
@@ -409,13 +576,15 @@ class Data extends NotORM {
 			else{
 				$flat[$prefix][$key] = $value;
 			}
+			*/
 		}
+		//print "flattened:[$prefix] =>".print_r($flat, true)."\n";
 		return $flat;
 	}
 
 	public function rowToArray($row){
 		// transposes a NotORM row object into a simple array of the data
-		return $row->getRow();
+		return !empty($row)?$row->getRow():array();
 	}
 
 	public function getArrayRowValue($array_row, $array_name, $exclude_fields){
@@ -731,8 +900,6 @@ class Data extends NotORM {
 									$result[$object_table_name] = array();
 								}
 
-								
-
 								// build a name of this array field
 								$object_name = str_replace($type."_", '', $object_table_name);
 								$use_table = in_array(str_replace('_', '.', $object_name), $field_ids);
@@ -853,10 +1020,11 @@ class Data extends NotORM {
 							}
 
 						}
-
 					}
 				}
 				if($field){
+					$field = $this->schemaArrayIds($field, $field_id);
+					$field = $this->schemaResolveRefs($field);
 					$filtered_schema->properties->{$field_id} = $field;
 				}
 			}
@@ -864,6 +1032,75 @@ class Data extends NotORM {
 		}
 
 		return NULL;
+	}
+
+	private function schemaResolveRefs($field){
+		if(!empty($field->type)){
+			if($field->type == 'array' && !empty($field->items)){
+				if(!empty($field->items->type) && $field->items->type == 'object'){
+					$field->items = $this->schemaResolveRefs($field->items);
+				}
+			}
+			else if($field->type == 'object' && !empty($field->properties)){
+				foreach($field->properties as $field_prop_id => $field_prop){
+					if(!empty($field_prop->{'$ref'}) || (!empty($field_prop->type) && ($field_prop->type == 'object' || $field_prop->type == 'array'))){
+						$field->properties->{$field_prop_id} = $this->schemaResolveRefs($field_prop);
+					}
+				}
+			}
+		}
+		else if(!empty($field->{'$ref'})){
+			$new_field = new stdClass;
+			if(!empty($field->title)){
+				$new_field->title = $field->title;
+			}
+			$new_field->type = "object";
+			$new_field->properties = array();
+			$new_field->properties['id'] = $field;
+
+			$ref_str = $field->{'$ref'};
+			if($ref_str[0] == '/'){
+				$ref_str = substr($ref_str, 1);
+			}
+			$ref_split = explode('/', $ref_str, 2);
+			$ref_table = $ref_split[0];
+			if($ref_table){
+				if($ref_schema = $this->getSchema($ref_table, 'input')){
+					if(!empty($ref_schema->properties)){
+						$new_field->properties = (object)array_merge($new_field->properties, (array)($ref_schema->properties));
+					}
+				}
+			}
+			$field = $new_field;
+		}
+		return $field;
+	}
+
+	private function schemaArrayIds($field, $field_id){
+		if(!empty($field->type)){
+			if($field->type == 'array' && !empty($field->items)){
+				if(!empty($field->items->type) && $field->items->type == 'object'){
+					if(empty($field->items->properties->id)){
+						$field->items->properties->id = (object)array("type" => "string");
+					}
+					$field->items = $this->schemaArrayIds($field->items, $field_id);
+				}
+				else{
+					$field_properties = new stdClass;
+					$field_properties->id = (object)array( "type" => "string" );
+					$field_properties->{$field_id} = $field->items;
+					$field->items = (object)array( "type" => "object", "properties" => $field_properties);
+				}
+			}
+			else if($field->type == 'object' && !empty($field->properties)){
+				foreach($field->properties as $field_prop_id => $field_prop){
+					if(!empty($field_prop->type) && ($field_prop->type == 'object' || $field_prop->type == 'array')){
+						$field->properties->{$field_prop_id} = $this->schemaArrayIds($field_prop, $field_prop_id);
+					}
+				}
+			}
+		}
+		return $field;
 	}
 
 	public function getFields($type, $mode, $field_list=NULL){

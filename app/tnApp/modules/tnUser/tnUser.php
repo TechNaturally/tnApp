@@ -15,7 +15,7 @@ function user_list_get($tn){
 }
 
 function user_list_post($tn){
-	// adding a new user
+	// TODO: adding a new user
 	// /api/user/post {user info}
 }
 
@@ -54,12 +54,10 @@ function user_profile_put($tn, $id){
 	$req = json_decode($tn->app->request->getBody());
 	if($req->user){
 		try{
-			//$res['msg'] = print_r($req->user,true);
 			if($user = user_save_user($tn, (array)$req->user)){
 				$res['user'] = $user;
 				$res['msg'] = 'User saved!';
 			}
-
 		}catch(Exception $e){
 			$res['msg'] = $e->getMessage();
 		}
@@ -74,51 +72,17 @@ function user_get_user($tn, $args){
 			return $user;
 		}
 	} catch (Exception $e) { throw $e; }
+	throw new \TN\DataMissingException('Could not load user.');
 	return NULL;
 }
 
 function user_save_user($tn, $user){
 	try{
-		$tn->data->save('user', $user);
-		/**
-		$tn->data->assert('user');
-
-		$roles = NULL;
-		if(isset($user['roles'])){
-			$roles = $user['roles'];
-			unset($user['roles']);
-		}
-
-		if(isset($user['id'])){
-			$user_save = $tn->data->user()->where('id', $user['id']);
-			$user_save->update($user);
-			$user = $user_save->fetch();
-		}
-		else{
- 			$user = $tn->data->user()->insert($user);
-		}
-
-		if($user){
-			$user = $tn->data->rowToArray($user);
-			if(!empty($roles)){
-				$tn->data->assert('user_role');
-				$user_roles = array();
-				foreach($roles as $role_id){
-					$user_roles[] = array(
-						'user_id' => $user['id'],
-						'role' => $role_id
-						);
-				}
-				// do that only if they aren't there
-				$tn->data->user_role()->insert_multi($user_roles);
-				$user['roles'] = $roles;
-			}
+		if($user = $tn->data->save('user', $user)){
 			return $user;
 		}
-		*/
-
 	} catch (Exception $e) { throw $e; }
-	throw new Exception('Error saving user.');
+	throw new \TN\DataInvalidException('Could not save user.');
 	return NULL;
 }
 

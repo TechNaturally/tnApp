@@ -4,9 +4,11 @@ function auth_session_start($user){
 	if(!empty($_SESSION['user'])){
 		return $_SESSION['user'];
 	}
-	$_SESSION['user'] = $user;
-
-	return auth_session_check();
+	if(!empty($user['id']) && isset($user['roles'])){
+		$_SESSION['user'] = array( "id" => $user['id'], "roles" => $user['roles'] );
+		return auth_session_check();
+	}
+	return NULL;
 }
 
 function auth_session_check(){
@@ -23,24 +25,26 @@ function auth_session_finish(){
 	return FALSE;
 }
 
-function auth_user_assert_profile($tn, $user){
-	try {
+function auth_assert_user($tn, $auth){
+	try{
 		if(function_exists('user_get_user')){
-			$profile = user_get_user($tn, array('auth_id' => $user['id']));
-
-			if(!$profile && function_exists('user_save_user')){
-				$profile = user_save_user($tn, array(
-					'auth' => array('id' => $user['id']),
-					'email' => $user['email'],
-					'name' => $user['username'],
-					'roles' => array('admin', 'test')
-					));
+			try {
+				return user_get_user($tn, array('auth' => $auth['id']));
 			}
-			// TODO: what about default roles? - should be in app's config.json - do we check in user_save_user for new users?
-
-			return $profile;
+			catch(\TN\DataMissingException $e){
+				// TODO: default roles? - should be in app's config.json - do we check in user_save_user for new users?
+				if(function_exists('user_save_user')){
+					return user_save_user($tn, array(
+						'auth' => $auth['id'],
+						'email' => $auth['email'],
+						'name' => $auth['username'],
+						'roles' => array('admin', 'test')
+						));
+				}
+			}
 		}
-	} catch(Exception $e) {}
+	}
+	catch(Exception $e) { throw $e; }
 
 	return NULL;
 }
@@ -75,8 +79,8 @@ function auth_ping_post($tn){
 	$res = array();
 	$res_code = 200;
 
-	if($user = auth_session_check()){
-		$res['user'] = $user;
+	if($session = auth_session_check()){
+		$res['session'] = $session;
 		$res['msg'] = 'Session active!';
 	}
 
@@ -88,25 +92,21 @@ function auth_login_post($tn){
 	$res_code = 200;
 
 	try {
-		/**
 		$tn->data->assert('auth');
-
 		$req = json_decode($tn->app->request->getBody());
-		if($req->username && $req->password){
-
-			$user = $tn->data->auth("username", $req->username)->fetch();
-			if($user && !empty($user['hash'])){
-				if(auth_password_check($req->password, $user['hash'])){
-					$roles = array('user');
-					if($profile = auth_user_assert_profile($tn, $user)){
-						if(!empty($profile['roles'])){
-							$roles = array_merge($roles, $profile['roles']);
+		if(!empty($req->username) && !empty($req->password)){
+			$auth = $tn->data->loadFields('auth', array('username' => $req->username), array('username', 'email', 'hash'));
+			if($auth){
+				if(auth_password_check($req->password, $auth['hash'])){
+					unset($auth['hash']);
+					if($user = auth_assert_user($tn, $auth)){
+						if($session = auth_session_start($user)){
+							$res['msg'] = 'Login successful!';
+							$res['session'] = $session;
 						}
-						$res['user'] = auth_session_start(array(
-							'id' => $profile['id'],
-							'roles' => $roles
-							));
-						$res['msg'] = 'Login successful!';
+						else{
+							$res['error'] = TRUE; // no session
+						}
 					}
 					else{
 						$res['error'] = TRUE; // no profile
@@ -117,17 +117,16 @@ function auth_login_post($tn){
 				}
 			}
 			else {
-				$res['error'] = TRUE; // bad username
+				$res['error'] = TRUE; // no auth for username
 			}
 		}
 		else {
 			$res['error'] = TRUE; // missing username or password
 		}
+
 		if(!empty($res['error'])){
 			$res['msg'] = 'Invalid username or password!';
 		}
-		*/
-		$res['msg'] = "Testing...";
 	} catch (Exception $e) {
 		$res['error'] = TRUE; // something went wrong
 		$res['msg'] = $e->getMessage();
@@ -160,78 +159,22 @@ function auth_register_post($tn){
 
 		$req = json_decode($tn->app->request->getBody());
 
-		$res['msg'] = "REQ:".print_r($req, TRUE);
-
 		$username = !empty($req->username)?$req->username:'';
 		$email = auth_valid_email($username)?$username:'';
-		$t1 = !empty($req->t1)?$req->t1:NULL;
-		$t2 = !empty($req->t2)?$req->t2:NULL;
-
-		$auth = array(
-			"username" => $username,
-			"hash" => auth_password_hash($req->password),
-			"email" => $email,
-			"t1" => $t1,
-			"t2" => $t2
-			);
-		$auth = $tn->data->save('auth', $auth);
-
-
-/**
-		$username = $req->username;
-		$email = '';
-
-		if(auth_valid_email($username)){
-			$email = $username;
-		}
 
 		$auth = array(
 			"username" => $username,
 			"hash" => auth_password_hash($req->password),
 			"email" => $email
 			);
-		$auth = $tn->data->save('auth', $auth);
-		$res['msg'] = 'Registration successful!';
-*/
-
-		/**
-		$tn->data->assert('auth');
-
-		$req = json_decode($tn->app->request->getBody());
-
-		$username = $req->username;
-		$email = '';
-
-		if(auth_valid_email($username)){
-			$email = $username;
-		}
-		
-		$user = array(
-			"username" => $username,
-			"hash" => auth_password_hash($req->password),
-			"email" => $email
-			);
-		$user = $tn->data->auth()->insert($user);
-		$res['msg'] = 'Registration successful!';
-
-		if(!empty($req->start_session)){
-			$roles = array('user');
-			if($profile = auth_user_assert_profile($tn, $user)){
-				if(!empty($profile['roles'])){
-					$roles = array_merge($roles, $profile['roles']);
+		if($auth = $tn->data->save('auth', $auth)){
+			$res['msg'] = "Created auth:<pre>".print_r($auth, TRUE)."</pre>\n";
+			if($user = auth_assert_user($tn, $auth)){
+				if($session = auth_session_start($user)){
+					$res['session'] = $session;
 				}
-
-				$res['user'] = auth_session_start(array(
-					'id' => $profile['id'],
-					'roles' => $roles
-					));
-			}
-			else{
-				$res['error'] = TRUE;
-				$res['msg'] = 'Could not load user profile.';
 			}
 		}
-		*/
 	} catch (Exception $e) {
 		$res_code = 500;
 		$res['msg'] = "Error: ".$e->getMessage();

@@ -1,10 +1,10 @@
 {
 	"id": "user",
 	"data": {
-		"input": ["auth", "name", "email"],
+		"input": ["auth", "name", "test", "email", "phone", "address", "roles"],
 		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "role", "name", "email", "phone"],
-		"save": ["auth", "role", "name", "email", "phone"],
+		"load": ["auth", "roles", "test", "name", "email", "phone"],
+		"save": ["auth", "roles", "test", "name", "email", "phone"],
 		"schema": {
 			"id": "/user",
 			"type": "object",
@@ -13,10 +13,35 @@
 					"title": "Account",
 					"$ref": "/auth/id"
 				},
-				"role": {
+				"roles": {
 					"title": "Roles",
 					"type": "array",
-					"items": {"type": "string", "maxLength": 50, "required": true }
+					"items": {"type": "string", "maxLength": 50 }
+				},
+				"test": {
+					"title": "Test",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"field1": { "type": "string" },
+							"field2": {
+								"type": "array",
+								"items": { "type": "string" }
+							},
+							"field3": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"check": { "type": "string" },
+										"again": { "type": "string" }
+									}
+								}
+							}
+						}
+					}
+
 				},
 				"name": {
 					"title": "Name",
@@ -36,6 +61,32 @@
 					"type": "string",
 					"minLength": 0,
 					"maxLength": 25
+				},
+				"address": {
+					"title": "Address",
+					"type": "object",
+					"properties": {
+						"street": {
+							"title": "Street",
+							"type": "string"
+						},
+						"street2": {
+							"title": "Street (second line)",
+							"type": "string"
+						},
+						"city": {
+							"title": "City",
+							"type": "string"
+						},
+						"province": {
+							"title": "Province/State",
+							"type": "string"
+						},
+						"postal": {
+							"title": "Postal/Zip Code",
+							"type": "string"
+						}
+					}
 				}
 			}
 		}
@@ -49,9 +100,20 @@
 			"callback": "profile",
 			"methods": { "GET": true, "PUT": true },
 			"form": [
-				{ "key": "name", "placeholder": "Full Name" },
-				{ "key": "email", "placeholder": "Email address" },
-				{ "key": "phone", "placeholder": "Phone number" },
+				{ "type": "fieldset", "title": "Account", "items": [
+					{ "key": "auth.password", "title": "Current Password", "type": "password" },
+					{ "key": "auth.username", "type": "new-username" },
+					{ "key": "auth.email" },
+					{ "key": "auth.new_password", "title": "New Password", "type": "password" },
+					{ "key": "auth.new_password_confirm", "title": "Confirm New Password", "type": "password-confirm", "condition": "model.auth.new_password" } 
+				]},
+				{ "type": "fieldset", "title": "Profile", "items": [
+					{ "key": "name", "placeholder": "Full Name" },
+					{ "key": "email", "placeholder": "Email address" },
+					{ "key": "phone", "placeholder": "Phone number" },
+					{ "key": "test", "startEmpty": true },
+					{ "key": "roles" }
+				]},
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
 						{ "type": "button", "style": "btn-warning", "title": "Reset", "onClick": "reset()" }

@@ -14,15 +14,52 @@ angular.module('tnApp.auth')
 			data.user = null;
 		}
 		else if (user && user.id){
-			// TOOD: what if user already is loaded... (best way)
-			// TODO: we also need to track in Auth.data the auth_id, username, etc
+			data.user = user;
 			User.api.loadUser(user.id).then(function(user){
-				data.user = user;
+				data.user = User.data.list[user.id];
+				console.log('Loaded user:'+angular.toJson(data.user, true));
 			});
+			console.log('User active! '+angular.toJson(data.user, true));
 		}
 	}
 
+	function userMatches(rule){
+		if(rule === true || rule === false){
+			return rule;
+		}
+		else if(rule == 'user' && data.user){
+			return true;
+		}
+		else if(rule == '^user' && data.user){
+			return false;
+		}
+		else if(rule.charAt(0) == '^'){
+			if(data.user && data.user.roles){
+				// if there are roles, return true if this rule is not one of them
+				return (data.user.roles.indexOf(rule.substr(1)) == -1);
+			}
+			return true; // if no user roles, then it definitely doesn't have this
+		}
+		else if(data.user && data.user.roles){
+			return (data.user.roles.indexOf(rule) != -1);
+		}
+		return false;
+	}
+
 	var api = {
+		passes: function(rules){
+			if(angular.isArray(rules)){
+				for(var i=0; i < rules.length; i++){
+					if(userMatches(rules[i])){
+						return true;
+					}
+				}
+			}
+			else{
+				return userMatches(rules);
+			}
+			return false;
+		},
 		loadSchema: function(){
 			var defer = $q.defer();
 			if(data.schema){
@@ -43,15 +80,20 @@ angular.module('tnApp.auth')
 		},
 		ping: function(){
 			var defer = $q.defer();
-			API.post('/auth/ping').then(function(res){
-				if(!res.error && res.user){
-					setActiveUser(res.user);
-					defer.resolve(true);
-				}
-				else{
-					defer.resolve(false);
-				}
-			}, function(reason){ defer.reject(reason); });
+			if(data.user){
+				defer.resolve(true);
+			}
+			else{
+				API.post('/auth/ping').then(function(res){
+					if(!res.error && res.session){
+						setActiveUser(res.session);
+						defer.resolve(true);
+					}
+					else{
+						defer.resolve(false);
+					}
+				}, function(reason){ defer.reject(reason); });
+			}
 			return defer.promise;
 		},
 		login: function(username, password){
@@ -62,8 +104,8 @@ angular.module('tnApp.auth')
 					password: hash_password(password, username)
 				};
 				API.post('/auth/login', {data: req}).then(function(res){
-					if(!res.error && res.user){
-						setActiveUser(res.user);
+					if(!res.error && res.session){
+						setActiveUser(res.session);
 						var search = $location.search();
 						var from = search.from?search.from:'';
 						$location.path(from);
@@ -102,19 +144,17 @@ angular.module('tnApp.auth')
 			}
 			return false;
 		},
-		register: function(username, password, password_confirm, t1, t2){
+		register: function(username, password, password_confirm){
 			var defer = $q.defer();
 			if(username && password && password_confirm == password){
 				var req = {
 					username: username,
 					password: hash_password(password, username),
-					start_session: true,
-					t1: t1,
-					t2: t2
+					start_session: true
 				};				
 				API.post('/auth/register', {data: req}).then(function(res){
-					if(!res.error && res.user){
-						//setActiveUser(res.user);
+					if(!res.error && res.session){
+						setActiveUser(res.session);
 						defer.resolve(true);
 					}
 					else{

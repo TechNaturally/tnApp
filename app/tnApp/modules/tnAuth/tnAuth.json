@@ -1,10 +1,10 @@
 {
 	"id": "auth",
 	"data": {
-		"input": ["email", "username", "password", "t1", "t2"],
+		"input": ["email", "username", "password"],
 		"list": ["username", "email"],
-		"load": ["email", "username", "t1", "t2"],
-		"save": ["username", "email", "hash", "t1", "t2"],
+		"load": ["email", "username"],
+		"save": ["username", "email", "hash"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -33,55 +33,11 @@
 					"minLength": 101,
 					"maxLength": 101,
 					"required": true
-				},
-				"t1": {
-					"title": "Test #1",
-					"type": "object",
-					"properties": {
-						"f1": { "title": "Field #1", "type": "string" },
-						"f2": { "title": "Field #2", "type": "array", "items": { "title": "Field 2", "type": "string"}},
-						"f3": {
-							"title": "Field #3",
-							"type": "object",
-							"properties": {
-								"f3a": { "title": "Three A", "type": "string" },
-								"f3b": { "title": "Three B", "type": "string" }
-							}
-						}
-					}
-				},
-				"t2": {
-					"title": "Test #2",
-					"type": "array",
-					"items": {
-						"title": "Testing 2",
-						"type": "object",
-						"properties": {
-							"p1": { "title": "Property 1", "type": "string" },
-							"p2": { "title": "Property 2", "type": "integer" },
-							"p3": {
-								"title": "Property 3",
-								"type": "array",
-								"items": {
-									"title" : "#3 Entry",
-									"type": "object",
-									"properties": {
-										"p3a": { "title": "Prop #3.A)", "type": "string" },
-										"p3b": { "title": "Prop #3.B)", "type": "string" }
-									}
-								}
-							}
-						}
-					}
 				}
 			}
 		}
 	},
 	"routes": {
-		"/:id": {
-			"callback": "load",
-			"methods": { "GET": true }
-		},
 		"/ping": {
 			"callback": "ping",
 			"methods": { "POST": true }
@@ -110,8 +66,6 @@
 				{ "key": "username", "type": "new-username", "placeholder": "Username or Email address", "required": true },
 				{ "key": "password", "type": "password", "title": "Password" },
 				{ "key": "password_confirm", "type": "password-confirm", "title": "Confirm Password", "condition": "model.password" },
-				{ "key": "t1" },
-				{ "key": "t2" },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 					{ "type": "submit", "style": "btn-primary", "title": "Register" },
 					{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
@@ -131,6 +85,10 @@
 		},
 		"/available": {
 			"callback": "available",
+			"methods": { "GET": true }
+		},
+		"/:id": {
+			"callback": "load",
 			"methods": { "GET": true }
 		}
 	}
