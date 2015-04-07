@@ -233,11 +233,6 @@ class Data extends NotORM {
 						// load all the array rows into the $array_data
 						while($array_row = $query->fetch()){
 							$array_row_data = $this->rowToArray($array_row);
-							
-							// we don't need the array row's id or the link back to this row
-							// TODO: or maybe we do?  need to see with arrays of objects...
-							//unset($array_row_data['id']);
-							//unset($array_row_data[$row_type.'_id']);
 
 							// compile the row into an object
 							$array_row_data = $this->compileObject($array_row_data);
@@ -284,7 +279,8 @@ class Data extends NotORM {
 								else if(count($array_row_data) == 1){
 									// if it has only one field value, do special processing, because it might still be a single-field value
 									$single_key = array_keys($array_row_data)[0];
-									// TODO: what is this stuff for?
+									
+									// TODO: does this happen any more?
 
 									// if the field_name ends with the name of the single value,
 									// it is an array within an object
