@@ -512,7 +512,7 @@ class Data extends NotORM {
 				$table_key = $table.'_'.$key;
 				$array_data = array();
 				foreach($value as $array_value){
-					if(!is_object($array_value)){
+					if(!is_object($array_value) && !is_array($array_value)){
 						$array_value = (object)array($key => $array_value);
 					}
 					$array_row = $this->dataToTables($table_key, $array_value, $schema);
