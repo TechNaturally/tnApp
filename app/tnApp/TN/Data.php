@@ -317,6 +317,7 @@ class Data extends NotORM {
 				if($table_data = $this->dataToTables($type, $data, $schema)){
 					$this->assert($type);
 					if(!empty($table_data[$type])){
+						$existing = NULL;
 						$existing_data = NULL;
 						if(isset($data['id'])){
 							if($existing = $this->load($type, array("$type.id"=>$data['id']))){
@@ -325,10 +326,17 @@ class Data extends NotORM {
 								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
 							}
 						}
+						if(function_exists($type.'_presave')){
+							if(call_user_func_array($type.'_presave', array(&$data, $existing, $this))){
+								$table_data = $this->dataToTables($type, $data, $schema);
+							}
+						}
 
-						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
-							if(!empty($entry['id'])){
-								return $this->load($type, array("$type.id" => $entry['id']));
+						if(!empty($table_data[$type])){
+							if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
+								if(!empty($entry['id'])){
+									return $this->load($type, array("$type.id" => $entry['id']));
+								}
 							}
 						}
 					}
