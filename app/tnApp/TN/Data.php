@@ -379,8 +379,30 @@ class Data extends NotORM {
 
 			//print "\ninsert [$table]:".print_r($data, TRUE)."\n";
 			if(!empty($ref_fields)){
-			//	print "with refs:".print_r($ref_fields, TRUE)."\n";
+				//print "with refs:".print_r($ref_fields, TRUE)."\n";
 			//	print "old refs:".print_r($old_ref_fields, TRUE)."\n";
+				foreach($ref_fields as $ref_field => $ref_data){
+					if(is_array($ref_data) && !empty($ref_data)){
+						$ref_table_id = array_keys($ref_data)[0];
+						if($ref_table_id[0] == '$'){
+							$ref_table = substr($ref_table_id, 1);
+							$ref_data = $ref_data[$ref_table_id];
+							//print "save ref: $ref_field [$ref_table]:".print_r($ref_data, TRUE)."\n";
+							if(is_object($ref_data)){
+								$ref_data = (array)$ref_data;
+							}
+
+							// if there are more than just the id field
+							if(count($ref_data) > 1 || !array_key_exists('id', $ref_data)){
+								$ref_data = $this->save($ref_table, $ref_data);
+							}
+
+							if(!empty($ref_data['id'])){
+								$data[$ref_field] = $ref_data['id'];
+							}
+						}
+					}
+				}
 			}
 			if(!empty($child_tables)){
 			//	print "with children:".print_r($child_tables, TRUE)."\n";
@@ -523,7 +545,7 @@ class Data extends NotORM {
 				$flat[$table][$table_key] = array('@values' => $array_data);
 			}
 			else{
-				//print "JANKY [$table] [$key]\n";
+				// field is not in table schema
 			}
 		}
 		//print "flattened:[$prefix] =>".print_r($flat, true)."\n";
