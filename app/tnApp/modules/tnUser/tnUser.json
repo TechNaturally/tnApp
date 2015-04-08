@@ -111,7 +111,7 @@
 					{ "key": "email", "placeholder": "Email address" },
 					{ "key": "phone", "placeholder": "Phone number" },
 					{ "key": "test", "startEmpty": true },
-					{ "key": "roles" }
+					{ "key": "roles", "condition": "access(['admin'])" }
 				]},
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 						{ "type": "submit", "style": "btn-primary", "title": "Save" },
