@@ -1,52 +1,58 @@
 angular.module('tnApp.theme')
-.factory('Theme', ['$q', '$http', function($q, $http){
+.factory('Theme', ['$q', 'API', function($q, API){
 	// config with theme paths
-	var themeBase = '/theme';
-	var moduleBase = '/tnApp/modules';
+	var moduleBase = '/tnApp/modules/';
+	var themeBase = '/theme/templates/';
 	var registry = null;
 
 	return {
 		register: function(){
-			// TODO: implement named themes "Theme.setTheme(name) + re-register"
 			var defer =  $q.defer();
 			if(registry){
 				defer.resolve(true);
 			}
 			else{
-				$http.get(themeBase+(name?'/'+name:'')+'/registry.json').then(function(res){
-					registry = res.data;
-					// TODO: we could loop through the registry and cache all of them (and if they're missing, remove from registry)
-					console.log('theme registry:'+JSON.stringify(registry));
-				})
-				.finally(function(){
+				API.get('/theme/registry').then(function(res){
+					if(res.registry){
+						registry = res.registry;
+						console.log('theme registry:'+angular.toJson(registry, true));
+					}
+					if(res.base_path){
+						themeBase = res.base_path;
+						if(themeBase.substr(-1) != '/'){
+							themeBase += '/';
+						}
+					}
 					defer.resolve(registry?true:false);
-				});
+				}, function(reason){ defer.reject(reason); });
 			}
 			return defer.promise;
 		},
 
 		getTemplate: function(elem, attr, module){
 			var type = null;
-
 			if(elem.length){
 				type = elem[0].tagName.toLowerCase();
 			}
-
 			if(type){
-				var template = type+'.html';
-
-				if(registry && registry.indexOf(template) !== -1){
-					return '/theme/widgets/'+template;
-				}
+				var template = type+'.tpl.html';
 				if(angular.isUndefined(module)){
 					var typeSplit = type.split('-');
 					module = typeSplit.slice(0, 2).join('-');
-					module = attr.$normalize(module);
 				}
-
-				return moduleBase+'/'+module+'/widgets/'+template;
+				if(registry){
+					if(registry.indexOf(template) !== -1){
+						return themeBase+template;
+					}
+					else if(registry.indexOf(module+'/'+template) !== -1){
+						return themeBase+module+'/'+template;
+					}
+					else if(type!=module && registry.indexOf(module+'/'+type+'/'+template) !== -1){
+						return themeBase+module+'/'+type+'/'+template;
+					}
+				}
+				return moduleBase+module+'/'+((type!=module)?type+'/':'')+template;
 			}
-
 			return '';
 		}
 	};

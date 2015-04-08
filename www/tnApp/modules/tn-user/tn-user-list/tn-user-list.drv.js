@@ -3,6 +3,6 @@ angular.module('tnApp.user')
 	return {
 		restrict: 'E',
 		controller: 'UserListController',
-		templateUrl: 'tnApp/modules/tn-user/tn-user-list/tn-user-list.tpl.html'
+		templateUrl: Theme.getTemplate
 	};
 }]);

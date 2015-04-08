@@ -1,0 +1,9 @@
+{
+	"id": "theme",
+	"routes": {
+		"/registry": {
+			"callback": "registry",
+			"methods": { "GET": true }
+		}
+	}
+}

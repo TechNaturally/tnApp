@@ -53,7 +53,7 @@ angular.module('tnApp.auth')
 			"tabs": [
 				{ "type": "widget",
 					"content": "tn-tabs",
-					"args": {"actions": {"/admin/user": "Manage's Users", "/admin/user/add": "Add User"}},
+					"args": {"actions": {"/admin/user": "Manage Users", "/admin/user/add": "Add User"}},
 					"access": ["admin"]
 				}
 			],

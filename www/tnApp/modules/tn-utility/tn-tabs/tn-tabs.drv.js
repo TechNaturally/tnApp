@@ -3,7 +3,7 @@ angular.module('tnApp.utility')
 	return {
 		restrict: 'E',
 		scope: {'tabs': '=actions'},
-		templateUrl: 'tnApp/modules/tn-utility/tn-tabs/tn-tabs.tpl.html',
+		templateUrl: function(elem, attr){ return Theme.getTemplate(elem, attr, 'tn-utility'); },
 		controller: function(){}
 	};
 }]);

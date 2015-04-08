@@ -4,6 +4,6 @@ angular.module('tnApp.user')
 		restrict: 'E',
 		scope: {'user_id': '@id', 'state': '@'},
 		controller: 'UserController',
-		templateUrl: 'tnApp/modules/tn-user/tn-user.tpl.html'
+		templateUrl: Theme.getTemplate
 	};
 }]);

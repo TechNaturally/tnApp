@@ -4,7 +4,7 @@ angular.module('tnApp.screen')
 		restrict: 'E',
 		scope: {'path': '@'},
 		controller: 'ScreenController',
-		templateUrl: 'tnApp/modules/tn-screen/tn-screen.tpl.html',
+		templateUrl: Theme.getTemplate,
 		link: function(scope, elem, attr){
 			//var children = angular.isDefined(elem[0].children[0].children)?elem[0].children[0].children:null;
 			var children = elem.children();
