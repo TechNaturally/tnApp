@@ -15,6 +15,7 @@ angular.module('tnApp.theme')
 				API.get('/theme/registry').then(function(res){
 					if(res.registry){
 						registry = res.registry;
+						console.log('theme registry:'+angular.toJson(registry, true));
 					}
 					if(res.base_path){
 						themeBase = res.base_path;
@@ -35,12 +36,20 @@ angular.module('tnApp.theme')
 			}
 			if(type){
 				var template = type+'.tpl.html';
-				if(registry && registry.indexOf(template) !== -1){
-					return themeBase+template;
-				}
 				if(angular.isUndefined(module)){
 					var typeSplit = type.split('-');
 					module = typeSplit.slice(0, 2).join('-');
+				}
+				if(registry){
+					if(registry.indexOf(template) !== -1){
+						return themeBase+template;
+					}
+					else if(registry.indexOf(module+'/'+template) !== -1){
+						return themeBase+module+'/'+template;
+					}
+					else if(type!=module && registry.indexOf(module+'/'+type+'/'+template) !== -1){
+						return themeBase+module+'/'+type+'/'+template;
+					}
 				}
 				return moduleBase+module+'/'+((type!=module)?type+'/':'')+template;
 			}
