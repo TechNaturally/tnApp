@@ -23,6 +23,22 @@ angular.module('tnApp.auth')
 		}
 	}
 
+	function userHasRole(role){
+		if(data.user && data.user.roles){
+			if(!data.user.loaded){
+				return (data.user.roles.indexOf(role) != -1);
+			}
+			else{
+				for(var i=0; i < data.user.roles.length; i++){
+					if(data.user.roles[i].roles == role){
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	function userMatches(rule){
 		if(rule === true || rule === false){
 			return rule;
@@ -34,14 +50,10 @@ angular.module('tnApp.auth')
 			return false;
 		}
 		else if(rule.charAt(0) == '^'){
-			if(data.user && data.user.roles){
-				// if there are roles, return true if this rule is not one of them
-				return (data.user.roles.indexOf(rule.substr(1)) == -1);
-			}
-			return true; // if no user roles, then it definitely doesn't have this
+			return !userHasRole(rule.substr(1));
 		}
 		else if(data.user && data.user.roles){
-			return (data.user.roles.indexOf(rule) != -1);
+			return userHasRole(rule);
 		}
 		return false;
 	}
