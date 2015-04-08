@@ -317,6 +317,7 @@ class Data extends NotORM {
 				if($table_data = $this->dataToTables($type, $data, $schema)){
 					$this->assert($type);
 					if(!empty($table_data[$type])){
+						$existing = NULL;
 						$existing_data = NULL;
 						if(isset($data['id'])){
 							if($existing = $this->load($type, array("$type.id"=>$data['id']))){
@@ -325,10 +326,17 @@ class Data extends NotORM {
 								$existing_data = !empty($existing_data[$type])?$existing_data[$type]:NULL;
 							}
 						}
+						if(function_exists($type.'_presave')){
+							if(call_user_func_array($type.'_presave', array(&$data, $existing, $this))){
+								$table_data = $this->dataToTables($type, $data, $schema);
+							}
+						}
 
-						if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
-							if(!empty($entry['id'])){
-								return $this->load($type, array("$type.id" => $entry['id']));
+						if(!empty($table_data[$type])){
+							if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
+								if(!empty($entry['id'])){
+									return $this->load($type, array("$type.id" => $entry['id']));
+								}
 							}
 						}
 					}
@@ -341,6 +349,7 @@ class Data extends NotORM {
 	}
 
 	public function insertToTable($table, $values, $old_values){
+		$old_values = !empty($old_values)?$old_values:array();
 		$child_tables = array();
 		$ref_fields = array();
 		$data = array();
@@ -378,8 +387,30 @@ class Data extends NotORM {
 
 			//print "\ninsert [$table]:".print_r($data, TRUE)."\n";
 			if(!empty($ref_fields)){
-			//	print "with refs:".print_r($ref_fields, TRUE)."\n";
+				//print "with refs:".print_r($ref_fields, TRUE)."\n";
 			//	print "old refs:".print_r($old_ref_fields, TRUE)."\n";
+				foreach($ref_fields as $ref_field => $ref_data){
+					if(is_array($ref_data) && !empty($ref_data)){
+						$ref_table_id = array_keys($ref_data)[0];
+						if($ref_table_id[0] == '$'){
+							$ref_table = substr($ref_table_id, 1);
+							$ref_data = $ref_data[$ref_table_id];
+							//print "save ref: $ref_field [$ref_table]:".print_r($ref_data, TRUE)."\n";
+							if(is_object($ref_data)){
+								$ref_data = (array)$ref_data;
+							}
+
+							// if there are more than just the id field
+							if(count($ref_data) > 1 || !array_key_exists('id', $ref_data)){
+								$ref_data = $this->save($ref_table, $ref_data);
+							}
+
+							if(!empty($ref_data['id'])){
+								$data[$ref_field] = $ref_data['id'];
+							}
+						}
+					}
+				}
 			}
 			if(!empty($child_tables)){
 			//	print "with children:".print_r($child_tables, TRUE)."\n";
@@ -408,7 +439,6 @@ class Data extends NotORM {
 				}
 			}
 			catch (Exception $e){ throw $e; }
-
 			return $row;
 		}
 		else{
@@ -461,9 +491,7 @@ class Data extends NotORM {
 				catch (Exception $e){ throw $e; }
 				return !empty($rows)?$rows:NULL;
 			}
-			
 		}
-
 		return NULL;
 	}
 
@@ -479,7 +507,6 @@ class Data extends NotORM {
 		$flat[$table] = array();
 
 		if(!isset($schema[$table])){
-			print "missing schema [$table]\n";
 			$schema[$table] = array();
 		}
 		
@@ -515,6 +542,9 @@ class Data extends NotORM {
 				$table_key = $table.'_'.$key;
 				$array_data = array();
 				foreach($value as $array_value){
+					if(!is_object($array_value) && !is_array($array_value)){
+						$array_value = (object)array($key => $array_value);
+					}
 					$array_row = $this->dataToTables($table_key, $array_value, $schema);
 					if(isset($array_row[$table_key])){
 						$array_data[] = $array_row[$table_key];
@@ -523,60 +553,8 @@ class Data extends NotORM {
 				$flat[$table][$table_key] = array('@values' => $array_data);
 			}
 			else{
-				print "JANKY [$table] [$key]\n";
+				// field is not in table schema
 			}
-/**
-			if(is_object($value)){
-				$flat_obj = $this->dataToTables($key, $value, $schema);
-				foreach($flat_obj as $flat_table => $flat_values){
-					foreach($flat_values as $flat_key => $flat_value){
-						if(is_array($flat_value)){
-							$flat[$prefix][$prefix.'_'.$flat_key] = $flat_value;
-						}
-						else{
-							$flat[$prefix][$key.'_'.$flat_key] = $flat_value;
-						}
-					}
-				}
-			}
-			else if(is_array($value)){
-				$array_data = array();
-				foreach($value as $array_value){
-					if(is_object($array_value)){
-						$array_data_prefix = '';
-						if(isset($array_value->id)){
-
-						}
-						$array_data_val = array();
-						$flat_obj = $this->dataToTables($key, $array_value, $schema);
-						foreach($flat_obj as $flat_table => $flat_values){
-							foreach($flat_values as $flat_key => $flat_value){
-								if(is_array($flat_value)){
-									$array_data_val[$prefix.'_'.$flat_key] = $flat_value;
-								}
-								else{
-									$array_data_val[$key.'_'.$flat_key] = $flat_value;
-								}
-							}
-						}
-						$array_data[] = $array_data_val;
-					}
-					else if(is_array($array_value)){
-						// we should never have an array of array
-						// child arrays should always be embedded as object properties
-					}
-					else{
-						$array_data_val = array();
-						$array_data_val[$key] = $array_value;
-						$array_data[] = $array_data_val;
-					}
-				}
-				$flat[$prefix][$prefix.'_'.$key] = array('@values' => $array_data);
-			}
-			else{
-				$flat[$prefix][$key] = $value;
-			}
-			*/
 		}
 		//print "flattened:[$prefix] =>".print_r($flat, true)."\n";
 		return $flat;

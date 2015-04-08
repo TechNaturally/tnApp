@@ -1,20 +1,14 @@
 {
 	"id": "auth",
 	"data": {
-		"input": ["email", "username", "password"],
-		"list": ["username", "email"],
-		"load": ["email", "username"],
-		"save": ["username", "email", "hash"],
+		"input": ["username", "password"],
+		"list": ["username"],
+		"load": ["username"],
+		"save": ["username", "hash"],
 		"schema": {
 			"id": "/auth",
 			"type": "object",
 			"properties": {
-				"email": {
-					"title": "Email",
-					"type": "string",
-					"minLength": 16,
-					"maxLength": 255
-				},
 				"username": {
 					"title": "Username",
 					"type": "string",
@@ -76,7 +70,7 @@
 			"callback": "recover",
 			"methods": { "POST": true },
 			"form": [
-				{ "key": "username", "placeholder": "Username or email address", "required": true },
+				{ "key": "username", "placeholder": "Username or Email address", "required": true },
 				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 					{ "type": "submit", "style": "btn-primary", "title": "Recover Password" },
 					{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
@@ -85,10 +79,6 @@
 		},
 		"/available": {
 			"callback": "available",
-			"methods": { "GET": true }
-		},
-		"/:id": {
-			"callback": "load",
 			"methods": { "GET": true }
 		}
 	}

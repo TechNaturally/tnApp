@@ -60,9 +60,9 @@ function user_profile_put($tn, $id){
 			}
 		}catch(Exception $e){
 			$res['msg'] = $e->getMessage();
+			$res['error'] = TRUE;
 		}
 	}
-	
 	$tn->app->render($res_code, $res);
 }
 
@@ -84,6 +84,18 @@ function user_save_user($tn, $user){
 	} catch (Exception $e) { throw $e; }
 	throw new \TN\DataInvalidException('Could not save user.');
 	return NULL;
+}
+
+function user_email_exists($tn, $email){
+	if($email){
+		try{
+			$tn->data->assert('user');
+			$user = $tn->data->user()->where('email', $email)->fetch();
+			return !empty($user);
+		}
+		catch(Exception $e){}
+	}
+	return FALSE;
 }
 
 ?>

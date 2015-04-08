@@ -101,9 +101,8 @@
 			"methods": { "GET": true, "PUT": true },
 			"form": [
 				{ "type": "fieldset", "title": "Account", "items": [
-					{ "key": "auth.password", "title": "Current Password", "type": "password" },
 					{ "key": "auth.username", "type": "new-username" },
-					{ "key": "auth.email" },
+					{ "key": "auth.password", "title": "Current Password", "type": "password" },
 					{ "key": "auth.new_password", "title": "New Password", "type": "password" },
 					{ "key": "auth.new_password_confirm", "title": "Confirm New Password", "type": "password-confirm", "condition": "model.auth.new_password" } 
 				]},
