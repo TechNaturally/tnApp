@@ -35,15 +35,22 @@ class Security extends \Slim\Middleware {
 		return FALSE;
 	}
 
-	private function userMatches($rule){
+	private function userHasAccess($params){
+		global $_SESSION;
+		// TODO: special user based security...
+		//print "check user access for ".print_r($params, TRUE)."\n";
+		return (!empty($_SESSION['user']));
+	}
+
+	private function userMatches($rule, $params){
 		if($rule === TRUE || $rule === FALSE){
 			return $rule;
 		}
 		else if($rule == 'user'){
-			// TODO: special user based security...
+			return $this->userHasAccess($params);
 		}
 		else if($rule == '^user'){
-			// TODO: special user based security...
+			return !$this->userHasAccess($params);
 		}
 		else if($rule[0] == '^'){
 			return !$this->userHasRole(substr($rule, 1));
@@ -58,13 +65,13 @@ class Security extends \Slim\Middleware {
 	public function passes($rules, $params){
 		if(is_array($rules)){
 			foreach($rules as $rule){
-				if($this->userMatches($rule)){
+				if($this->userMatches($rule, $params)){
 					return TRUE;
 				}
 			}
 		}
 		else{
-			return $this->userMatches($rules);
+			return $this->userMatches($rules, $params);
 		}
 		return FALSE;
 	}
