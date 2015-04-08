@@ -1,6 +1,0 @@
-<div class="status" ng-show="status.messages.length">
-	<div ng-repeat="message in status.messages track by $index" class="alert alert-{{status.classes[message.type]}} alert-dismissible">
-		<button class="close" ng-click="dismiss($index);" aria-label="Close"><i class="fa fa-times" aria-hidden="true"></i></button>
-		{{message.message}}
-	</div>
-</div>
