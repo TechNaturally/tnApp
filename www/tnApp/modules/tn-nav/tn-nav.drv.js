@@ -3,6 +3,6 @@ angular.module('tnApp.nav')
 	return {
 		restrict: 'E',
 		scope: {'tree': '=', 'active': '@'},
-		templateUrl: 'tnApp/modules/tn-nav/tn-nav.tpl.html'
+		templateUrl: Theme.getTemplate
 	};
 }]);

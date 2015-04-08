@@ -3,6 +3,6 @@ angular.module('tnApp.status')
 	return {
 		restrict: 'E',
 		controller: 'StatusController',
-		templateUrl: 'tnApp/modules/tn-status/tn-status.tpl.html'
+		templateUrl: Theme.getTemplate
 	};
 }]);
