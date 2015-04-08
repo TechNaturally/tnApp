@@ -98,6 +98,7 @@
 		},
 		"/:id": {
 			"callback": "profile",
+			"access": ["admin", "user"],
 			"methods": { "GET": true, "PUT": true },
 			"form": [
 				{ "type": "fieldset", "title": "Account", "items": [
