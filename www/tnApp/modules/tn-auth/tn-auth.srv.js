@@ -44,15 +44,17 @@ angular.module('tnApp.auth')
 			return rule;
 		}
 		else if(rule == 'user' && data.user){
+			// TODO: special user based security...
 			return true;
 		}
 		else if(rule == '^user' && data.user){
+			// TODO: special user based security...
 			return false;
 		}
 		else if(rule.charAt(0) == '^'){
 			return !userHasRole(rule.substr(1));
 		}
-		else if(data.user && data.user.roles){
+		else{
 			return userHasRole(rule);
 		}
 		return false;

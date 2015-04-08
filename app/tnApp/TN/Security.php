@@ -24,35 +24,48 @@ class Security extends \Slim\Middleware {
 		return array_key_exists($route, $this->routes);
 	}
 
-	public function passes($rules, $params){
+	private function userHasRole($role){
 		global $_SESSION;
-		if($rules===TRUE){
-			return TRUE;
+		if(empty($_SESSION['user']) || empty($_SESSION['user']['roles']) || !is_array($_SESSION['user']['roles'])){
+			return FALSE;
 		}
+		else{
+			return in_array($role, $_SESSION['user']['roles']);
+		}
+		return FALSE;
+	}
 
-		foreach($rules as $credential){
-			if($credential[0] == '^'){
-				// anti-access
-				$credential = substr($credential, 1);
-				if(empty($_SESSION['user'])){
+	private function userMatches($rule){
+		if($rule === TRUE || $rule === FALSE){
+			return $rule;
+		}
+		else if($rule == 'user'){
+			// TODO: special user based security...
+		}
+		else if($rule == '^user'){
+			// TODO: special user based security...
+		}
+		else if($rule[0] == '^'){
+			return !$this->userHasRole(substr($rule, 1));
+		}
+		else{
+			return $this->userHasRole($rule);
+		}
+		return FALSE;
+
+	}
+
+	public function passes($rules, $params){
+		if(is_array($rules)){
+			foreach($rules as $rule){
+				if($this->userMatches($rule)){
 					return TRUE;
-				}
-				else if(is_array($_SESSION['user']['roles'])){
-					// true if the anti-role is not found in the role
-					return !in_array($credential, $_SESSION['user']['roles']);
-				}
-			}
-			else if(!empty($_SESSION['user'])){
-				// access check against logged in user
-				if($credential == 'user'){
-					return TRUE;
-				}
-				else if(is_array($_SESSION['user']['roles'])){
-					return in_array($credential, $_SESSION['user']['roles']);
 				}
 			}
 		}
-		
+		else{
+			return $this->userMatches($rules);
+		}
 		return FALSE;
 	}
 
