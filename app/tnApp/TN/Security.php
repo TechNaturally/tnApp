@@ -17,23 +17,33 @@ class Security {
 
 	public function allowRead($type, $field, $args=NULL){
 		//print "\nsecurity check to READ [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
+		$result = FALSE;
 		if(!empty($this->rules[$type])){
 			$field = str_replace("$type.", '', $field);
 			$args['type'] = $type;
 			foreach($this->rules[$type] as $rule => $access){
-				if($rule == $type && (isset($access->read) && $this->passes($access->read, $args)) ){
-					print " *PASSED ($type)*\n";
-					return TRUE;
+				/**
+				if($rule == $type && isset($access->read) && !$this->passes($access->read, $args)){
+					return FALSE;
 				}
-				else if(strpos($field, $rule) === 0 && (isset($access->read) && $this->passes($access->read, $args))){
-					//print "   check $field vs ".$rule."\n";
-					//print " *BANNED ($rule)*\n";
-					print " *PASSED [$rule]*\n";
-					return TRUE;
+				else if(strpos($field, $rule) === 0 && isset($access->read) && !$this->passes($access->read, $args)){
+					//$result = strlen("$type.$rule")*(?1:-1);
+					return FALSE;
+				}
+				*/
+
+				// only consider rules that are more precise than the current result
+				if($rule == $type && isset($access->read) && $result === FALSE){
+					$result = strlen($type)*($this->passes($access->read, $args)?1:-1);
+				}
+				else if(strpos($field, $rule) === 0 && (isset($access->read) && ($result === FALSE || strlen("$type.$rule") > abs($result)))){
+					$result = strlen("$type.$rule")*($this->passes($access->read, $args)?1:-1);
 				}
 			}
 		}
-		print " *BANNED ($type) [$field]*\n";
+		if($result > 0){
+			return TRUE;
+		}
 		return FALSE;
 	}
 

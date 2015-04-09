@@ -174,6 +174,7 @@ class Data extends NotORM {
 	protected function secureFields($mode, $type, $tables, $args){
 		if($this->security && !empty($tables)){
 			$result = array();
+			$id_tables = array();
 			$this->security->pass_cache_open();
 			foreach($tables as $table => $fields){
 				if($table[0] == '$'){
@@ -216,6 +217,7 @@ class Data extends NotORM {
 							}
 						}
 					}
+					$id_tables[$table] = $table_ids;
 
 					if(!empty($table_fields)){
 						$result[$table] = array_merge($table_ids, $table_fields);
@@ -223,6 +225,18 @@ class Data extends NotORM {
 				}
 			}
 			$this->security->pass_cache_close();
+
+			// now take any id tables that are required but missing...
+			foreach($id_tables as $table_id => $id_fields){
+				// if the table_id is not in the result set, and there are tables in the result that start with the table_id (ie. they are children of the table_id)
+				if(!array_key_exists($table_id, $result) && !empty( array_filter(array_keys($result), function($result_table_id) use($table_id){
+					return (strpos($result_table_id, $table_id) === 0);
+				}) )){
+					$result[$table_id] = $id_fields;
+				}
+			}
+
+
 			print "\nSECURED: $mode [$type]:".print_r($result, TRUE)."\n";
 			return $result;
 		}
@@ -241,7 +255,7 @@ class Data extends NotORM {
 				$tables = $this->secureFields("read", $type, $tables, $args);
 			}
 
-			if(!empty($args) && !empty($tables)){
+			if(!empty($args) && !empty($tables[$type])){
 				$this->assert($type);
 
 				// basic SELECT with list fields
