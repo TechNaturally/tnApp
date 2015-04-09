@@ -174,8 +174,22 @@ class Data extends NotORM {
 	protected function secureFields($mode, $type, $tables, $args){
 		if($this->security && !empty($tables)){
 			$result = array();
+			$this->security->pass_cache_open();
 			foreach($tables as $table => $fields){
-				if($table[0] != '$'){
+				if($table[0] == '$'){
+					// securing a reference table...
+					$table = substr($table, 1);
+					$check_field = str_replace('_', '.', $table);
+					if($this->allowedTo($mode, $type, $check_field, $args)){
+						$result["$$table"] = $fields;
+						/** TODO: if we want to restrict access on refs from a referencer
+							- if fields is * ... set fields to whatever sub-fields they have access to
+							- if fileds is not *, filter it to the sub-fields the have access to
+						*/
+						//$referencer_table = ;
+					}
+				}
+				else{
 					$field_base = $table;
 					if(($last_score = strrpos($table, '_')) !== FALSE){
 						$field_base = substr($table, 0, $last_score);
@@ -185,7 +199,11 @@ class Data extends NotORM {
 					$table_fields = array();
 					foreach($fields as $field_id){
 						if(strpos($field_id, ' AS ') !== FALSE){
-							// a reference field...
+							// a reference id field...
+							$ref_field_id = substr($field_id, 0, strpos($field_id, '.'));
+							if($this->allowedTo($mode, $type, "$type.$ref_field_id", $args)){
+								$table_fields[] = $field_id;
+							}
 						}
 						else{
 							$check_field = str_replace("$table.", "$field_base.", $field_id);
@@ -204,6 +222,7 @@ class Data extends NotORM {
 					}
 				}
 			}
+			$this->security->pass_cache_close();
 			print "\nSECURED: $mode [$type]:".print_r($result, TRUE)."\n";
 			return $result;
 		}
@@ -215,7 +234,7 @@ class Data extends NotORM {
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
-			print "\n*** load [$type]...\n";
+			//print "\n*** load [$type]...\n";
 
 			if($secure && !empty($args) && !empty($tables)){
 				print "\nSECURING [$type]:".print_r($tables, TRUE)."\n";
@@ -267,7 +286,10 @@ class Data extends NotORM {
 		foreach($tables as $table_name => $table_fields){
 			if($table_name == "$$row_type" || strpos($table_name, "$$row_type".'_') === 0){
 				// the table is describing a reference field for this row_type
-				if($field_name = substr($table_name, strpos($table_name, '_')+1)){
+				//if($field_name = substr($table_name, strpos($table_name, '_')+1)){
+				if($field_name = substr($table_name, strlen("$$row_type")+1)){
+// TODO: have a look at the field name here...
+// print "wookie:[$table_name][$field_name] ($row_type).".print_r($row_array, TRUE)."\n";
 					if(isset($row_array["$field_name.id"])){
 						// the row has and id for this reference field
 						$ref_data = NULL;
@@ -1326,7 +1348,15 @@ class Data extends NotORM {
 
 						// only retrieve the id in the first query, the data loader 
 						$fields[$table_name][] = "$ref_field_name.id AS `$ref_field_name.id`";
-						$fields["$$type"."_$ref_field_name"] = $ref_field_def;
+						//$ref_table_name = "$$type"."_$ref_field_name";
+						$ref_table_name = "$$table_name"."_$ref_field_name";
+						if(($tn_last = strrpos($table_name, '_')) !== FALSE && ($fn_first = strpos($ref_field_name, '_')) !== FALSE){
+							if(substr($table_name, $tn_last+1) == substr($ref_field_name, 0, $fn_first)){
+								$ref_table_name = "$$table_name".substr($ref_field_name, $fn_first);
+							}
+						}
+						
+						$fields[$ref_table_name] = $ref_field_def;
 					}
 				}
 			} // end of foreach ($tables)

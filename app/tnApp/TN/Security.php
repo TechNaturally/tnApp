@@ -5,6 +5,7 @@ class Security {
 	protected $data = NULL;
 	protected $rules = array();
 	protected $routes = array();
+	private $pass_cache = NULL;
 
 	public function setData($data){
 		$this->data = $data;
@@ -14,43 +15,63 @@ class Security {
 		$this->rules[$type] = $access;
 	}
 
-	public function passes($rules, $args){
-		if(is_array($rules)){
-			foreach($rules as $rule){
-				if(!$this->userMatches($rule, $args)){
-					return FALSE;
-				}
-			}
-		}
-		else{
-			return $this->userMatches($rules, $args);
-		}
-		return TRUE;
-	}
-
 	public function allowRead($type, $field, $args=NULL){
-		print "\nsecurity check to READ [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
+		//print "\nsecurity check to READ [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
 		if(!empty($this->rules[$type])){
 			$field = str_replace("$type.", '', $field);
 			$args['type'] = $type;
 			foreach($this->rules[$type] as $rule => $access){
-				if($rule == $type && (isset($access->read) && !$this->passes($access->read, $args)) ){
-					print " *BANNED ($type)*\n";
-					return FALSE;
+				if($rule == $type && (isset($access->read) && $this->passes($access->read, $args)) ){
+					print " *PASSED ($type)*\n";
+					return TRUE;
 				}
-				else if(strpos($field, $rule) === 0 && (isset($access->read) && !$this->passes($access->read, $args))){
+				else if(strpos($field, $rule) === 0 && (isset($access->read) && $this->passes($access->read, $args))){
 					//print "   check $field vs ".$rule."\n";
-					print " *BANNED ($rule)*\n";
-					return FALSE;
+					//print " *BANNED ($rule)*\n";
+					print " *PASSED [$rule]*\n";
+					return TRUE;
 				}
 			}
 		}
-		return TRUE;
+		print " *BANNED ($type) [$field]*\n";
+		return FALSE;
 	}
 
 	public function allowWrite($type, $field, $args=NULL){
 		print "\nsecurity check to WRITE [$type] [$field]".($args?" (#".print_r($args, true).")":"")."...\n";
 		return TRUE;
+	}
+
+	public function pass_cache_open(){
+		$this->pass_cache = array();
+	}
+	public function pass_cache_close(){
+		$this->pass_cache = NULL;
+	}
+
+	public function passes($rules, $args){
+		$pass_hash = NULL;
+		if(is_array($this->pass_cache)){
+			$pass_hash = md5(print_r($rules, TRUE).":".print_r($args, TRUE));
+			if(array_key_exists($pass_hash, $this->pass_cache)){
+				return $this->pass_cache[$pass_hash];
+			}
+		}
+		$result = FALSE;
+		if(is_array($rules)){
+			foreach($rules as $rule){
+				if($this->userMatches($rule, $args)){
+					$result = TRUE;
+				}
+			}
+		}
+		else{
+			$result = $this->userMatches($rules, $args);
+		}
+		if($pass_hash && is_array($this->pass_cache)){
+			$this->pass_cache[$pass_hash] = $result;
+		}
+		return $result;
 	}
 
 	private function userMatches($rule, $args){
