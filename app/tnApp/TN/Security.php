@@ -14,7 +14,13 @@ class Security {
 		$this->data_access[$type] = $access;
 	}
 
-	public function access($type, $field){
+	public function allowRead($type, $field, $args=NULL){
+		print "\nsecurity check to READ [$type] [$field]".($args?" (".print_r($args, true).")":"")."...\n";
+		return TRUE;
+	}
+
+	public function allowWrite($type, $field, $args=NULL){
+		print "\nsecurity check to WRITE [$type] [$field]".($args?" (#".print_r($args, true).")":"")."...\n";
 		return TRUE;
 	}
 

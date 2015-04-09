@@ -12,6 +12,9 @@
 			},
 			"roles": {
 				"write": ["admin"]
+			},
+			"test": {
+				"read": ["admin"]
 			}
 		},
 		"schema": {

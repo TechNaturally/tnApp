@@ -80,6 +80,19 @@ class Data extends NotORM {
 		$this->security = $security;
 	}
 
+	protected function allowedTo($mode, $type, $field_id, $args=NULL){
+		if($this->security){
+			if($mode == 'read'){
+				return $this->security->allowRead($type, $field_id, $args);
+			}
+			else if($mode == 'write'){
+				return $this->security->allowWrite($type, $field_id, $args);
+			}
+			return FALSE;
+		}
+		return TRUE;
+	}
+
 	public function addType($type, $config){
 		// add schema
 		$schema = (!empty($config->schema))?$config->schema:NULL;
@@ -158,11 +171,54 @@ class Data extends NotORM {
 		return NULL;
 	}
 
+	protected function secureFields($mode, $type, $tables, $args){
+		if($this->security && !empty($tables)){
+			$result = array();
+			foreach($tables as $table => $fields){
+				if($table[0] != '$'){
+					$field_base = $table;
+					if(($last_score = strrpos($table, '_')) !== FALSE){
+						$field_base = substr($table, 0, $last_score);
+					}
+
+					$table_ids = array();
+					$table_fields = array();
+					foreach($fields as $field_id){
+						if(strpos($field_id, ' AS ') !== FALSE){
+							// a reference field...
+						}
+						else{
+							$check_field = str_replace("$table.", "$field_base.", $field_id);
+							$check_field = str_replace('_', '.', $check_field);
+							if(($temp = strlen($check_field) - 3) >= 0 && strpos($check_field, '.id', $temp) !== FALSE){
+								$table_ids[] = $field_id;
+							}
+							else if($this->allowedTo($mode, $type, $check_field, $args)){
+								$table_fields[] = $field_id;
+							}
+						}
+					}
+
+					if(!empty($table_fields)){
+						$result[$table] = array_merge($table_ids, $table_fields);
+					}
+				}
+			}
+			print "\nSECURED: $mode [$type]:".print_r($result, TRUE)."\n";
+			return $result;
+		}
+		return $tables;
+	}
+
 	public function load($type, $args, $tables=NULL){
 		try{
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
+			if(!empty($args) && !empty($tables)){
+				$this->secureFields("read", $type, $tables, $args);
+			}
+
 			if(!empty($args) && !empty($tables)){
 				$this->assert($type);
 
@@ -1270,11 +1326,8 @@ class Data extends NotORM {
 						$fields["$$type"."_$ref_field_name"] = $ref_field_def;
 					}
 				}
-
-
 			} // end of foreach ($tables)
 		}
-
 		return $fields;
 	}
 
