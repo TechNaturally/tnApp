@@ -5,6 +5,12 @@
 		"list": ["username"],
 		"load": ["username"],
 		"save": ["username", "hash"],
+		"access": {
+			"auth": {
+				"read": ["admin", "auth=id"],
+				"write": ["admin", "auth=id"]
+			}
+		},
 		"schema": {
 			"id": "/auth",
 			"type": "object",
@@ -38,44 +44,52 @@
 		},
 		"/login": {
 			"callback": "login",
-			"methods": { "POST": true },
-			"form": [
-				{ "key": "username", "placeholder": "Username or Email address", "required": true },
-				{ "key": "password", "title": "Password", "type": "password" },
-				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
-						{ "type": "submit", "style": "btn-primary", "title": "Login" },
-						{ "type": "button", "style": "btn-warning", "title": "Forgot Password", "onClick": "go('recover')" }
-				]}
-			]
+			"methods": {
+				"POST": {
+					"form": [
+						{ "key": "username", "placeholder": "Username or Email address", "required": true },
+						{ "key": "password", "title": "Password", "type": "password" },
+						{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
+								{ "type": "submit", "style": "btn-primary", "title": "Login" },
+								{ "type": "button", "style": "btn-warning", "title": "Forgot Password", "onClick": "go('recover')" }
+						]}
+					]
+				}
+			}
 		},
 		"/logout": {
 			"callback": "logout",
-			"access": ["user"],
 			"methods": { "POST": true }
 		},
 		"/register": {
 			"callback": "register",
-			"methods": { "POST": true },
-			"form": [
-				{ "key": "username", "type": "new-username", "placeholder": "Username or Email address", "required": true },
-				{ "key": "password", "type": "password", "title": "Password" },
-				{ "key": "password_confirm", "type": "password-confirm", "title": "Confirm Password", "condition": "model.password" },
-				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
-					{ "type": "submit", "style": "btn-primary", "title": "Register" },
-					{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
-				]}
-			]
+			"methods": {
+				"POST": {
+					"form": [
+						{ "key": "username", "type": "new-username", "placeholder": "Username or Email address", "required": true },
+						{ "key": "password", "type": "password", "title": "Password" },
+						{ "key": "password_confirm", "type": "password-confirm", "title": "Confirm Password", "condition": "model.password" },
+						{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
+							{ "type": "submit", "style": "btn-primary", "title": "Register" },
+							{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
+						]}
+					]
+				}
+			}
 		},
 		"/recover": {
 			"callback": "recover",
-			"methods": { "POST": true },
-			"form": [
-				{ "key": "username", "placeholder": "Username or Email address", "required": true },
-				{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
-					{ "type": "submit", "style": "btn-primary", "title": "Recover Password" },
-					{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
-				]}
-			]
+			"methods": {
+				"POST": {
+					"form": [
+						{ "key": "username", "placeholder": "Username or Email address", "required": true },
+						{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
+							{ "type": "submit", "style": "btn-primary", "title": "Recover Password" },
+							{ "type": "button", "style": "btn-default", "title": "Cancel", "onClick": "cancel()" }
+						]}
+					]
+				}
+			}
 		},
 		"/available": {
 			"callback": "available",

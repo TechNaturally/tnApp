@@ -1,9 +1,24 @@
 <?php
 namespace TN;
 
-class Security extends \Slim\Middleware {
+class Security {
+	protected $data = NULL;
+	protected $data_access = array();
 	protected $routes = array();
 
+	public function setData($data){
+		$this->data = $data;
+	}
+
+	public function protect($type, $access){
+		$this->data_access[$type] = $access;
+	}
+
+	public function access($type, $field){
+		return TRUE;
+	}
+
+/**
 	public function kickout(){
 		$this->app->render(401, array('error' => TRUE, 'msg' => 'Access denied.'));
 	}
@@ -101,5 +116,6 @@ class Security extends \Slim\Middleware {
 			}
 		}
 	}
+	*/
 }
 ?>

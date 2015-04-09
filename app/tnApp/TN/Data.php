@@ -43,6 +43,7 @@ class DataRelation extends NotORM_Structure_Convention {
 }
 
 class Data extends NotORM {
+	protected $security = NULL;
 	protected $schemas;
 	protected $tables;
 	protected $fields;
@@ -75,6 +76,10 @@ class Data extends NotORM {
 		$this->rowClass = '\TN\DataRow';
 	}
 
+	public function setSecurity($security){
+		$this->security = $security;
+	}
+
 	public function addType($type, $config){
 		// add schema
 		$schema = (!empty($config->schema))?$config->schema:NULL;
@@ -100,6 +105,13 @@ class Data extends NotORM {
 		}
 		foreach($this->readModes as $mode){
 			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
+		}
+
+		// add security
+		if($this->security){
+			if(!empty($config->access)){
+				$this->security->protect($type, $config->access);
+			}
 		}
 	}
 
