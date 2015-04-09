@@ -3,7 +3,7 @@ namespace TN;
 
 class Security {
 	protected $data = NULL;
-	protected $data_access = array();
+	protected $rules = array();
 	protected $routes = array();
 
 	public function setData($data){
@@ -11,17 +11,101 @@ class Security {
 	}
 
 	public function protect($type, $access){
-		$this->data_access[$type] = $access;
+		$this->rules[$type] = $access;
+	}
+
+	public function passes($rules, $args){
+		if(is_array($rules)){
+			foreach($rules as $rule){
+				if(!$this->userMatches($rule, $args)){
+					return FALSE;
+				}
+			}
+		}
+		else{
+			return $this->userMatches($rules, $args);
+		}
+		return TRUE;
 	}
 
 	public function allowRead($type, $field, $args=NULL){
-		print "\nsecurity check to READ [$type] [$field]".($args?" (".print_r($args, true).")":"")."...\n";
+		print "\nsecurity check to READ [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
+		if(!empty($this->rules[$type])){
+			$field = str_replace("$type.", '', $field);
+			$args['type'] = $type;
+			foreach($this->rules[$type] as $rule => $access){
+				if($rule == $type && (isset($access->read) && !$this->passes($access->read, $args)) ){
+					print " *BANNED ($type)*\n";
+					return FALSE;
+				}
+				else if(strpos($field, $rule) === 0 && (isset($access->read) && !$this->passes($access->read, $args))){
+					//print "   check $field vs ".$rule."\n";
+					print " *BANNED ($rule)*\n";
+					return FALSE;
+				}
+			}
+		}
 		return TRUE;
 	}
 
 	public function allowWrite($type, $field, $args=NULL){
 		print "\nsecurity check to WRITE [$type] [$field]".($args?" (#".print_r($args, true).")":"")."...\n";
 		return TRUE;
+	}
+
+	private function userMatches($rule, $args){
+		if($rule === TRUE || $rule === FALSE){
+			return $rule;
+		}
+		else if(strpos($rule, 'auth') === 0){
+			return $this->userHasAccess($rule, $args);
+		}
+		else if(strpos($rule, '!auth') === 0){
+			return !$this->userHasAccess(substr($rule, 1), $args);
+		}
+		else if($rule[0] == '!'){
+			return !$this->userHasRole(substr($rule, 1));
+		}
+		else{
+			return $this->userHasRole($rule);
+		}
+		return FALSE;
+	}
+
+	private function userHasRole($role){
+		global $_SESSION;
+		if(empty($_SESSION['user']) || empty($_SESSION['user']['roles']) || !is_array($_SESSION['user']['roles'])){
+			return FALSE;
+		}
+		else{
+			return in_array($role, $_SESSION['user']['roles']);
+		}
+		return FALSE;
+	}
+
+	private function userHasAccess($rule, $args){
+		global $_SESSION;
+		if(empty($_SESSION['user']) || empty($_SESSION['user']['id']) || empty($this->data)){
+			return FALSE; // no user, no access
+		}
+
+		$rule_split = explode('=', $rule);
+		if(count($rule_split) > 1){
+			$field = $rule_split[1];
+			$type = $args['type'];
+			unset($args['type']);
+			$data = $this->data->loadFields($type, $args, array($field), FALSE);
+			$data = json_decode(json_encode($data));
+			$check_field = $this->data->getNodeChild($data, $field, FALSE);
+			if(is_array($check_field)){
+				return in_array($_SESSION['user']['id'], $check_field);
+			}
+			return (!empty($check_field) && $check_field == $_SESSION['user']['id']);
+		}
+		else{
+			return TRUE; // no field, and user is logged in
+		}
+		return FALSE;
 	}
 
 /**
@@ -63,25 +147,7 @@ class Security {
 		return (!empty($_SESSION['user']));
 	}
 
-	private function userMatches($rule, $params){
-		if($rule === TRUE || $rule === FALSE){
-			return $rule;
-		}
-		else if($rule == 'user'){
-			return $this->userHasAccess($params);
-		}
-		else if($rule == '^user'){
-			return !$this->userHasAccess($params);
-		}
-		else if($rule[0] == '^'){
-			return !$this->userHasRole(substr($rule, 1));
-		}
-		else{
-			return $this->userHasRole($rule);
-		}
-		return FALSE;
-
-	}
+	
 
 	public function passes($rules, $params){
 		if(is_array($rules)){

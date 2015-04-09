@@ -160,11 +160,11 @@ class Data extends NotORM {
 		return array();
 	}
 
-	public function loadFields($type, $args, $fields){
+	public function loadFields($type, $args, $fields, $secure=TRUE){
 		try{
 			if(!empty($fields)){
 				$tables = $this->getFields($type, 'read', $fields);
-				return $this->load($type, $args, $tables);
+				return $this->load($type, $args, $tables, $secure);
 			}
 		}
 		catch(Exception $e){ throw $e; }
@@ -210,13 +210,16 @@ class Data extends NotORM {
 		return $tables;
 	}
 
-	public function load($type, $args, $tables=NULL){
+	public function load($type, $args, $tables=NULL, $secure=TRUE){
 		try{
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
-			if(!empty($args) && !empty($tables)){
-				$this->secureFields("read", $type, $tables, $args);
+			print "\n*** load [$type]...\n";
+
+			if($secure && !empty($args) && !empty($tables)){
+				print "\nSECURING [$type]:".print_r($tables, TRUE)."\n";
+				$tables = $this->secureFields("read", $type, $tables, $args);
 			}
 
 			if(!empty($args) && !empty($tables)){
@@ -240,7 +243,7 @@ class Data extends NotORM {
 
 					$data = $this->compileObject($data);
 
-					$row_data = $this->loadRowData($type, $result, $tables);
+					$row_data = $this->loadRowData($type, $result, $tables, $secure);
 
 					if(!empty($row_data)){
 						$data = array_merge($data, $row_data);
@@ -257,7 +260,7 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function loadRowData($row_type, $row, $tables){
+	public function loadRowData($row_type, $row, $tables, $secure=TRUE){
 		$row_array = $this->rowToArray($row);
 		$row_data = array();
 		// loop through each table and load it if it relates to this row_type
@@ -279,7 +282,7 @@ class Data extends NotORM {
 								$ref_tables = $this->getFields($ref_type, "read", $ref_fields);
 							}
 							// load the referenced object
-							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables);
+							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables, $secure);
 						}
 						// inject the referenced object into the row's data
 						$row_data[$field_name] = $ref_data;
@@ -306,7 +309,7 @@ class Data extends NotORM {
 							$array_row_data = $this->compileObject($array_row_data);
 
 							// load any of the array row's data (references and child arrays)
-							$array_row_child_data = $this->loadRowData($table_name, $array_row, $tables);
+							$array_row_child_data = $this->loadRowData($table_name, $array_row, $tables, $secure);
 							
 							if(!empty($array_row_child_data)){
 								// compile the array row's data into an object
@@ -1340,15 +1343,18 @@ class Data extends NotORM {
 		return $this->schemas->get($type);
 	}
 
-	private function getNodeChild($node, $child_path){
+	public function getNodeChild($node, $child_path, $use_properties=TRUE){
 		if($node && $child_path){
 			$child_id = '';
 			$child_path = str_replace('.', '_', $child_path);
 			do{
 				if(isset($node->{$child_path})){
 					if($child_id){
-						if(!empty($node->{$child_path}->properties)){
+						if($use_properties && !empty($node->{$child_path}->properties)){
 							return $this->getNodeChild($node->{$child_path}->properties, $child_id);
+						}
+						else if(!$use_properties){
+							return $this->getNodeChild($node->{$child_path}, $child_id, FALSE);
 						}
 						else{
 							return NULL;
