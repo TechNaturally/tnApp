@@ -25,16 +25,6 @@ class Security {
 			$field = str_replace("$type.", '', $field);
 			$args['type'] = $type;
 			foreach($this->rules[$type] as $rule => $access){
-				/**
-				if($rule == $type && isset($access->read) && !$this->passes($access->read, $args)){
-					return FALSE;
-				}
-				else if(strpos($field, $rule) === 0 && isset($access->read) && !$this->passes($access->read, $args)){
-					//$result = strlen("$type.$rule")*(?1:-1);
-					return FALSE;
-				}
-				*/
-
 				// only consider rules that are more precise than the current result
 				if($rule == $type && isset($access->read) && $result === FALSE){
 					$result = strlen($type)*($this->passes($access->read, $args)?1:-1);
@@ -148,13 +138,21 @@ class Security {
 			$field = $rule_split[1];
 			$type = $args['type'];
 			unset($args['type']);
-			$data = $this->data->loadFields($type, $args, array($field), FALSE);
-			$data = json_decode(json_encode($data));
-			$check_field = $this->data->getNodeChild($data, $field, FALSE);
-			if(is_array($check_field)){
-				return in_array($_SESSION['user']['id'], $check_field);
+			if($type == 'auth'){
+				// auth is a special case where we resolve to the user id
+				$data = $this->data->loadFields('user', array("auth" => $args["auth.id"]), array('id'), FALSE);
 			}
-			return (!empty($check_field) && $check_field == $_SESSION['user']['id']);
+			else{
+				$data = $this->data->loadFields($type, $args, array($field), FALSE);
+			}
+			if($data){
+				$data = json_decode(json_encode($data));
+				$check_field = $this->data->getNodeChild($data, $field, FALSE);
+				if(is_array($check_field)){
+					return in_array($_SESSION['user']['id'], $check_field);
+				}
+				return (!empty($check_field) && $check_field == $_SESSION['user']['id']);
+			}
 		}
 		else{
 			return TRUE; // no field, and user is logged in
