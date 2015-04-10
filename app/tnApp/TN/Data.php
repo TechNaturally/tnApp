@@ -184,21 +184,14 @@ class Data extends NotORM {
 					$field_base = substr($table, 0, $last_score);
 				}
 				foreach($table_fields as $field_id => $field){
-					if(isset($field->type) && $field->type == 'ref'){
-						// TODO: how to handle ref?
-
+					if($field_id == 'id' || (($temp = strlen($field_id) - 3) >= 0 && strpos($field_id, '_id', $temp) !== FALSE)){
+						$table_ids[$field_id] = $field;
 					}
 					else{
-						if($field_id == 'id' || (($temp = strlen($field_id) - 3) >= 0 && strpos($field_id, '_id', $temp) !== FALSE)){
-							$table_ids[$field_id] = $field;
-						}
-						else{
-							$check_field = $field_base.'.'.$field_id;
-							$check_field = str_replace('_', '.', $check_field);
-							//print "  check:$check_field\n";
-							if($this->allowedTo($mode, $type, $check_field, $args)){
-								$secure_fields[$field_id] = $field;
-							}
+						$check_field = $field_base.'.'.$field_id;
+						$check_field = str_replace('_', '.', $check_field);
+						if($this->allowedTo($mode, $type, $check_field, $args)){
+							$secure_fields[$field_id] = $field;
 						}
 					}
 				}
@@ -206,8 +199,7 @@ class Data extends NotORM {
 					$result[$table] = array_merge($table_ids, $secure_fields);
 				}
 			}
-			
-			print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
+			//print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
 			return $result;
 		}
 		return $fields;
@@ -277,7 +269,6 @@ class Data extends NotORM {
 					$result[$table_id] = $id_fields;
 				}
 			}
-
 //			print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
 			return $result;
 		}
@@ -289,7 +280,7 @@ class Data extends NotORM {
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
-			//print "\n*** load [$type]...\n";
+			//print "\n*** load [$type]...".print_r($args, TRUE)."\n";
 
 			if($secure && !empty($tables)){
 				$tables = $this->secureTables("read", $type, $tables, $args);
@@ -471,12 +462,8 @@ class Data extends NotORM {
 				}
 			}
 
-
 			try {
-				print "*** DO THE SAVE ...\n";
-				print "data:".print_r($data, TRUE)."\n";
 				if($table_data = $this->dataToTables($type, $data, $schema)){
-					print "table_data:".print_r($table_data, TRUE)."\n";
 					$this->assert($type);
 					if(!empty($table_data[$type])){
 						$existing = NULL;
@@ -493,7 +480,6 @@ class Data extends NotORM {
 								$table_data = $this->dataToTables($type, $data, $schema);
 							}
 						}
-
 						if(!empty($table_data[$type])){
 							if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
 								if(!empty($entry['id'])){
