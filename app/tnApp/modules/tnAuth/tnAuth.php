@@ -35,7 +35,7 @@ function auth_assert_user($tn, $auth){
 	try{
 		if(function_exists('user_get_user')){
 			try {
-				return user_get_user($tn, array('auth' => $auth['id']));
+				return user_get_user($tn, array('auth' => $auth['id']), FALSE);
 			}
 			catch(\TN\DataMissingException $e){
 				// TODO: default roles? - should be in app's config.json - do we check in user_save_user for new users?
@@ -45,18 +45,23 @@ function auth_assert_user($tn, $auth){
 					if($name == $email){
 						$name = ucfirst(substr($name, 0, strpos($name, '@')));
 					}
-					return user_save_user($tn, array(
-						'auth' => (object)array('id' => $auth['id']),
-						'email' => $email,
-						'name' => $name,
-						'roles' => array('admin', 'test')
-						));
+					try{
+						user_save_user($tn, array(
+							'auth' => (object)array('id' => $auth['id']),
+							'email' => $email,
+							'name' => $name,
+							'roles' => array('admin')
+							), FALSE);
+					}
+					catch(\TN\DataInvalidException $e){
+						// user_save_user throws this because it isn't allowed to load, so we load with no security
+						return user_get_user($tn, array('auth' => $auth['id']), FALSE);
+					}
 				}
 			}
 		}
 	}
 	catch(Exception $e) { throw $e; }
-
 	return NULL;
 }
 
@@ -141,7 +146,6 @@ function auth_register_post($tn){
 	$res_code = 200;
 
 	try {
-
 		$req = json_decode($tn->app->request->getBody());
 
 		$username = !empty($req->username)?$req->username:'';
@@ -151,7 +155,7 @@ function auth_register_post($tn){
 			"username" => $username,
 			"hash" => auth_password_hash($req->password)
 			);
-		if($auth = $tn->data->save('auth', $auth)){
+		if($auth = $tn->data->save('auth', $auth, FALSE)){
 			$res['msg'] = "Account created!\n";
 			$auth['email'] = $email;
 			if($user = auth_assert_user($tn, $auth)){
