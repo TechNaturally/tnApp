@@ -2,19 +2,16 @@
 	"id": "user",
 	"data": {
 		"input": ["auth", "name", "test", "email", "phone", "address", "roles"],
-		"list": ["name", "email", "auth.username", "auth.email"],
-		"load": ["auth", "roles", "test", "name", "email", "phone"],
-		"save": ["auth", "roles", "test", "name", "email", "phone"],
+		"list": ["name", "email", "auth.username"],
+		"load": ["auth", "roles", "test", "name", "email", "phone", "address"],
+		"save": ["auth", "roles", "test", "name", "email", "phone", "address"],
 		"access": {
 			"user": {
-				"read": true,
-				"write": ["admin", "auth=auth"]
+				"read": ["admin", "auth=id"],
+				"write": ["admin", "auth=id"]
 			},
 			"roles": {
 				"write": ["admin"]
-			},
-			"test": {
-				"read": ["admin"]
 			}
 		},
 		"schema": {
@@ -47,13 +44,16 @@
 									"type": "object",
 									"properties": {
 										"check": { "type": "string" },
-										"again": { "type": "string" }
+										"again": { "type": "string" },
+										"abc": {
+											"title": "Account",
+											"$ref": "/auth/id"
+										}
 									}
 								}
 							}
 						}
 					}
-
 				},
 				"name": {
 					"title": "Name",
@@ -97,6 +97,10 @@
 						"postal": {
 							"title": "Postal/Zip Code",
 							"type": "string"
+						},
+						"def": {
+							"title": "Account",
+							"$ref": "/auth/id"
 						}
 					}
 				}
