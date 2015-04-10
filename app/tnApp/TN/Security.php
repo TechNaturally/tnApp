@@ -19,6 +19,9 @@ class Security {
 		//print "\nsecurity check to READ [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
 		$result = FALSE;
 		if(!empty($this->rules[$type])){
+			if(!$args){
+				$args = array();
+			}
 			$field = str_replace("$type.", '', $field);
 			$args['type'] = $type;
 			foreach($this->rules[$type] as $rule => $access){
@@ -48,8 +51,28 @@ class Security {
 	}
 
 	public function allowWrite($type, $field, $args=NULL){
-		print "\nsecurity check to WRITE [$type] [$field]".($args?" (#".print_r($args, true).")":"")."...\n";
-		return TRUE;
+		//print "\nsecurity check to WRITE [$type] [$field]\n"; //.($args?" (".print_r($args, true).")":"")."...\n";
+		$result = FALSE;
+		if(!empty($this->rules[$type])){
+			if(!$args){
+				$args = array();
+			}
+			$field = str_replace("$type.", '', $field);
+			$args['type'] = $type;
+			foreach($this->rules[$type] as $rule => $access){
+				// only consider rules that are more precise than the current result
+				if($rule == $type && isset($access->write) && $result === FALSE){
+					$result = strlen($type)*($this->passes($access->write, $args)?1:-1);
+				}
+				else if(strpos($field, $rule) === 0 && (isset($access->write) && ($result === FALSE || strlen("$type.$rule") > abs($result)))){
+					$result = strlen("$type.$rule")*($this->passes($access->write, $args)?1:-1);
+				}
+			}
+		}
+		if($result > 0){
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	public function pass_cache_open(){

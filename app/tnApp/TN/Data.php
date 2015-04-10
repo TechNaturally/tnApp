@@ -171,8 +171,51 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	protected function secureFields($mode, $type, $tables, $args){
+	protected function secureFields($mode, $type, $fields, $args){
+		if($this->security && !empty($fields)){
+			//print "\nSECURING: *$mode* [$type]:".print_r($fields, TRUE)."\n".print_r($args, TRUE)."\n";
+			$result = array();
+			foreach($fields as $table => $table_fields){
+				$secure_fields = array();
+				$table_ids = array();
+
+				$field_base = $table;
+				if(($last_score = strrpos($table, '_')) !== FALSE){
+					$field_base = substr($table, 0, $last_score);
+				}
+				foreach($table_fields as $field_id => $field){
+					if(isset($field->type) && $field->type == 'ref'){
+						// TODO: how to handle ref?
+
+					}
+					else{
+						if($field_id == 'id' || (($temp = strlen($field_id) - 3) >= 0 && strpos($field_id, '_id', $temp) !== FALSE)){
+							$table_ids[$field_id] = $field;
+						}
+						else{
+							$check_field = $field_base.'.'.$field_id;
+							$check_field = str_replace('_', '.', $check_field);
+							//print "  check:$check_field\n";
+							if($this->allowedTo($mode, $type, $check_field, $args)){
+								$secure_fields[$field_id] = $field;
+							}
+						}
+					}
+				}
+				if(!empty($secure_fields)){
+					$result[$table] = array_merge($table_ids, $secure_fields);
+				}
+			}
+			
+			print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
+			return $result;
+		}
+		return $fields;
+	}
+
+	protected function secureTables($mode, $type, $tables, $args){
 		if($this->security && !empty($tables)){
+//			print "\nSECURING: *$mode* [$type]:".print_r($tables, TRUE)."\n";
 			$result = array();
 			$id_tables = array();
 			$this->security->pass_cache_open();
@@ -187,7 +230,6 @@ class Data extends NotORM {
 							- if fields is * ... set fields to whatever sub-fields they have access to
 							- if fileds is not *, filter it to the sub-fields the have access to
 						*/
-						//$referencer_table = ;
 					}
 				}
 				else{
@@ -236,8 +278,7 @@ class Data extends NotORM {
 				}
 			}
 
-
-			print "\nSECURED: $mode [$type]:".print_r($result, TRUE)."\n";
+//			print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
 			return $result;
 		}
 		return $tables;
@@ -250,9 +291,8 @@ class Data extends NotORM {
 			}
 			//print "\n*** load [$type]...\n";
 
-			if($secure && !empty($args) && !empty($tables)){
-				print "\nSECURING [$type]:".print_r($tables, TRUE)."\n";
-				$tables = $this->secureFields("read", $type, $tables, $args);
+			if($secure && !empty($tables)){
+				$tables = $this->secureTables("read", $type, $tables, $args);
 			}
 
 			if(!empty($args) && !empty($tables[$type])){
@@ -411,7 +451,7 @@ class Data extends NotORM {
 		return $row_data;
 	}
 
-	public function save($type, $data){
+	public function save($type, $data, $secure=TRUE){
 		$schema = $this->getSchema($type);
 		if($schema && !empty($schema->properties)){
 			//$schema = $schema->properties;
@@ -420,8 +460,23 @@ class Data extends NotORM {
 			//print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
 			//print "*** DATA:".print_r($data, TRUE)."\n";
 
+			if($secure && !empty($schema)){
+				$secureArgs = array();
+				if(!empty($data['id'])){
+					$secureArgs["$type.id"] = $data["id"];
+				}
+				$schema = $this->secureFields('write', $type, $schema, $secureArgs);
+				if(empty($schema)){
+					return NULL;
+				}
+			}
+
+
 			try {
+				print "*** DO THE SAVE ...\n";
+				print "data:".print_r($data, TRUE)."\n";
 				if($table_data = $this->dataToTables($type, $data, $schema)){
+					print "table_data:".print_r($table_data, TRUE)."\n";
 					$this->assert($type);
 					if(!empty($table_data[$type])){
 						$existing = NULL;
@@ -618,7 +673,6 @@ class Data extends NotORM {
 		}
 		
 		foreach($data as $key => $value){
-			// TODO: add data access check
 			// TODO: add validation
 
 			$field_key = NULL;
