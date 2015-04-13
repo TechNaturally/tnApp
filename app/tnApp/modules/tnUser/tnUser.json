@@ -44,11 +44,7 @@
 									"type": "object",
 									"properties": {
 										"check": { "type": "string" },
-										"again": { "type": "string" },
-										"abc": {
-											"title": "Account",
-											"$ref": "/auth/id"
-										}
+										"again": { "type": "string" }
 									}
 								}
 							}
@@ -97,10 +93,6 @@
 						"postal": {
 							"title": "Postal/Zip Code",
 							"type": "string"
-						},
-						"def": {
-							"title": "Account",
-							"$ref": "/auth/id"
 						}
 					}
 				}
