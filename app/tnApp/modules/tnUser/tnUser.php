@@ -66,9 +66,9 @@ function user_profile_put($tn, $id){
 	$tn->app->render($res_code, $res);
 }
 
-function user_get_user($tn, $args){
+function user_get_user($tn, $args, $secure=TRUE){
 	try{
-		if($user = $tn->data->load('user', $args)){
+		if($user = $tn->data->load('user', $args, NULL, $secure)){
 			return $user;
 		}
 	} catch (Exception $e) { throw $e; }
@@ -76,9 +76,9 @@ function user_get_user($tn, $args){
 	return NULL;
 }
 
-function user_save_user($tn, $user){
+function user_save_user($tn, $user, $secure=TRUE){
 	try{
-		if($user = $tn->data->save('user', $user)){
+		if($user = $tn->data->save('user', $user, $secure)){
 			return $user;
 		}
 	} catch (Exception $e) { throw $e; }

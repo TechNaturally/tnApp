@@ -43,6 +43,7 @@ class DataRelation extends NotORM_Structure_Convention {
 }
 
 class Data extends NotORM {
+	protected $security = NULL;
 	protected $schemas;
 	protected $tables;
 	protected $fields;
@@ -75,6 +76,23 @@ class Data extends NotORM {
 		$this->rowClass = '\TN\DataRow';
 	}
 
+	public function setSecurity($security){
+		$this->security = $security;
+	}
+
+	protected function allowedTo($mode, $type, $field_id, $args=NULL){
+		if($this->security){
+			if($mode == 'read'){
+				return $this->security->allowRead($type, $field_id, $args);
+			}
+			else if($mode == 'write'){
+				return $this->security->allowWrite($type, $field_id, $args);
+			}
+			return FALSE;
+		}
+		return TRUE;
+	}
+
 	public function addType($type, $config){
 		// add schema
 		$schema = (!empty($config->schema))?$config->schema:NULL;
@@ -100,6 +118,13 @@ class Data extends NotORM {
 		}
 		foreach($this->readModes as $mode){
 			$this->field_configs[$type][$mode] = (!empty($config->{$mode}))?(array)$config->{$mode}:"*";
+		}
+
+		// add security
+		if($this->security){
+			if(!empty($config->access)){
+				$this->security->protect($type, $config->access);
+			}
 		}
 	}
 
@@ -135,23 +160,133 @@ class Data extends NotORM {
 		return array();
 	}
 
-	public function loadFields($type, $args, $fields){
+	public function loadFields($type, $args, $fields, $secure=TRUE){
 		try{
 			if(!empty($fields)){
 				$tables = $this->getFields($type, 'read', $fields);
-				return $this->load($type, $args, $tables);
+				return $this->load($type, $args, $tables, $secure);
 			}
 		}
 		catch(Exception $e){ throw $e; }
 		return NULL;
 	}
 
-	public function load($type, $args, $tables=NULL){
+	protected function secureFields($mode, $type, $fields, $args){
+		if($this->security && !empty($fields)){
+			//print "\nSECURING: *$mode* [$type]:".print_r($fields, TRUE)."\n".print_r($args, TRUE)."\n";
+			$result = array();
+			foreach($fields as $table => $table_fields){
+				$secure_fields = array();
+				$table_ids = array();
+
+				$field_base = $table;
+				if(($last_score = strrpos($table, '_')) !== FALSE){
+					$field_base = substr($table, 0, $last_score);
+				}
+				foreach($table_fields as $field_id => $field){
+					if($field_id == 'id' || (($temp = strlen($field_id) - 3) >= 0 && strpos($field_id, '_id', $temp) !== FALSE)){
+						$table_ids[$field_id] = $field;
+					}
+					else{
+						$check_field = $field_base.'.'.$field_id;
+						$check_field = str_replace('_', '.', $check_field);
+						if($this->allowedTo($mode, $type, $check_field, $args)){
+							$secure_fields[$field_id] = $field;
+						}
+					}
+				}
+				if(!empty($secure_fields)){
+					$result[$table] = array_merge($table_ids, $secure_fields);
+				}
+			}
+			//print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
+			return $result;
+		}
+		return $fields;
+	}
+
+	protected function secureTables($mode, $type, $tables, $args){
+		if($this->security && !empty($tables)){
+//			print "\nSECURING: *$mode* [$type]:".print_r($tables, TRUE)."\n";
+			$result = array();
+			$id_tables = array();
+			$this->security->pass_cache_open();
+			foreach($tables as $table => $fields){
+				if($table[0] == '$'){
+					// securing a reference table...
+					$table = substr($table, 1);
+					$check_field = str_replace('_', '.', $table);
+					if($this->allowedTo($mode, $type, $check_field, $args)){
+						$result["$$table"] = $fields;
+						/** TODO: if we want to restrict access on refs from a referencer
+							- if fields is * ... set fields to whatever sub-fields they have access to
+							- if fileds is not *, filter it to the sub-fields the have access to
+						*/
+					}
+				}
+				else{
+					$field_base = $table;
+					if(($last_score = strrpos($table, '_')) !== FALSE){
+						$field_base = substr($table, 0, $last_score);
+					}
+
+					$table_ids = array();
+					$table_fields = array();
+					foreach($fields as $field_id){
+						if(strpos($field_id, ' AS ') !== FALSE){
+							// a reference id field...
+							$ref_field_id = substr($field_id, 0, strpos($field_id, '.'));
+							if($this->allowedTo($mode, $type, "$type.$ref_field_id", $args)){
+								$table_fields[] = $field_id;
+							}
+						}
+						else{
+							$check_field = str_replace("$table.", "$field_base.", $field_id);
+							$check_field = str_replace('_', '.', $check_field);
+							if(($temp = strlen($check_field) - 3) >= 0 && strpos($check_field, '.id', $temp) !== FALSE){
+								$table_ids[] = $field_id;
+							}
+							else if($this->allowedTo($mode, $type, $check_field, $args)){
+								$table_fields[] = $field_id;
+							}
+						}
+					}
+					$id_tables[$table] = $table_ids;
+
+					if(!empty($table_fields)){
+						$result[$table] = array_merge($table_ids, $table_fields);
+					}
+				}
+			}
+			$this->security->pass_cache_close();
+
+			// now take any id tables that are required but missing...
+			foreach($id_tables as $table_id => $id_fields){
+				// if the table_id is not in the result set, and there are tables in the result that start with the table_id (ie. they are children of the table_id)
+				if(!array_key_exists($table_id, $result) && !empty( array_filter(array_keys($result), function($result_table_id) use($table_id){
+					return (strpos($result_table_id, $table_id) === 0);
+				}) )){
+					$result[$table_id] = $id_fields;
+				}
+			}
+//			print "\nSECURED: *$mode* [$type]:".print_r($result, TRUE)."\n";
+			return $result;
+		}
+		return $tables;
+	}
+
+	public function load($type, $args, $tables=NULL, $secure=TRUE){
 		try{
 			if(empty($tables)){
 				$tables = $this->getFields($type, 'load');
 			}
-			if(!empty($args) && !empty($tables)){
+			//print "\n*** load [$type]...".print_r($args, TRUE)."\n";
+
+			if($secure && !empty($tables)){
+				$tables = $this->secureTables("read", $type, $tables, $args);
+			}
+
+			if(!empty($args) && !empty($tables[$type])){
 				$this->assert($type);
 
 				// basic SELECT with list fields
@@ -172,7 +307,7 @@ class Data extends NotORM {
 
 					$data = $this->compileObject($data);
 
-					$row_data = $this->loadRowData($type, $result, $tables);
+					$row_data = $this->loadRowData($type, $result, $tables, $secure);
 
 					if(!empty($row_data)){
 						$data = array_merge($data, $row_data);
@@ -189,14 +324,17 @@ class Data extends NotORM {
 		return NULL;
 	}
 
-	public function loadRowData($row_type, $row, $tables){
+	public function loadRowData($row_type, $row, $tables, $secure=TRUE){
 		$row_array = $this->rowToArray($row);
 		$row_data = array();
 		// loop through each table and load it if it relates to this row_type
 		foreach($tables as $table_name => $table_fields){
 			if($table_name == "$$row_type" || strpos($table_name, "$$row_type".'_') === 0){
 				// the table is describing a reference field for this row_type
-				if($field_name = substr($table_name, strpos($table_name, '_')+1)){
+				//if($field_name = substr($table_name, strpos($table_name, '_')+1)){
+				if($field_name = substr($table_name, strlen("$$row_type")+1)){
+// TODO: have a look at the field name here...
+// print "wookie:[$table_name][$field_name] ($row_type).".print_r($row_array, TRUE)."\n";
 					if(isset($row_array["$field_name.id"])){
 						// the row has and id for this reference field
 						$ref_data = NULL;
@@ -211,7 +349,7 @@ class Data extends NotORM {
 								$ref_tables = $this->getFields($ref_type, "read", $ref_fields);
 							}
 							// load the referenced object
-							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables);
+							$ref_data = $this->load($ref_type, array("$ref_type.id" => $row_array["$field_name.id"]), $ref_tables, $secure);
 						}
 						// inject the referenced object into the row's data
 						$row_data[$field_name] = $ref_data;
@@ -238,7 +376,7 @@ class Data extends NotORM {
 							$array_row_data = $this->compileObject($array_row_data);
 
 							// load any of the array row's data (references and child arrays)
-							$array_row_child_data = $this->loadRowData($table_name, $array_row, $tables);
+							$array_row_child_data = $this->loadRowData($table_name, $array_row, $tables, $secure);
 							
 							if(!empty($array_row_child_data)){
 								// compile the array row's data into an object
@@ -304,7 +442,7 @@ class Data extends NotORM {
 		return $row_data;
 	}
 
-	public function save($type, $data){
+	public function save($type, $data, $secure=TRUE){
 		$schema = $this->getSchema($type);
 		if($schema && !empty($schema->properties)){
 			//$schema = $schema->properties;
@@ -312,6 +450,17 @@ class Data extends NotORM {
 			$schema = $this->getFields($type, 'save');
 			//print "\n*** SCHEMA:".print_r($schema, TRUE)."\n";
 			//print "*** DATA:".print_r($data, TRUE)."\n";
+
+			if($secure && !empty($schema)){
+				$secureArgs = array();
+				if(!empty($data['id'])){
+					$secureArgs["$type.id"] = $data["id"];
+				}
+				$schema = $this->secureFields('write', $type, $schema, $secureArgs);
+				if(empty($schema)){
+					return NULL;
+				}
+			}
 
 			try {
 				if($table_data = $this->dataToTables($type, $data, $schema)){
@@ -331,7 +480,6 @@ class Data extends NotORM {
 								$table_data = $this->dataToTables($type, $data, $schema);
 							}
 						}
-
 						if(!empty($table_data[$type])){
 							if($entry = $this->insertToTable($type, $table_data[$type], $existing_data)){
 								if(!empty($entry['id'])){
@@ -511,7 +659,6 @@ class Data extends NotORM {
 		}
 		
 		foreach($data as $key => $value){
-			// TODO: add data access check
 			// TODO: add validation
 
 			$field_key = NULL;
@@ -1255,14 +1402,19 @@ class Data extends NotORM {
 
 						// only retrieve the id in the first query, the data loader 
 						$fields[$table_name][] = "$ref_field_name.id AS `$ref_field_name.id`";
-						$fields["$$type"."_$ref_field_name"] = $ref_field_def;
+						//$ref_table_name = "$$type"."_$ref_field_name";
+						$ref_table_name = "$$table_name"."_$ref_field_name";
+						if(($tn_last = strrpos($table_name, '_')) !== FALSE && ($fn_first = strpos($ref_field_name, '_')) !== FALSE){
+							if(substr($table_name, $tn_last+1) == substr($ref_field_name, 0, $fn_first)){
+								$ref_table_name = "$$table_name".substr($ref_field_name, $fn_first);
+							}
+						}
+						
+						$fields[$ref_table_name] = $ref_field_def;
 					}
 				}
-
-
 			} // end of foreach ($tables)
 		}
-
 		return $fields;
 	}
 
@@ -1275,15 +1427,18 @@ class Data extends NotORM {
 		return $this->schemas->get($type);
 	}
 
-	private function getNodeChild($node, $child_path){
+	public function getNodeChild($node, $child_path, $use_properties=TRUE){
 		if($node && $child_path){
 			$child_id = '';
 			$child_path = str_replace('.', '_', $child_path);
 			do{
 				if(isset($node->{$child_path})){
 					if($child_id){
-						if(!empty($node->{$child_path}->properties)){
+						if($use_properties && !empty($node->{$child_path}->properties)){
 							return $this->getNodeChild($node->{$child_path}->properties, $child_id);
+						}
+						else if(!$use_properties){
+							return $this->getNodeChild($node->{$child_path}, $child_id, FALSE);
 						}
 						else{
 							return NULL;

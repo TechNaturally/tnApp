@@ -35,10 +35,13 @@ class App {
 		}
 
 		$this->init_security();
-
 		if(!empty($config['data'])){
 			$this->init_data($config['data']);
 		}
+
+		// link the security and data components
+		$this->security->setData($this->data); // security needs to know where to look up data-specific access
+		$this->data->setSecurity($this->security); // data needs security.
 
 		if(!empty($config['modules'])){
 			$this->load_modules($config['modules'], dirname(__FILE__).'/'.$config['module_path']);
@@ -51,7 +54,7 @@ class App {
 
 		// add a route for requesting the schema
 		$this->app->get('/schema/:id', function($id){
-			// we generally (can't think of exceptions) only want to be telling the clients about the data they can input
+			// can't think of a case where we want to tell user about fields other than what they can input
 			$schema = $this->data->getSchema($id, 'input');
 			if(!$schema){
 				// make an empty schema
@@ -71,9 +74,8 @@ class App {
 	}
 
 	protected function init_security(){
-		// create and add our custom Security middleware to Slim, we also use the encrypted SessionCookie middleware
+		// initialize our custom Security module. we also use the encrypted SessionCookie middleware
 		$this->security = new \TN\Security();
-		$this->app->add($this->security);
 		$this->app->add(new \Slim\Middleware\SessionCookie(array('name' => $this->app->getName().'_session')));
 	}
 
@@ -130,15 +132,11 @@ class App {
 		foreach($routes as $local_path => $route){
 			$path = '/'.$module_id.(($local_path[0] != '/')?'/':'').$local_path;
 			if(!empty($route->callback) && !empty($route->methods)){
-				// read default access and form settings for this route
+				// read default settings for this route
 				// specific request methods can override them if needed
 
 				$base_callback = $route->callback;
-
 				$route_callback = $module_id.'_'.$route->callback;
-
-				// default route access, if none given defaults to TRUE
-				$route_access = isset($route->access)?$route->access:TRUE;
 
 				// default input form for this route - will be served through <path>/form
 				$route_form = isset($route->form)?$route->form:NULL;
@@ -150,13 +148,9 @@ class App {
 					}
 					$method_callback = $route_callback.'_'.strtolower($method);
 
-					// use route default access + form unless overridden by method's settings
-					$method_access = $route_access;
+					// use route default form unless overridden by method's settings
 					$method_form = $route_form;
 					if(is_object($settings)){
-						if(isset($settings->access)){
-							$method_access = $settings->access;
-						}
 						if(isset($settings->form)){
 							$method_form = $settings->form;
 						}
@@ -194,16 +188,6 @@ class App {
 						}
 						else{
 							continue; // unsupported method
-						}
-
-						// protect the route method if there is a security handler
-						if(!empty($this->security)){
-							$this->security->protect($method.$path, $method_access);
-
-							// also protect the route's form
-							if($method_form){
-								$this->security->protect($method.$path.'/form', $method_access);
-							}
 						}
 					}
 				}

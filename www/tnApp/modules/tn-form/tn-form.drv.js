@@ -1,5 +1,5 @@
 angular.module('tnApp.form')
-.directive('tnForm', ['API', 'Theme', function(API, Theme){
+.directive('tnForm', ['API', 'Theme', 'Auth', function(API, Theme, Auth){
 	return {
 		restrict: 'E',
 		scope: {
@@ -17,6 +17,10 @@ angular.module('tnApp.form')
 			if(angular.isFunction($scope.$parent.go)){
 				$scope.go = $scope.$parent.go;
 			}
+
+			$scope.access = function(rules){
+				return Auth.api.passes(rules);
+			};
 
 			// this is used as the ng-submit callback, where action is provided by the API form
 			$scope.do = function(action){
