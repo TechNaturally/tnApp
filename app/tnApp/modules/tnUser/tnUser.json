@@ -12,6 +12,9 @@
 			},
 			"roles": {
 				"write": ["admin"]
+			},
+			"test.field3.check": {
+				"write": ["admin"]
 			}
 		},
 		"schema": {
@@ -121,7 +124,7 @@
 							{ "key": "email", "placeholder": "Email address" },
 							{ "key": "phone", "placeholder": "Phone number" },
 							{ "key": "test", "startEmpty": true },
-							{ "key": "roles", "condition": "access(['admin'])" }
+							{ "key": "roles", "startEmpty": true, "condition": "access(['admin'])" }
 						]},
 						{ "type": "section", "htmlClass": "btn-group inline-btn-group", "items": [
 								{ "type": "submit", "style": "btn-primary", "title": "Save" },
